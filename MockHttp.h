@@ -21,9 +21,11 @@ extern "C" {
 #endif /* __cplusplus */
 
 typedef struct MockHttp MockHttp;
+typedef struct MatchingPattern_t MatchingPattern_t;
 
 /* Define a mock server */
 MockHttp *mhInit();
+void mhCleanup(MockHttp *mh);
 
 /* Define expectations*/
 
@@ -32,7 +34,7 @@ MockHttp *mhInit();
 /*  */
 typedef struct MatchingPattern MatchingPattern;
 
-MatchingPattern * URLEqualTo(const char *expected);
+MatchingPattern_t *mhURLEqualTo(MockHttp *mh, const char *expected);
 
 #ifdef __cplusplus
 }

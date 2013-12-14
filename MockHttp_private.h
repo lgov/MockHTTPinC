@@ -13,35 +13,34 @@
  * limitations under the License.
  */
 
-#include "MockHttp.h"
+#ifndef MockHttp_private_H
+#define MockHttp_private_H
 
-#include "ext/pocore_stripped.h"
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
-struct MockHttp {
-    pc_pool_t *pool;
+typedef struct Request_t Request_t;
+typedef int (*matchfunc_t)(MatchingPattern_t *mp, Request_t *req);
+
+struct MatchingPattern_t {
+    const void *baton;
+    matchfunc_t matcher;
 };
 
-/* Define a mock server */
-MockHttp *mhInit()
-{
-    pc_context_t *ctx = pc_context_create();
-    pc_pool_t *pool = pc_pool_root(ctx);
-
-    MockHttp *mh = pc_alloc(pool, sizeof(struct MockHttp));
-
-}
-
-/* Define expectations*/
+typedef short int bool;
+static const bool YES = 1;
+static const bool NO = 0;
 
 
-
-/*  */
-struct MatchingPattern {
-
+struct Request_t {
+    const char *method;
+    const char *url;
 };
 
-MatchingPattern * URLEqualTo(const char *expected)
-{
 
-
+#ifdef __cplusplus
 }
+#endif /* __cplusplus */
+
+#endif /* MockHttp_private_H */

@@ -15,15 +15,47 @@
 
 #include "MockHttp.h"
 
+/* Include here to test some internals */
+#include "MockHttp_private.h"
+
 #define CTEST_MAIN
 #include "ctest.h"
 
 CTEST_DATA(expectations) {
+    MockHttp *mh;
 };
 
-CTEST2(expectations, test1)
+/* CTest note: the test struct is available in setup/teardown/run
+   functions as 'data'. */
+CTEST_SETUP(expectations)
 {
     MockHttp *mh = mhInit();
+
+    data->mh = mh;
+}
+
+CTEST_TEARDOWN(expectations)
+{
+    mhCleanup(data->mh);
+}
+
+
+CTEST2(expectations, test_mock_init)
+{
+    MockHttp *mh = data->mh;
+    ASSERT_NOT_NULL(mh);
+}
+
+CTEST2(expectations, test_urlmatcher_init)
+{
+    MockHttp *mh = data->mh;
+    MatchingPattern_t *mp;
+    Request_t *req;
+
+    mp = mhURLEqualTo(mh, "/index.html");
+    ASSERT_NOT_NULL(mp);
+
+    ASSERT_EQUAL(mp->matcher(mp, req), YES);
 }
 
 int main(int argc, const char *argv[])

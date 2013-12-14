@@ -8,7 +8,7 @@ INC_PATHS=-I.
 
 LIBS=-lssl -lcrypto
 
-SRCFILES=
+SRCFILES=MockHttp.c
 
 OBJS=$(patsubst %.c,$(OBJDIR)/%.o, $(SRCFILES))
 OBJDIR=build
@@ -26,4 +26,4 @@ test: $(OBJS) tests/expectations.o
 		tests/expectations.o
 
 clean:
-	rm -f tests/mockhttp_tests build/*.o build/tests/*.o
+	rm -f tests/mockhttp_tests build/*.o tests/*.o
