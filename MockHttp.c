@@ -13,16 +13,17 @@
  * limitations under the License.
  */
 
-#include "MockHttp.h"
-#include "MockHttp_private.h"
+#include "MockHTTP.h"
+#include "MockHTTP_private.h"
 
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 typedef struct block_t block_t;
 typedef struct pool_t pool_t;
 
-struct MockHttp {
+struct MockHTTP {
     pool_t *pool;
 };
 
@@ -84,35 +85,57 @@ static void pool_destroy(pool_t *pool)
     free(pool);
 }
 
-/* Define a MockHttp context */
-MockHttp *mhInit()
+static char *pool_strdup(pool_t *pool, const char *str)
+{
+    size_t len = strlen(str);
+    char *tgt = pool_malloc(pool, len);
+    memcpy(tgt, str, len);
+
+    return tgt;
+}
+
+/* Define a MockHTTP context */
+MockHTTP *mhInit()
 {
     pool_t *pool = pool_create();
 
-    MockHttp *mh = pool_malloc(pool, sizeof(struct MockHttp));
+    MockHTTP *mh = pool_malloc(pool, sizeof(struct MockHTTP));
     mh->pool = pool;
 
     return mh;
 }
 
-void mhCleanup(MockHttp *mh)
+void mhCleanup(MockHTTP *mh)
 {
     if (!mh)
         return;
 
-    /* The MockHttp * is also allocated from mh->pool, so this will destroy
-       the MockHttp structure and all its allocated memory. */
+    /* The MockHTTP* is also allocated from mh->pool, so this will destroy
+       the MockHTTP structure and all its allocated memory. */
     pool_destroy(mh->pool);
-    mh->pool = NULL;
+
+    /* mh ptr is now invalid */
 }
 
 /* Define expectations*/
+void mhGiven(mhMapping_t *m)
+{
+
+}
 
 
+mhRequest_t *_mhRequestInit(MockHTTP *mh)
+{
+    mhRequest_t *req = pool_malloc(mh->pool, sizeof(mhRequest_t));
 
-/*  */
+    return req;
+}
 
-int url_matcher(MatchingPattern_t *mp, Request_t *req)
+/******************************************************************************/
+/* Requests matchers: define criteria to match different aspects of a HTTP    */
+/* request received by the MockHTTP server.                                   */
+/******************************************************************************/
+static int url_matcher(mhMatchingPattern_t *mp, mhRequest_t *req)
 {
     const char *expected = mp->baton;
 
@@ -122,13 +145,50 @@ int url_matcher(MatchingPattern_t *mp, Request_t *req)
     return NO;
 }
 
-MatchingPattern_t *mhURLEqualTo(MockHttp *mh, const char *expected)
+mhMatchingPattern_t *mhURLEqualTo(MockHTTP *mh, const char *expected)
 {
     pool_t *pool = mh->pool;
 
-    MatchingPattern_t *mp = pool_malloc(pool, sizeof(MatchingPattern_t));
-    /* TODO: strdup */
-    mp->baton = expected;
+    mhMatchingPattern_t *mp = pool_malloc(pool, sizeof(mhMatchingPattern_t));
+    mp->baton = pool_strdup(pool, expected);
     mp->matcher = url_matcher;
+
+    return mp;
+}
+
+static int strcicmp(const char *a, const char *b)
+{
+    for (;; a++, b++) {
+        if (!*a) {
+            if (!*b)
+                return 0;
+            return -1;
+        } else if (!*b) {
+            return 1;
+        }
+        int d = tolower(*a) - tolower(*b);
+        if (d != 0)
+            return d;
+    }
+}
+
+static int method_matcher(mhMatchingPattern_t *mp, mhRequest_t *req)
+{
+    const char *expected = mp->baton;
+
+    if (strcicmp(expected, req->method) == 0)
+        return YES;
+
+    return NO;
+}
+
+mhMatchingPattern_t *mhMethodEqualTo(MockHTTP *mh, const char *expected)
+{
+    pool_t *pool = mh->pool;
+
+    mhMatchingPattern_t *mp = pool_malloc(pool, sizeof(mhMatchingPattern_t));
+    mp->baton = pool_strdup(pool, expected);
+    mp->matcher = method_matcher;
+
     return mp;
 }

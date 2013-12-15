@@ -39,22 +39,37 @@ CTEST_TEARDOWN(expectations)
     mhCleanup(data->mh);
 }
 
-
 CTEST2(expectations, test_mock_init)
 {
     MockHttp *mh = data->mh;
     ASSERT_NOT_NULL(mh);
 }
 
-CTEST2(expectations, test_urlmatcher_init)
+CTEST2(expectations, test_urlmatcher)
 {
     MockHttp *mh = data->mh;
-    MatchingPattern_t *mp;
-    Request_t *req;
+    mhMatchingPattern_t *mp;
+    mhRequest_t *req;
 
     mp = mhURLEqualTo(mh, "/index.html");
     ASSERT_NOT_NULL(mp);
 
+    req = _mhRequestInit(mh);
+    req->url = "/index.html";
+    ASSERT_EQUAL(mp->matcher(mp, req), YES);
+}
+
+CTEST2(expectations, test_methodmatcher)
+{
+    MockHttp *mh = data->mh;
+    mhMatchingPattern_t *mp;
+    mhRequest_t *req;
+
+    mp = mhMethodEqualTo(mh, "get");
+    ASSERT_NOT_NULL(mp);
+
+    req = _mhRequestInit(mh);
+    req->method = "get";
     ASSERT_EQUAL(mp->matcher(mp, req), YES);
 }
 

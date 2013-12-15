@@ -7,22 +7,22 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		F31C552F185B9683006958E7 /* MockHttp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MockHttp.h; sourceTree = "<group>"; };
+		F31C552F185B9683006958E7 /* MockHTTP.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MockHTTP.h; sourceTree = "<group>"; };
 		F33CD826185B9F6C008890DD /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		F33CD828185BA2C9008890DD /* ctest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ctest.h; sourceTree = "<group>"; };
 		F33CD829185BA2E0008890DD /* expectations.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = expectations.c; sourceTree = "<group>"; };
-		F33CD834185BBA22008890DD /* MockHttp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = MockHttp.c; sourceTree = "<group>"; };
-		F33CD836185C62DD008890DD /* MockHttp_private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MockHttp_private.h; sourceTree = "<group>"; };
+		F33CD834185BBA22008890DD /* MockHTTP.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = MockHTTP.c; sourceTree = "<group>"; };
+		F33CD836185C62DD008890DD /* MockHTTP_private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MockHTTP_private.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
 		F31C5524185B964C006958E7 = {
 			isa = PBXGroup;
 			children = (
-				F33CD836185C62DD008890DD /* MockHttp_private.h */,
-				F33CD834185BBA22008890DD /* MockHttp.c */,
+				F33CD836185C62DD008890DD /* MockHTTP_private.h */,
+				F33CD834185BBA22008890DD /* MockHTTP.c */,
 				F33CD826185B9F6C008890DD /* Makefile */,
-				F31C552F185B9683006958E7 /* MockHttp.h */,
+				F31C552F185B9683006958E7 /* MockHTTP.h */,
 				F33CD827185BA2C9008890DD /* tests */,
 			);
 			sourceTree = "<group>";

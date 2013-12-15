@@ -20,10 +20,10 @@
 extern "C" {
 #endif /* __cplusplus */
 
-typedef struct Request_t Request_t;
-typedef int (*matchfunc_t)(MatchingPattern_t *mp, Request_t *req);
+typedef struct mhRequest_t mhRequest_t;
+typedef int (*matchfunc_t)(mhMatchingPattern_t *mp, mhRequest_t *req);
 
-struct MatchingPattern_t {
+struct mhMatchingPattern_t {
     const void *baton;
     matchfunc_t matcher;
 };
@@ -33,10 +33,13 @@ static const bool YES = 1;
 static const bool NO = 0;
 
 
-struct Request_t {
+struct mhRequest_t {
     const char *method;
     const char *url;
 };
+
+/* Initialize a mhRequest_t object. */
+mhRequest_t *_mhRequestInit(MockHttp *mh);
 
 
 #ifdef __cplusplus
