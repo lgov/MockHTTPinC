@@ -103,7 +103,7 @@ struct linkedlist_t {
     llnode_t *last;
 };
 
-linkedlist_t *linkedlist_init(pool_t *pool)
+static linkedlist_t *linkedlist_init(pool_t *pool)
 {
     linkedlist_t *l = pool_malloc(pool, sizeof(linkedlist_t));
     l->pool = pool;
@@ -111,7 +111,7 @@ linkedlist_t *linkedlist_init(pool_t *pool)
     return l;
 }
 
-void ll_add(linkedlist_t *l, const void *ptr1, const void *ptr2)
+static void ll_add(linkedlist_t *l, const void *ptr1, const void *ptr2)
 {
     llnode_t *n = pool_malloc(l->pool, sizeof(struct llnode_t));
     n->ptr1 = ptr1;
@@ -149,10 +149,6 @@ void mhCleanup(MockHTTP *mh)
 }
 
 /* Define expectations*/
-void mhGiven(mhMapping_t *m)
-{
-
-}
 
 void mhPushReqResp(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp)
 {
@@ -194,6 +190,7 @@ mhMatchingPattern_t *mhURLEqualTo(mhRequestMatcher_t *rm, const char *expected)
 static int strcicmp(const char *a, const char *b)
 {
     for (;; a++, b++) {
+        int d;
         if (!*a) {
             if (!*b)
                 return 0;
@@ -201,7 +198,7 @@ static int strcicmp(const char *a, const char *b)
         } else if (!*b) {
             return 1;
         }
-        int d = tolower(*a) - tolower(*b);
+        d = tolower(*a) - tolower(*b);
         if (d != 0)
             return d;
     }
@@ -277,7 +274,5 @@ void mhRespSetBody(mhResponse_t *resp, const char *body)
 
 void mhRespAddHeader(mhResponse_t *resp, const char *header, const char *value)
 {
-    pool_t *pool = resp->pool;
-
     ll_add(resp->hdrs, header, value);
 }

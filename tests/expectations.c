@@ -78,8 +78,6 @@ CTEST2(expectations, test_methodmatcher)
 CTEST2(expectations, test_matchrequest)
 {
     MockHTTP *mh = data->mh;
-    mhMatchingPattern_t *mp;
-    mhRequest_t *req;
 
     /*
      GIVEN(mh)
