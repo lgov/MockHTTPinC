@@ -13,31 +13,44 @@
  * limitations under the License.
  */
 
-#ifndef MockHttp_H
-#define MockHttp_H
+#ifndef MockHTTP_H
+#define MockHTTP_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-typedef struct MockHttp MockHttp;
+typedef struct MockHTTP MockHTTP;
 typedef struct mhMatchingPattern_t mhMatchingPattern_t;
 typedef struct mhMapping_t mhMapping_t;
+typedef struct mhRequest_t mhRequest_t;
+typedef struct mhRequestMatcher_t mhRequestMatcher_t;
+typedef struct mhResponse_t mhResponse_t;
 
 /* Define a mock server */
-MockHttp *mhInit();
-void mhCleanup(MockHttp *mh);
+MockHTTP *mhInit();
+void mhCleanup(MockHTTP *mh);
+
+void mhPushReqResp(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp);
 
 /* Define expectations*/
 
-
+/* Request functions */
+mhRequestMatcher_t *mhGetRequest(MockHTTP *mh);
 
 /*  */
-mhMatchingPattern_t *mhURLEqualTo(MockHttp *mh, const char *expected);
-mhMatchingPattern_t *mhMethodEqualTo(MockHttp *mh, const char *expected);
+mhMatchingPattern_t *mhURLEqualTo(mhRequestMatcher_t *rm, const char *expected);
+mhMatchingPattern_t *mhMethodEqualTo(mhRequestMatcher_t *rm, const char *expected);
+    
+
+/* Response functions */
+mhResponse_t *mhResponse(MockHTTP *mh);
+void mhRespSetStatus(mhResponse_t *resp, unsigned int status);
+void mhRespSetBody(mhResponse_t *resp, const char *body);
+void mhRespAddHeader(mhResponse_t *resp, const char *header, const char *value);
 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
 
-#endif /* MockHttp_H */
+#endif /* MockHTTP_H */

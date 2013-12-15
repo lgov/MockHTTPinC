@@ -20,16 +20,9 @@
 #include <string.h>
 #include <ctype.h>
 
-typedef struct block_t block_t;
-typedef struct pool_t pool_t;
-
-struct MockHTTP {
-    pool_t *pool;
-};
-
-/********************************/
-/* Memory management            */
-/********************************/
+/******************************************************************************/
+/* Memory management                                                          */
+/******************************************************************************/
 
 /* node in a linked list of allocated memory blocks */
 struct block_t {
@@ -55,7 +48,7 @@ static void *pool_malloc(pool_t *pool, size_t nr_of_bytes)
         pool->first = pool->last = block;
     } else {
         pool->last->next = block;
-        pool->last = block;
+        pool->last = pool->last->next;
     }
 
     return block->ptr;
@@ -94,6 +87,43 @@ static char *pool_strdup(pool_t *pool, const char *str)
     return tgt;
 }
 
+/******************************************************************************/
+/* Linked list                                                                */
+/******************************************************************************/
+typedef struct llnode_t llnode_t;
+struct llnode_t {
+    const void *ptr1;
+    const void *ptr2;
+    llnode_t *next;
+};
+
+struct linkedlist_t {
+    pool_t *pool;
+    llnode_t *first;
+    llnode_t *last;
+};
+
+linkedlist_t *linkedlist_init(pool_t *pool)
+{
+    linkedlist_t *l = pool_malloc(pool, sizeof(linkedlist_t));
+    l->pool = pool;
+    l->first = l->last = NULL;
+    return l;
+}
+
+void ll_add(linkedlist_t *l, const void *ptr1, const void *ptr2)
+{
+    llnode_t *n = pool_malloc(l->pool, sizeof(struct llnode_t));
+    n->ptr1 = ptr1;
+    n->ptr2 = ptr2;
+    if (l->first == NULL)
+        l->first = l->last = n;
+    else {
+        l->last->next = n;
+        l->last = l->last->next;
+    }
+}
+
 /* Define a MockHTTP context */
 MockHTTP *mhInit()
 {
@@ -101,6 +131,7 @@ MockHTTP *mhInit()
 
     MockHTTP *mh = pool_malloc(pool, sizeof(struct MockHTTP));
     mh->pool = pool;
+    mh->reqs = linkedlist_init(pool);
 
     return mh;
 }
@@ -123,6 +154,10 @@ void mhGiven(mhMapping_t *m)
 
 }
 
+void mhPushReqResp(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp)
+{
+    ll_add(mh->reqs, rm, resp);
+}
 
 mhRequest_t *_mhRequestInit(MockHTTP *mh)
 {
@@ -145,9 +180,9 @@ static int url_matcher(mhMatchingPattern_t *mp, mhRequest_t *req)
     return NO;
 }
 
-mhMatchingPattern_t *mhURLEqualTo(MockHTTP *mh, const char *expected)
+mhMatchingPattern_t *mhURLEqualTo(mhRequestMatcher_t *rm, const char *expected)
 {
-    pool_t *pool = mh->pool;
+    pool_t *pool = rm->pool;
 
     mhMatchingPattern_t *mp = pool_malloc(pool, sizeof(mhMatchingPattern_t));
     mp->baton = pool_strdup(pool, expected);
@@ -182,13 +217,67 @@ static int method_matcher(mhMatchingPattern_t *mp, mhRequest_t *req)
     return NO;
 }
 
-mhMatchingPattern_t *mhMethodEqualTo(MockHTTP *mh, const char *expected)
+mhMatchingPattern_t *
+mhMethodEqualTo(mhRequestMatcher_t *rm, const char *expected)
 {
-    pool_t *pool = mh->pool;
+    pool_t *pool = rm->pool;
 
     mhMatchingPattern_t *mp = pool_malloc(pool, sizeof(mhMatchingPattern_t));
     mp->baton = pool_strdup(pool, expected);
     mp->matcher = method_matcher;
 
     return mp;
+}
+
+static mhRequestMatcher_t *
+createRequestMatcher(MockHTTP *mh, const char *method)
+{
+    pool_t *pool = mh->pool;
+
+    mhRequestMatcher_t *rm = pool_malloc(pool, sizeof(mhRequestMatcher_t));
+    rm->pool = pool;
+    rm->method = pool_strdup(pool, method);
+    rm->url = NULL;
+
+    return rm;
+}
+
+mhRequestMatcher_t *mhGetRequest(MockHTTP *mh)
+{
+    return createRequestMatcher(mh, "GET");
+}
+
+/******************************************************************************/
+/* Response                                                                   */
+/******************************************************************************/
+mhResponse_t *mhResponse(MockHTTP *mh)
+{
+    pool_t *pool = mh->pool;
+
+    mhResponse_t *resp = pool_malloc(pool, sizeof(mhResponse_t));
+    resp->pool = pool;
+    resp->status = 200;
+    resp->body = "";
+    resp->hdrs = linkedlist_init(pool);
+
+    return resp;
+}
+
+void mhRespSetStatus(mhResponse_t *resp, unsigned int status)
+{
+    resp->status = status;
+}
+
+void mhRespSetBody(mhResponse_t *resp, const char *body)
+{
+    pool_t *pool = resp->pool;
+
+    resp->body = pool_strdup(pool, body);
+}
+
+void mhRespAddHeader(mhResponse_t *resp, const char *header, const char *value)
+{
+    pool_t *pool = resp->pool;
+
+    ll_add(resp->hdrs, header, value);
 }

@@ -1,4 +1,4 @@
-# Makefile for MockHttpInC
+# Makefile for MockHTTPInC
 
 CC=clang
 CFLAGS=-g
@@ -8,7 +8,7 @@ INC_PATHS=-I.
 
 LIBS=-lssl -lcrypto
 
-SRCFILES=MockHttp.c
+SRCFILES=MockHTTP.c
 
 OBJS=$(patsubst %.c,$(OBJDIR)/%.o, $(SRCFILES))
 OBJDIR=build

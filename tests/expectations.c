@@ -13,23 +13,23 @@
  * limitations under the License.
  */
 
-#include "MockHttp.h"
+#include "MockHTTP.h"
 
 /* Include here to test some internals */
-#include "MockHttp_private.h"
+#include "MockHTTP_private.h"
 
 #define CTEST_MAIN
 #include "ctest.h"
 
 CTEST_DATA(expectations) {
-    MockHttp *mh;
+    MockHTTP *mh;
 };
 
 /* CTest note: the test struct is available in setup/teardown/run
    functions as 'data'. */
 CTEST_SETUP(expectations)
 {
-    MockHttp *mh = mhInit();
+    MockHTTP *mh = mhInit();
 
     data->mh = mh;
 }
@@ -41,13 +41,14 @@ CTEST_TEARDOWN(expectations)
 
 CTEST2(expectations, test_mock_init)
 {
-    MockHttp *mh = data->mh;
+    MockHTTP *mh = data->mh;
     ASSERT_NOT_NULL(mh);
 }
 
+#if 0
 CTEST2(expectations, test_urlmatcher)
 {
-    MockHttp *mh = data->mh;
+    MockHTTP *mh = data->mh;
     mhMatchingPattern_t *mp;
     mhRequest_t *req;
 
@@ -61,7 +62,7 @@ CTEST2(expectations, test_urlmatcher)
 
 CTEST2(expectations, test_methodmatcher)
 {
-    MockHttp *mh = data->mh;
+    MockHTTP *mh = data->mh;
     mhMatchingPattern_t *mp;
     mhRequest_t *req;
 
@@ -71,6 +72,66 @@ CTEST2(expectations, test_methodmatcher)
     req = _mhRequestInit(mh);
     req->method = "get";
     ASSERT_EQUAL(mp->matcher(mp, req), YES);
+}
+#endif
+
+CTEST2(expectations, test_matchrequest)
+{
+    MockHTTP *mh = data->mh;
+    mhMatchingPattern_t *mp;
+    mhRequest_t *req;
+
+    /*
+     GIVEN(mh)
+       GET_REQUEST
+         URL_EQUALTO("/index.html")
+       RESPOND
+         WITH_STATUS(200)
+         WITH_HEADER("Connection", "Close")
+         WITH_BODY("blabla")
+     SUBMIT_GIVEN
+     */
+
+    /* GIVEN(mh) */
+    {
+        MockHTTP *__mh = mh;
+        mhRequestMatcher_t *__rm;
+        mhResponse_t *__resp;
+
+        /* GET_REQUEST */
+        __rm = mhGetRequest(__mh);
+        ASSERT_NOT_NULL(__rm);
+
+        /*     URL_EQUALTO("/index.html") */
+        mhURLEqualTo(__rm, "/index.html");
+
+        /* RESPOND */
+        __resp = mhResponse(__mh);
+
+        /*     WITH_STATUS(200) */
+        mhRespSetStatus(__resp, 200);
+
+        /*     WITH_HEADER("Connection", "Close") */
+        mhRespAddHeader(__resp, "Connection", "Close");
+
+        /*     WITH_BODY("blabla") */
+        mhRespSetBody(__resp, "blabla");
+
+    /* SUBMIT_GIVEN */
+        mhPushReqResp(__mh, __rm, __resp);
+    }
+/*
+    mhGiven(mhGetRequest()->methodEqualTo("get")
+                          ->urlEqualTo("/index.html"))->
+        respondWith(mhResponse()->withStatus(200)
+                                ->withHeader("Connection", "Close")
+                                ->withBody("blabla"));
+*/
+#if 0
+    req = _mhRequestInit(mh);
+    req->method = "get";
+    ASSERT_EQUAL(mp->matcher(mp, req), YES);
+#endif
 }
 
 int main(int argc, const char *argv[])

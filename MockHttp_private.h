@@ -13,37 +13,57 @@
  * limitations under the License.
  */
 
-#ifndef MockHttp_private_H
-#define MockHttp_private_H
+#ifndef MockHTTP_private_H
+#define MockHTTP_private_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-typedef struct mhRequest_t mhRequest_t;
 typedef int (*matchfunc_t)(mhMatchingPattern_t *mp, mhRequest_t *req);
+typedef struct block_t block_t;
+typedef struct pool_t pool_t;
+typedef struct linkedlist_t linkedlist_t;
+
+typedef short int bool;
+static const bool YES = 1;
+static const bool NO = 0;
+
+struct MockHTTP {
+    pool_t *pool;
+    linkedlist_t *reqs;
+};
 
 struct mhMatchingPattern_t {
     const void *baton;
     matchfunc_t matcher;
 };
 
-typedef short int bool;
-static const bool YES = 1;
-static const bool NO = 0;
-
-
 struct mhRequest_t {
     const char *method;
     const char *url;
 };
 
-/* Initialize a mhRequest_t object. */
-mhRequest_t *_mhRequestInit(MockHttp *mh);
+struct mhResponse_t {
+    pool_t *pool;
 
+    unsigned int status;
+    const char *body;
+    linkedlist_t *hdrs;
+};
+
+struct mhRequestMatcher_t {
+    pool_t *pool;
+
+    const char *method;
+    const char *url;
+};
+
+/* Initialize a mhRequest_t object. */
+mhRequest_t *_mhRequestInit(MockHTTP *mh);
 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
 
-#endif /* MockHttp_private_H */
+#endif /* MockHTTP_private_H */
