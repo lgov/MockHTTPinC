@@ -39,8 +39,8 @@ void mhPushReqResp(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp);
 mhRequestMatcher_t *mhGetRequest(MockHTTP *mh);
 
 /*  */
-mhMatchingPattern_t *mhURLEqualTo(mhRequestMatcher_t *rm, const char *expected);
-mhMatchingPattern_t *mhMethodEqualTo(mhRequestMatcher_t *rm, const char *expected);
+mhMatchingPattern_t *mhMatchURLEqualTo(mhRequestMatcher_t *rm, const char *expected);
+mhMatchingPattern_t *mhMatchMethodEqualTo(mhRequestMatcher_t *rm, const char *expected);
     
 
 /* Response functions */

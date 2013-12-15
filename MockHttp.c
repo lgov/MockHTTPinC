@@ -91,6 +91,8 @@ static char *pool_strdup(pool_t *pool, const char *str)
 /* Linked list                                                                */
 /******************************************************************************/
 typedef struct llnode_t llnode_t;
+typedef llnode_t lliter_t;
+
 struct llnode_t {
     const void *ptr1;
     const void *ptr2;
@@ -116,11 +118,37 @@ static void ll_add(linkedlist_t *l, const void *ptr1, const void *ptr2)
     llnode_t *n = pool_malloc(l->pool, sizeof(struct llnode_t));
     n->ptr1 = ptr1;
     n->ptr2 = ptr2;
+    n->next = NULL;
     if (l->first == NULL)
         l->first = l->last = n;
     else {
         l->last->next = n;
         l->last = l->last->next;
+    }
+}
+
+static lliter_t *ll_iter(linkedlist_t *l)
+{
+    return l->first;
+}
+
+static bool ll_hasnext(lliter_t *iter)
+{
+    if (iter)
+        return YES;
+    return NO;
+}
+
+static void ll_next(lliter_t **itptr, const void **ptr1, const void **ptr2)
+{
+    lliter_t *iter = *itptr;
+    *itptr = (*itptr)->next;
+
+    if (iter) {
+        if (ptr1) *ptr1 = iter->ptr1;
+        if (ptr2) *ptr2 = iter->ptr2;
+    } else {
+        *ptr1 = *ptr2 = NULL;
     }
 }
 
@@ -166,7 +194,7 @@ mhRequest_t *_mhRequestInit(MockHTTP *mh)
 /* Requests matchers: define criteria to match different aspects of a HTTP    */
 /* request received by the MockHTTP server.                                   */
 /******************************************************************************/
-static int url_matcher(mhMatchingPattern_t *mp, mhRequest_t *req)
+static int url_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
 {
     const char *expected = mp->baton;
 
@@ -176,13 +204,16 @@ static int url_matcher(mhMatchingPattern_t *mp, mhRequest_t *req)
     return NO;
 }
 
-mhMatchingPattern_t *mhURLEqualTo(mhRequestMatcher_t *rm, const char *expected)
+mhMatchingPattern_t *
+mhMatchURLEqualTo(mhRequestMatcher_t *rm, const char *expected)
 {
     pool_t *pool = rm->pool;
 
     mhMatchingPattern_t *mp = pool_malloc(pool, sizeof(mhMatchingPattern_t));
     mp->baton = pool_strdup(pool, expected);
     mp->matcher = url_matcher;
+
+    ll_add(rm->matchers, mp, NULL);
 
     return mp;
 }
@@ -204,7 +235,7 @@ static int strcicmp(const char *a, const char *b)
     }
 }
 
-static int method_matcher(mhMatchingPattern_t *mp, mhRequest_t *req)
+static int method_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
 {
     const char *expected = mp->baton;
 
@@ -215,13 +246,15 @@ static int method_matcher(mhMatchingPattern_t *mp, mhRequest_t *req)
 }
 
 mhMatchingPattern_t *
-mhMethodEqualTo(mhRequestMatcher_t *rm, const char *expected)
+mhMatchMethodEqualTo(mhRequestMatcher_t *rm, const char *expected)
 {
     pool_t *pool = rm->pool;
 
     mhMatchingPattern_t *mp = pool_malloc(pool, sizeof(mhMatchingPattern_t));
     mp->baton = pool_strdup(pool, expected);
     mp->matcher = method_matcher;
+
+    ll_add(rm->matchers, mp, NULL);
 
     return mp;
 }
@@ -234,7 +267,7 @@ createRequestMatcher(MockHTTP *mh, const char *method)
     mhRequestMatcher_t *rm = pool_malloc(pool, sizeof(mhRequestMatcher_t));
     rm->pool = pool;
     rm->method = pool_strdup(pool, method);
-    rm->url = NULL;
+    rm->matchers = linkedlist_init(pool);
 
     return rm;
 }
@@ -242,6 +275,26 @@ createRequestMatcher(MockHTTP *mh, const char *method)
 mhRequestMatcher_t *mhGetRequest(MockHTTP *mh)
 {
     return createRequestMatcher(mh, "GET");
+}
+
+bool _mhMatchRequest(mhRequestMatcher_t *rm, mhRequest_t *req)
+{
+    lliter_t *iter;
+
+    if (strcicmp(rm->method, req->method) != 0) {
+        return NO;
+    }
+
+    iter = ll_iter(rm->matchers);
+    while (ll_hasnext(iter)) {
+        const mhMatchingPattern_t *mp;
+
+        ll_next(&iter, (const void **)&mp, NULL);
+        if (mp->matcher(mp, req) == YES)
+            return YES;
+    }
+
+    return NO;
 }
 
 /******************************************************************************/

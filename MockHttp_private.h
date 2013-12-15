@@ -20,7 +20,8 @@
 extern "C" {
 #endif /* __cplusplus */
 
-typedef int (*matchfunc_t)(mhMatchingPattern_t *mp, mhRequest_t *req);
+typedef int (*matchfunc_t)(const mhMatchingPattern_t *mp,
+                           const mhRequest_t *req);
 typedef struct block_t block_t;
 typedef struct pool_t pool_t;
 typedef struct linkedlist_t linkedlist_t;
@@ -56,11 +57,13 @@ struct mhRequestMatcher_t {
     pool_t *pool;
 
     const char *method;
-    const char *url;
+    linkedlist_t *matchers;
 };
 
 /* Initialize a mhRequest_t object. */
 mhRequest_t *_mhRequestInit(MockHTTP *mh);
+
+bool _mhMatchRequest(mhRequestMatcher_t *rm, mhRequest_t *req);
 
 #ifdef __cplusplus
 }

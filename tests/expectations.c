@@ -45,16 +45,18 @@ CTEST2(expectations, test_mock_init)
     ASSERT_NOT_NULL(mh);
 }
 
-#if 0
 CTEST2(expectations, test_urlmatcher)
 {
     MockHTTP *mh = data->mh;
+    mhRequestMatcher_t *rm;
     mhMatchingPattern_t *mp;
     mhRequest_t *req;
 
-    mp = mhURLEqualTo(mh, "/index.html");
+    rm = mhGetRequest(mh);
+    mp = mhMatchURLEqualTo(rm, "/index.html");
     ASSERT_NOT_NULL(mp);
 
+    /* Create a fake request and check that the matcher works */
     req = _mhRequestInit(mh);
     req->url = "/index.html";
     ASSERT_EQUAL(mp->matcher(mp, req), YES);
@@ -63,19 +65,43 @@ CTEST2(expectations, test_urlmatcher)
 CTEST2(expectations, test_methodmatcher)
 {
     MockHTTP *mh = data->mh;
+    mhRequestMatcher_t *rm;
     mhMatchingPattern_t *mp;
     mhRequest_t *req;
 
-    mp = mhMethodEqualTo(mh, "get");
+    rm = mhGetRequest(mh);
+    mp = mhMatchMethodEqualTo(rm, "get");
     ASSERT_NOT_NULL(mp);
 
+    /* Create a fake request and check that the matcher works */
     req = _mhRequestInit(mh);
     req->method = "get";
     ASSERT_EQUAL(mp->matcher(mp, req), YES);
 }
-#endif
 
 CTEST2(expectations, test_matchrequest)
+{
+    MockHTTP *mh = data->mh;
+    mhRequestMatcher_t *rm;
+    mhRequest_t *req;
+
+    rm = mhGetRequest(mh);
+    mhMatchURLEqualTo(rm, "/index.html");
+
+    /* Create a fake request and check that the matcher works */
+    req = _mhRequestInit(mh);
+    req->method = "get";
+    req->url = "/index.html";
+    ASSERT_EQUAL(_mhMatchRequest(rm, req), YES);
+
+    /* Create a fake request and check that it doesn't match */
+    req = _mhRequestInit(mh);
+    req->method = "get";
+    req->url = "/notexisting.html";
+    ASSERT_EQUAL(_mhMatchRequest(rm, req), NO);
+}
+
+CTEST2(expectations, test_basic_reqmatch_response)
 {
     MockHTTP *mh = data->mh;
 
@@ -101,7 +127,7 @@ CTEST2(expectations, test_matchrequest)
         ASSERT_NOT_NULL(__rm);
 
         /*     URL_EQUALTO("/index.html") */
-        mhURLEqualTo(__rm, "/index.html");
+        mhMatchURLEqualTo(__rm, "/index.html");
 
         /* RESPOND */
         __resp = mhResponse(__mh);
@@ -118,16 +144,12 @@ CTEST2(expectations, test_matchrequest)
     /* SUBMIT_GIVEN */
         mhPushReqResp(__mh, __rm, __resp);
     }
-/*
-    mhGiven(mhGetRequest()->methodEqualTo("get")
-                          ->urlEqualTo("/index.html"))->
-        respondWith(mhResponse()->withStatus(200)
-                                ->withHeader("Connection", "Close")
-                                ->withBody("blabla"));
-*/
+
 #if 0
     req = _mhRequestInit(mh);
     req->method = "get";
+    _mhMatchRequest();
+
     ASSERT_EQUAL(mp->matcher(mp, req), YES);
 #endif
 }
