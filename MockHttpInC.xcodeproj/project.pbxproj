@@ -39,17 +39,17 @@
 /* End PBXGroup section */
 
 /* Begin PBXLegacyTarget section */
-		F31C5529185B964C006958E7 /* MockHttpInC */ = {
+		F31C5529185B964C006958E7 /* MockHTTPInC.temp_caseinsensitive_rename */ = {
 			isa = PBXLegacyTarget;
 			buildArgumentsString = "$(ACTION)";
-			buildConfigurationList = F31C552C185B964C006958E7 /* Build configuration list for PBXLegacyTarget "MockHttpInC" */;
+			buildConfigurationList = F31C552C185B964C006958E7 /* Build configuration list for PBXLegacyTarget "MockHTTPInC.temp_caseinsensitive_rename" */;
 			buildPhases = (
 			);
 			buildToolPath = make;
-			buildWorkingDirectory = /Users/lgo/dev/MockHttpInC;
+			buildWorkingDirectory = /Users/lgo/dev/MockHTTPInC;
 			dependencies = (
 			);
-			name = MockHttpInC;
+			name = MockHTTPInC.temp_caseinsensitive_rename;
 			passBuildSettingsInEnvironment = 1;
 			productName = MockHttpInC;
 		};
@@ -62,7 +62,7 @@
 				LastUpgradeCheck = 0500;
 				ORGANIZATIONNAME = lgo;
 			};
-			buildConfigurationList = F31C5528185B964C006958E7 /* Build configuration list for PBXProject "MockHttpInC" */;
+			buildConfigurationList = F31C5528185B964C006958E7 /* Build configuration list for PBXProject "MockHTTPInC" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
@@ -73,7 +73,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				F31C5529185B964C006958E7 /* MockHttpInC */,
+				F31C5529185B964C006958E7 /* MockHTTPInC.temp_caseinsensitive_rename */,
 			);
 		};
 /* End PBXProject section */
@@ -155,7 +155,7 @@
 				GCC_OPTIMIZATION_LEVEL = 0;
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = "";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = MockHTTPInC.temp_caseinsensitive_rename;
 			};
 			name = Debug;
 		};
@@ -164,14 +164,14 @@
 			buildSettings = {
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = "";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = MockHTTPInC.temp_caseinsensitive_rename;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		F31C5528185B964C006958E7 /* Build configuration list for PBXProject "MockHttpInC" */ = {
+		F31C5528185B964C006958E7 /* Build configuration list for PBXProject "MockHTTPInC" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F31C552A185B964C006958E7 /* Debug */,
@@ -180,7 +180,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		F31C552C185B964C006958E7 /* Build configuration list for PBXLegacyTarget "MockHttpInC" */ = {
+		F31C552C185B964C006958E7 /* Build configuration list for PBXLegacyTarget "MockHTTPInC.temp_caseinsensitive_rename" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F31C552D185B964C006958E7 /* Debug */,
