@@ -154,6 +154,28 @@ CTEST2(expectations, test_basic_reqmatch_response)
     ASSERT_NOT_NULL(resp);
 }
 
+CTEST2(expectations, test_basic_reqmatch_response_with_macros)
+{
+    MockHTTP *mh = data->mh;
+    mhResponse_t *resp;
+    mhRequest_t *req;
+
+     mhGIVEN(mh)
+       mhGET_REQUEST
+         mhURL_EQUALTO("/index.html")
+       mhRESPOND
+         mhWITH_STATUS(200)
+         mhWITH_HEADER("Connection", "Close")
+         mhWITH_BODY("blabla")
+     mhSUBMIT_GIVEN
+
+    req = _mhRequestInit(mh);
+    req->method = "get";
+    req->url = "/index.html";
+    resp = _mhMatchRequest(mh, req);
+    ASSERT_NOT_NULL(resp);
+}
+
 int main(int argc, const char *argv[])
 {
     return ctest_main(argc, argv);

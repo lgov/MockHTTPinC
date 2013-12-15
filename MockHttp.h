@@ -20,6 +20,27 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#define mhGIVEN(mh)\
+            {\
+                MockHTTP *__mh = mh;\
+                mhRequestMatcher_t *__rm;\
+                mhResponse_t *__resp;
+#define   mhGET_REQUEST\
+                __rm = mhGetRequest(__mh);
+#define     mhURL_EQUALTO(x)\
+                mhMatchURLEqualTo(__rm, (x));
+#define   mhRESPOND\
+                __resp = mhResponse(__mh);
+#define     mhWITH_STATUS(x)\
+                mhRespSetStatus(__resp, (x));
+#define     mhWITH_HEADER(h,v)\
+                mhRespAddHeader(__resp, (h), (v));
+#define     mhWITH_BODY(x)\
+                mhRespSetBody(__resp, (x));
+#define mhSUBMIT_GIVEN\
+                mhPushReqResp(__mh, __rm, __resp);\
+            }
+
 typedef struct MockHTTP MockHTTP;
 typedef struct mhMatchingPattern_t mhMatchingPattern_t;
 typedef struct mhMapping_t mhMapping_t;
