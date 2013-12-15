@@ -62,8 +62,9 @@ struct mhRequestMatcher_t {
 
 /* Initialize a mhRequest_t object. */
 mhRequest_t *_mhRequestInit(MockHTTP *mh);
+mhResponse_t *_mhMatchRequest(MockHTTP *mh, mhRequest_t *req);
 
-bool _mhMatchRequest(mhRequestMatcher_t *rm, mhRequest_t *req);
+bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, mhRequest_t *req);
 
 #ifdef __cplusplus
 }

@@ -92,18 +92,20 @@ CTEST2(expectations, test_matchrequest)
     req = _mhRequestInit(mh);
     req->method = "get";
     req->url = "/index.html";
-    ASSERT_EQUAL(_mhMatchRequest(rm, req), YES);
+    ASSERT_EQUAL(_mhRequestMatcherMatch(rm, req), YES);
 
     /* Create a fake request and check that it doesn't match */
     req = _mhRequestInit(mh);
     req->method = "get";
     req->url = "/notexisting.html";
-    ASSERT_EQUAL(_mhMatchRequest(rm, req), NO);
+    ASSERT_EQUAL(_mhRequestMatcherMatch(rm, req), NO);
 }
 
 CTEST2(expectations, test_basic_reqmatch_response)
 {
     MockHTTP *mh = data->mh;
+    mhResponse_t *resp;
+    mhRequest_t *req;
 
     /*
      GIVEN(mh)
@@ -145,13 +147,11 @@ CTEST2(expectations, test_basic_reqmatch_response)
         mhPushReqResp(__mh, __rm, __resp);
     }
 
-#if 0
     req = _mhRequestInit(mh);
     req->method = "get";
-    _mhMatchRequest();
-
-    ASSERT_EQUAL(mp->matcher(mp, req), YES);
-#endif
+    req->url = "/index.html";
+    resp = _mhMatchRequest(mh, req);
+    ASSERT_NOT_NULL(resp);
 }
 
 int main(int argc, const char *argv[])

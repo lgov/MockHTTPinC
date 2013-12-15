@@ -176,6 +176,22 @@ void mhCleanup(MockHTTP *mh)
     /* mh ptr is now invalid */
 }
 
+mhResponse_t *_mhMatchRequest(MockHTTP *mh, mhRequest_t *req)
+{
+    mhResponse_t *resp;
+    lliter_t *iter;
+
+    iter = ll_iter(mh->reqs);
+    while (ll_hasnext(iter)) {
+        const mhRequestMatcher_t *rm;
+
+        ll_next(&iter, (const void **)&rm, (const void **)&resp);
+        if (_mhRequestMatcherMatch(rm, req) == YES)
+            return resp;
+    }
+    return NULL;
+}
+
 /* Define expectations*/
 
 void mhPushReqResp(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp)
@@ -197,6 +213,10 @@ mhRequest_t *_mhRequestInit(MockHTTP *mh)
 static int url_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
 {
     const char *expected = mp->baton;
+
+    /* Explicitly asked to test the URL, so ensure all strings are set */
+    if (expected == NULL || req->url == NULL)
+        return NO;
 
     if (strcmp(expected, req->url) == 0)
         return YES;
@@ -277,7 +297,7 @@ mhRequestMatcher_t *mhGetRequest(MockHTTP *mh)
     return createRequestMatcher(mh, "GET");
 }
 
-bool _mhMatchRequest(mhRequestMatcher_t *rm, mhRequest_t *req)
+bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, mhRequest_t *req)
 {
     lliter_t *iter;
 
