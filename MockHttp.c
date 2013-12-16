@@ -343,6 +343,15 @@ void mhRespSetBody(mhResponse_t *resp, const char *body)
     pool_t *pool = resp->pool;
 
     resp->body = pool_strdup(pool, body);
+    resp->chunked = NO;
+}
+
+void mhRespSetChunkedBody(mhResponse_t *resp, const char *body)
+{
+    pool_t *pool = resp->pool;
+
+    resp->body = pool_strdup(pool, body);
+    resp->chunked = YES;
 }
 
 void mhRespAddHeader(mhResponse_t *resp, const char *header, const char *value)

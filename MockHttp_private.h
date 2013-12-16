@@ -50,6 +50,7 @@ struct mhResponse_t {
 
     unsigned int status;
     const char *body;
+    bool chunked;
     linkedlist_t *hdrs;
 };
 

@@ -37,6 +37,8 @@ extern "C" {
                 mhRespAddHeader(__resp, (h), (v));
 #define     mhWITH_BODY(x)\
                 mhRespSetBody(__resp, (x));
+#define     mhWITH_CHUNKED_BODY(x)\
+                mhRespSetChunkedBody(__resp, (x));
 #define mhSUBMIT_GIVEN\
                 mhPushReqResp(__mh, __rm, __resp);\
             }
@@ -68,6 +70,7 @@ mhMatchingPattern_t *mhMatchMethodEqualTo(mhRequestMatcher_t *rm, const char *ex
 mhResponse_t *mhResponse(MockHTTP *mh);
 void mhRespSetStatus(mhResponse_t *resp, unsigned int status);
 void mhRespSetBody(mhResponse_t *resp, const char *body);
+void mhRespSetChunkedBody(mhResponse_t *resp, const char *body);
 void mhRespAddHeader(mhResponse_t *resp, const char *header, const char *value);
 
 #ifdef __cplusplus
