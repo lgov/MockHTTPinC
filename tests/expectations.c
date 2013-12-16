@@ -176,6 +176,41 @@ CTEST2(expectations, test_basic_reqmatch_response_with_macros)
     ASSERT_NOT_NULL(resp);
 }
 
+#define GIVEN       mhGIVEN
+#define GET_REQUEST mhGET_REQUEST
+#define URL_EQUALTO mhURL_EQUALTO
+#define RESPOND     mhRESPOND
+#define WITH_STATUS mhWITH_STATUS
+#define WITH_HEADER mhWITH_HEADER
+#define WITH_BODY   mhWITH_BODY
+#define WITH_CHUNKED_BODY   mhWITH_CHUNKED_BODY
+#define SUBMIT_GIVEN mhSUBMIT_GIVEN
+#define BODY_EQUALTO mhBODY_EQUALTO
+
+CTEST2(expectations, test_basic_compact_notation)
+{
+    MockHTTP *mh = data->mh;
+    mhResponse_t *resp;
+    mhRequest_t *req;
+
+     GIVEN(mh)
+       GET_REQUEST URL_EQUALTO("/index.html")
+       RESPOND
+         WITH_STATUS(200) WITH_HEADER("Connection", "Close")
+         WITH_BODY("1")
+       GET_REQUEST URL_EQUALTO("/index.html")
+       RESPOND
+         WITH_STATUS(200) WITH_HEADER("Connection", "Close")
+         WITH_BODY("2")
+     SUBMIT_GIVEN
+
+    req = _mhRequestInit(mh);
+    req->method = "get";
+    req->url = "/index.html";
+    resp = _mhMatchRequest(mh, req);
+    ASSERT_NOT_NULL(resp);
+}
+
 int main(int argc, const char *argv[])
 {
     return ctest_main(argc, argv);

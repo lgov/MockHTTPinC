@@ -30,7 +30,8 @@ extern "C" {
 #define     mhURL_EQUALTO(x)\
                 mhMatchURLEqualTo(__rm, (x));
 #define   mhRESPOND\
-                __resp = mhResponse(__mh);
+                __resp = mhResponse(__mh);\
+                mhPushReqResp(__mh, __rm, __resp);
 #define     mhWITH_STATUS(x)\
                 mhRespSetStatus(__resp, (x));
 #define     mhWITH_HEADER(h,v)\
@@ -40,7 +41,6 @@ extern "C" {
 #define     mhWITH_CHUNKED_BODY(x)\
                 mhRespSetChunkedBody(__resp, (x));
 #define mhSUBMIT_GIVEN\
-                mhPushReqResp(__mh, __rm, __resp);\
             }
 
 typedef struct MockHTTP MockHTTP;
