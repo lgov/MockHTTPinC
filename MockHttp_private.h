@@ -16,6 +16,8 @@
 #ifndef MockHTTP_private_H
 #define MockHTTP_private_H
 
+#include <apr_pools.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -23,7 +25,6 @@ extern "C" {
 typedef int (*matchfunc_t)(const mhMatchingPattern_t *mp,
                            const mhRequest_t *req);
 typedef struct block_t block_t;
-typedef struct pool_t pool_t;
 typedef struct linkedlist_t linkedlist_t;
 
 typedef short int bool;
@@ -31,7 +32,7 @@ static const bool YES = 1;
 static const bool NO = 0;
 
 struct MockHTTP {
-    pool_t *pool;
+    apr_pool_t *pool;
     linkedlist_t *reqs;
 };
 
@@ -46,7 +47,7 @@ struct mhRequest_t {
 };
 
 struct mhResponse_t {
-    pool_t *pool;
+    apr_pool_t *pool;
 
     unsigned int status;
     const char *body;
@@ -55,7 +56,7 @@ struct mhResponse_t {
 };
 
 struct mhRequestMatcher_t {
-    pool_t *pool;
+    apr_pool_t *pool;
 
     const char *method;
     linkedlist_t *matchers;

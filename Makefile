@@ -4,9 +4,9 @@ CC=clang
 CFLAGS=-g -std=c89 -Wdeclaration-after-statement -Wall 
 
 LIB_PATHS=-L/opt/local/lib -L/usr/local/lib
-INC_PATHS=-I.
+INC_PATHS=-I. -I/opt/local/include/apr-1
 
-LIBS=-lssl -lcrypto
+LIBS=-lapr-1 -laprutil-1 -lssl -lcrypto
 
 SRCFILES=MockHTTP.c
 
