@@ -13,11 +13,15 @@
  * limitations under the License.
  */
 
+#include <apr.h>
+#include <apr_hash.h>
+
 #include "MockHTTP.h"
 
 /* Include here to test some internals */
 #include "MockHTTP_private.h"
 
+#include "tests.h"
 #define CTEST_MAIN
 #include "ctest.h"
 
@@ -39,6 +43,7 @@ CTEST_TEARDOWN(expectations)
     mhCleanup(data->mh);
 }
 
+#if 0
 CTEST2(expectations, test_mock_init)
 {
     MockHTTP *mh = data->mh;
@@ -153,6 +158,7 @@ CTEST2(expectations, test_basic_reqmatch_response)
     resp = _mhMatchRequest(mh, req);
     ASSERT_NOT_NULL(resp);
 }
+#endif
 
 CTEST2(expectations, test_basic_reqmatch_response_with_macros)
 {
@@ -160,15 +166,24 @@ CTEST2(expectations, test_basic_reqmatch_response_with_macros)
     mhResponse_t *resp;
     mhRequest_t *req;
 
-     mhGIVEN(mh)
-       mhGET_REQUEST
-         mhURL_EQUALTO("/index.html")
-       mhRESPOND
-         mhWITH_STATUS(200)
-         mhWITH_HEADER("Connection", "Close")
-         mhWITH_BODY("blabla")
-     mhSUBMIT_GIVEN
+    mhGIVEN(mh)
+      mhGET_REQUEST
+        mhURL_EQUALTO("/index.html")
+      mhRESPOND
+        mhWITH_STATUS(200)
+        mhWITH_HEADER("Connection", "Close")
+        mhWITH_BODY("blabla")
+    mhSUBMIT_GIVEN
 
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendRequest(ctx, "GET", "/index.html", hdrs, "1");
+        receiveResponse(ctx);
+    }
+
+    /* verify that the request was received */
     req = _mhRequestInit(mh);
     req->method = "get";
     req->url = "/index.html";

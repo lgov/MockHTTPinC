@@ -16,6 +16,9 @@
 #ifndef MockHTTP_H
 #define MockHTTP_H
 
+#include <apr.h>
+#include <apr_poll.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */

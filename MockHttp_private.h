@@ -22,6 +22,10 @@
 extern "C" {
 #endif /* __cplusplus */
 
+/* Simple macro to return from function when status != 0
+   expects 'apr_status_t status;' declaration. */
+#define STATUSERR(x) if ((status = (x))) return status;
+
 typedef int (*matchfunc_t)(const mhMatchingPattern_t *mp,
                            const mhRequest_t *req);
 typedef struct block_t block_t;
@@ -67,6 +71,9 @@ mhRequest_t *_mhRequestInit(MockHTTP *mh);
 mhResponse_t *_mhMatchRequest(MockHTTP *mh, mhRequest_t *req);
 
 bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, mhRequest_t *req);
+
+/* Test servers */
+void _mhInitTestServer(MockHTTP *mh, const char *hostname, apr_port_t port);
 
 #ifdef __cplusplus
 }

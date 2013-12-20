@@ -13,6 +13,86 @@
  * limitations under the License.
  */
 
+#include <apr_thread_proc.h>
+#include <apr_strings.h>
+
 #include "MockHTTP.h"
 #include "MockHTTP_private.h"
 
+typedef struct servCtx_t {
+    apr_pool_t *pool;
+    const char *hostname;
+    apr_port_t port;
+} servCtx_t;
+
+static apr_status_t setupTCPServer(servCtx_t *ctx, bool blocking);
+
+void * APR_THREAD_FUNC start_thread(apr_thread_t *tid, void *baton)
+{
+    servCtx_t *ctx = baton;
+
+    setupTCPServer(ctx, YES);
+
+    return NULL;
+}
+
+static apr_status_t cleanupServer(void *baton)
+{
+
+    /*    apr_thread_exit(tid, APR_SUCCESS);*/
+
+    return APR_SUCCESS;
+}
+
+static apr_status_t setupTCPServer(servCtx_t *ctx, bool blocking)
+{
+    apr_status_t status;
+    apr_socket_t *serv_sock;
+    apr_sockaddr_t *serv_addr;
+
+    apr_pool_t *pool = ctx->pool;
+
+    STATUSERR(apr_sockaddr_info_get(&serv_addr, ctx->hostname,
+                                    APR_UNSPEC, ctx->port, 0,
+                                    pool));
+
+    /* Create server socket */
+    /* Note: this call requires APR v1.0.0 or higher */
+    STATUSERR(apr_socket_create(&serv_sock, serv_addr->family,
+                                SOCK_STREAM, 0, pool));
+
+    if (blocking == NO)
+        apr_socket_opt_set(serv_sock, APR_SO_NONBLOCK, 1);
+
+    STATUSERR(apr_socket_timeout_set(serv_sock, 0));
+    STATUSERR(apr_socket_opt_set(serv_sock, APR_SO_REUSEADDR, 1));
+
+    STATUSERR(apr_socket_bind(serv_sock, serv_addr));
+
+    /* Listen for clients */
+    STATUSERR(apr_socket_listen(serv_sock, SOMAXCONN));
+
+    return APR_SUCCESS;
+}
+
+void _mhInitTestServer(MockHTTP *mh, const char *hostname, apr_port_t port)
+{
+    apr_thread_t *thread;
+    apr_pool_t *pool = mh->pool;
+
+    servCtx_t *ctx = apr_palloc(pool, sizeof(servCtx_t));
+    ctx->pool = pool;
+    ctx->hostname = apr_pstrdup(pool, hostname);
+    ctx->port = port;
+
+    apr_pool_cleanup_register(pool, ctx,
+                              cleanupServer,
+                              apr_pool_cleanup_null);
+
+    if (1) { /* second thread */
+        apr_thread_create(&thread, NULL, start_thread, ctx, mh->pool);
+    } else {
+        setupTCPServer(ctx, NO);
+    }
+
+}

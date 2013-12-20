@@ -22,6 +22,9 @@
 
 #include <apr_strings.h>
 
+static const int DefaultSrvPort =   30080;
+static const int DefaultProxyPort = 38080;
+
 /******************************************************************************/
 /* Linked list                                                                */
 /******************************************************************************/
@@ -100,6 +103,8 @@ MockHTTP *mhInit()
     mh = apr_palloc(pool, sizeof(struct MockHTTP));
     mh->pool = pool;
     mh->reqs = linkedlist_init(pool);
+
+    _mhInitTestServer(mh, "localhost", DefaultSrvPort);
 
     return mh;
 }

@@ -14,6 +14,8 @@
 		F33CD834185BBA22008890DD /* MockHTTP.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = MockHTTP.c; sourceTree = "<group>"; };
 		F33CD836185C62DD008890DD /* MockHTTP_private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MockHTTP_private.h; sourceTree = "<group>"; };
 		F33CD839185F9871008890DD /* MockHTTP_server.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = MockHTTP_server.c; sourceTree = "<group>"; };
+		F33CD83A1860DCC5008890DD /* httpClient.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = httpClient.c; sourceTree = "<group>"; };
+		F33CD83B1860DD7D008890DD /* tests.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tests.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -34,6 +36,8 @@
 			children = (
 				F33CD828185BA2C9008890DD /* ctest.h */,
 				F33CD829185BA2E0008890DD /* expectations.c */,
+				F33CD83A1860DCC5008890DD /* httpClient.c */,
+				F33CD83B1860DD7D008890DD /* tests.h */,
 			);
 			path = tests;
 			sourceTree = "<group>";
