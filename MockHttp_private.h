@@ -18,6 +18,7 @@
 
 #include <apr_pools.h>
 #include <apr_hash.h>
+#include <apr_queue.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,6 +27,13 @@ extern "C" {
 /* Simple macro to return from function when status != 0
    expects 'apr_status_t status;' declaration. */
 #define STATUSERR(x) if ((status = (x))) return status;
+
+#define READ_ERROR(status) ((status) \
+                                && !APR_STATUS_IS_EOF(status) \
+                                && !APR_STATUS_IS_EAGAIN(status))
+
+#define STATUSREADERR(x) if (((status = (x)) && READ_ERROR(status)))\
+                            return status;
 
 typedef int (*matchfunc_t)(const mhMatchingPattern_t *mp,
                            const mhRequest_t *req);
@@ -41,6 +49,7 @@ struct MockHTTP {
     apr_pool_t *pool;
     linkedlist_t *reqs;
     servCtx_t *servCtx;
+    apr_queue_t *recvdReqs;
 };
 
 struct mhMatchingPattern_t {
@@ -82,7 +91,7 @@ bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, mhRequest_t *req);
 
 /* Test servers */
 servCtx_t *_mhInitTestServer(MockHTTP *mh, const char *hostname,
-                             apr_port_t port);
+                             apr_port_t port, apr_queue_t *reqQueue);
 apr_status_t _mhRunServerLoop(servCtx_t *ctx);
 
 #ifdef __cplusplus

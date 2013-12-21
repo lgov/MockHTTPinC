@@ -33,6 +33,7 @@ struct servCtx_t {
     apr_port_t port;
     apr_pollset_t *pollset;
     apr_socket_t *skt;
+    apr_queue_t *reqQueue;
 };
 
 #define BUFSIZE 32768
@@ -117,7 +118,8 @@ static apr_status_t setupTCPServer(servCtx_t *ctx, bool blocking)
 }
 
 servCtx_t *
-_mhInitTestServer(MockHTTP *mh, const char *hostname,apr_port_t port)
+_mhInitTestServer(MockHTTP *mh, const char *hostname,apr_port_t port,
+                  apr_queue_t *reqQueue)
 {
     apr_thread_t *thread;
     apr_pool_t *pool = mh->pool;
@@ -126,6 +128,7 @@ _mhInitTestServer(MockHTTP *mh, const char *hostname,apr_port_t port)
     ctx->pool = pool;
     ctx->hostname = apr_pstrdup(pool, hostname);
     ctx->port = port;
+    ctx->reqQueue = reqQueue;
 
     apr_pool_cleanup_register(pool, ctx,
                               cleanupServer,
@@ -247,9 +250,8 @@ static apr_status_t processData(clientCtx_t *cctx)
         case 3: /* finished */
         {
             len = 0;
-            printf("request received: %s\n", cctx->req->method);
-            /* TODO: queue request */
-            cctx->req = NULL;
+            printf("server received request: %s\n", cctx->req->method);
+            return APR_EOF;
         }
     }
 
@@ -265,7 +267,7 @@ static apr_status_t processData(clientCtx_t *cctx)
     return APR_SUCCESS;
 }
 
-static apr_status_t readRequest(clientCtx_t *cctx)
+static apr_status_t readRequest(clientCtx_t *cctx, apr_queue_t *reqQueue)
 {
     apr_status_t status;
     apr_size_t len;
@@ -273,14 +275,25 @@ static apr_status_t readRequest(clientCtx_t *cctx)
     len = cctx->bufrem;
     if (len == 0) return APR_EGENERAL; /* should clear buffer */
 
-    status = apr_socket_recv(cctx->skt, cctx->buf + cctx->buflen, &len);
+    STATUSREADERR(apr_socket_recv(cctx->skt, cctx->buf + cctx->buflen, &len));
     if (len) {
         printf("recvd: %.*s\n", (unsigned int)len, cctx->buf + cctx->buflen);
 
         cctx->buflen += len;
         cctx->bufrem -= len;
 
-        while (processData(cctx) == APR_SUCCESS);
+        while (1) {
+            status = processData(cctx);
+            STATUSREADERR(status);
+            if (status == APR_EOF) {
+                if (cctx->req) {
+                    apr_queue_push(reqQueue, cctx->req);
+                    cctx->req = NULL;
+                }
+            }
+            if (status == APR_EAGAIN)
+                break;
+        };
     }
 
     return status;
@@ -329,7 +342,7 @@ apr_status_t _mhRunServerLoop(servCtx_t *ctx)
             
             if (desc->rtnevents & APR_POLLIN) {
                 printf("/");
-                readRequest(cctx);
+                readRequest(cctx, ctx->reqQueue);
             } else if (desc->rtnevents & APR_POLLOUT) {
                 printf("|");
             }

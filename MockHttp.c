@@ -103,8 +103,10 @@ MockHTTP *mhInit()
     mh = apr_palloc(pool, sizeof(struct MockHTTP));
     mh->pool = pool;
     mh->reqs = linkedlist_init(pool);
+    apr_queue_create(&mh->recvdReqs, 5, pool);
 
-    mh->servCtx = _mhInitTestServer(mh, "localhost", DefaultSrvPort);
+    mh->servCtx = _mhInitTestServer(mh, "localhost", DefaultSrvPort,
+                                    mh->recvdReqs);
 
     return mh;
 }
@@ -123,7 +125,14 @@ void mhCleanup(MockHTTP *mh)
 
 void mhRunServerLoop(MockHTTP *mh)
 {
+    mhRequest_t *req;
+    void *data;
+
     _mhRunServerLoop(mh->servCtx);
+    if (apr_queue_trypop(mh->recvdReqs, &data) == APR_SUCCESS) {
+        req = data;
+        printf("reaquest added to incoming queue: %s\n", req->method);
+    }
 }
 
 mhResponse_t *_mhMatchRequest(MockHTTP *mh, mhRequest_t *req)
