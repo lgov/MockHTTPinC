@@ -180,6 +180,9 @@ CTEST2(expectations, test_basic_reqmatch_response_with_macros)
         clientCtx_t *ctx = initClient(mh);
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendRequest(ctx, "GET", "/index.html", hdrs, "1");
+        while (1) {
+            mhRunServerLoop(mh);
+        }
         receiveResponse(ctx);
     }
 

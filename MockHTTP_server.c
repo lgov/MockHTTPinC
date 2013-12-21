@@ -15,6 +15,7 @@
 
 #include <apr_thread_proc.h>
 #include <apr_strings.h>
+#include <stdlib.h>
 
 #include "MockHTTP.h"
 #include "MockHTTP_private.h"
@@ -34,8 +35,14 @@ struct servCtx_t {
     apr_socket_t *skt;
 };
 
+#define BUFSIZE 32768
 typedef struct clientCtx_t {
+    apr_pool_t *pool;
     apr_socket_t *skt;
+    char buf[BUFSIZE];
+    apr_size_t buflen;
+    apr_size_t bufrem;
+    mhRequest_t *req;
 } clientCtx_t;
 
 static apr_status_t setupTCPServer(servCtx_t *ctx, bool blocking);
@@ -124,7 +131,8 @@ _mhInitTestServer(MockHTTP *mh, const char *hostname,apr_port_t port)
                               cleanupServer,
                               apr_pool_cleanup_null);
 
-    if (1) { /* second thread */
+    /* TODO: second thread doesn't work. */
+    if (0) { /* second thread */
         /* Setup a non-blocking TCP server in a separate thread */
         apr_thread_create(&thread, NULL, start_thread, ctx, mh->pool);
     } else {
@@ -135,22 +143,160 @@ _mhInitTestServer(MockHTTP *mh, const char *hostname,apr_port_t port)
     return ctx;
 }
 
+/******************************************************************************/
+/* Parse a request structure from incoming data                               */
+/******************************************************************************/
+
+static void readLine(clientCtx_t *cctx, const char **buf, apr_size_t *len)
+{
+    const char *ptr = cctx->buf;
+
+    *len = 0;
+    while (*ptr && ptr - cctx->buf < cctx->buflen) {
+        if (*ptr == '\r' && *(ptr+1) == '\n') {
+            *buf = cctx->buf;
+            *len = ptr - cctx->buf + 2;
+            break;
+        }
+        ptr++;
+    }
+}
+
+/* New request data was made available, read status line/hdrs/body (chunks) */
+static apr_status_t processData(clientCtx_t *cctx)
+{
+    const char *buf;
+    apr_size_t len;
+    apr_status_t status = APR_SUCCESS;
+
+    if (cctx->req == NULL) {
+        cctx->req = apr_pcalloc(cctx->pool, sizeof(mhRequest_t));
+        cctx->req->hdrs = apr_hash_make(cctx->pool);
+    }
+
+    switch(cctx->req->readState) {
+        case 0: /* status line */
+        {
+            const char *start, *ptr, *version;
+
+            readLine(cctx, &buf, &len);
+            if (!len) return APR_EAGAIN;
+
+            start = ptr = buf;
+            while (*ptr != ' ' && *ptr != '\r') ptr++;
+            cctx->req->method = apr_pmemdup(cctx->pool, start, ptr-start);
+
+            ptr++; start = ptr;
+            while (*ptr != ' ' && *ptr != '\r') ptr++;
+            cctx->req->url = apr_pmemdup(cctx->pool, start, ptr-start);
+
+            ptr++; start = ptr;
+            while (*ptr != ' ' && *ptr != '\r') ptr++;
+            version = apr_pmemdup(cctx->pool, start, ptr-start);
+            cctx->req->version = (version[5] - '0') * 100 +
+            version[7] - '0';
+
+            cctx->req->readState++;
+            break;
+        }
+        case 1: /* headers */
+        {
+            readLine(cctx, &buf, &len);
+            if (!len) return APR_EAGAIN;
+
+            if (len > 2) {
+                const char *start = buf, *ptr = buf;
+                const char *hdr, *val;
+                while (*ptr != ':' && *ptr != '\r') ptr++;
+                hdr = apr_pmemdup(cctx->pool, start, ptr-start);
+
+                ptr++; while (*ptr == ' ') ptr++; start = ptr;
+                while (*ptr != '\r') ptr++;
+                val = apr_pmemdup(cctx->pool, start, ptr-start);
+
+                apr_hash_set(cctx->req->hdrs, hdr, APR_HASH_KEY_STRING, val);
+            } else {
+                cctx->req->readState++;
+            }
+            break;
+        }
+        case 2: /* body */
+        {
+            const char *clstr;
+            long cl;
+            clstr = apr_hash_get(cctx->req->hdrs, "Content-Length",
+                                 APR_HASH_KEY_STRING);
+            /* TODO: chunked */
+            cl = atol(clstr);
+
+            if (cctx->req->body == NULL) {
+                cctx->req->body = apr_palloc(cctx->pool, cl);
+            }
+
+            len = cctx->buflen;
+            memcpy(cctx->req->body + cctx->req->bodyLen, cctx->buf, len);
+            cctx->req->bodyLen += len;
+
+            if (cctx->req->bodyLen >= cl)
+                cctx->req->readState++;
+            else
+                status = APR_EAGAIN;
+
+            break;
+        }
+        case 3: /* finished */
+        {
+            len = 0;
+            printf("request received: %s\n", cctx->req->method);
+            /* TODO: queue request */
+            cctx->req = NULL;
+        }
+    }
+
+    if (len) {
+        cctx->buflen -= len; /* eat line */
+        cctx->bufrem += len;
+        memcpy(cctx->buf, cctx->buf+len, cctx->buflen);
+    }
+
+    if (*cctx->buf == '\0')
+        return APR_EOF;
+
+    return APR_SUCCESS;
+}
+
 static apr_status_t readRequest(clientCtx_t *cctx)
 {
-    char buf[8192];
-    apr_size_t len = 8192;
     apr_status_t status;
+    apr_size_t len;
 
-    status = apr_socket_recv(cctx->skt, buf, &len);
+    len = cctx->bufrem;
+    if (len == 0) return APR_EGENERAL; /* should clear buffer */
+
+    status = apr_socket_recv(cctx->skt, cctx->buf + cctx->buflen, &len);
+    if (len) {
+        printf("recvd: %.*s\n", (unsigned int)len, cctx->buf + cctx->buflen);
+
+        cctx->buflen += len;
+        cctx->bufrem -= len;
+
+        while (processData(cctx) == APR_SUCCESS);
+    }
 
     return status;
 }
 
+
+/******************************************************************************/
+/* Process socket events                                                      */
+/******************************************************************************/
 apr_status_t _mhRunServerLoop(servCtx_t *ctx)
 {
     apr_int32_t num;
     const apr_pollfd_t *desc;
     apr_status_t status;
+
+    printf(".\n");
 
     STATUSERR(apr_pollset_poll(ctx->pollset, APR_USEC_PER_SEC >> 1,
                                &num, &desc));
@@ -158,25 +304,35 @@ apr_status_t _mhRunServerLoop(servCtx_t *ctx)
         if (desc->desc.s == ctx->skt) {
             apr_socket_t *cskt;
             apr_pollfd_t pfd = { 0 };
+
             clientCtx_t *cctx = apr_pcalloc(ctx->pool, sizeof(clientCtx_t));
 
             STATUSERR(apr_socket_accept(&cskt, ctx->skt, ctx->pool));
-            cctx->skt = cskt;
 
             STATUSERR(apr_socket_opt_set(cskt, APR_SO_NONBLOCK, 1));
             STATUSERR(apr_socket_timeout_set(cskt, 0));
 
             pfd.desc_type = APR_POLL_SOCKET;
             pfd.desc.s = cskt;
-            pfd.reqevents = APR_POLLIN | APR_POLLOUT;
+            pfd.reqevents = APR_POLLIN;
             pfd.client_data = cctx;
 
             STATUSERR(apr_pollset_add(ctx->pollset, &pfd));
+
+            cctx->pool = ctx->pool;
+            cctx->skt = cskt;
+            cctx->buflen = 0;
+            cctx->bufrem = BUFSIZE;
         } else {
             /* one of the client sockets */
             clientCtx_t *cctx = desc->client_data;
             
-            readRequest(cctx);
+            if (desc->rtnevents & APR_POLLIN) {
+                printf("/");
+                readRequest(cctx);
+            } else if (desc->rtnevents & APR_POLLOUT) {
+                printf("|");
+            }
         }
     }
 

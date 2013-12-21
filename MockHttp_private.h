@@ -17,6 +17,7 @@
 #define MockHTTP_private_H
 
 #include <apr_pools.h>
+#include <apr_hash.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,6 +51,11 @@ struct mhMatchingPattern_t {
 struct mhRequest_t {
     const char *method;
     const char *url;
+    apr_hash_t *hdrs;
+    int version;
+    char *body;
+    apr_size_t bodyLen;
+    int readState;
 };
 
 struct mhResponse_t {
