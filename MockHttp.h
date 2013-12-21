@@ -56,6 +56,7 @@ typedef struct mhResponse_t mhResponse_t;
 /* Define a mock server */
 MockHTTP *mhInit(void);
 void mhCleanup(MockHTTP *mh);
+void mhRunServerLoop(MockHTTP *mh);
 
 void mhPushReqResp(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp);
 

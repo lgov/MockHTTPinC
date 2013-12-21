@@ -104,7 +104,7 @@ MockHTTP *mhInit()
     mh->pool = pool;
     mh->reqs = linkedlist_init(pool);
 
-    _mhInitTestServer(mh, "localhost", DefaultSrvPort);
+    mh->servCtx = _mhInitTestServer(mh, "localhost", DefaultSrvPort);
 
     return mh;
 }
@@ -114,11 +114,16 @@ void mhCleanup(MockHTTP *mh)
     if (!mh)
         return;
 
-    /* The MockHTTP* is also allocated from mh->pool, so this will destroy
+    /* The MockHTTP * is also allocated from mh->pool, so this will destroy
        the MockHTTP structure and all its allocated memory. */
     apr_pool_destroy(mh->pool);
 
     /* mh ptr is now invalid */
+}
+
+void mhRunServerLoop(MockHTTP *mh)
+{
+    _mhRunServerLoop(mh->servCtx);
 }
 
 mhResponse_t *_mhMatchRequest(MockHTTP *mh, mhRequest_t *req)

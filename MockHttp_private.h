@@ -30,6 +30,7 @@ typedef int (*matchfunc_t)(const mhMatchingPattern_t *mp,
                            const mhRequest_t *req);
 typedef struct block_t block_t;
 typedef struct linkedlist_t linkedlist_t;
+typedef struct servCtx_t servCtx_t;
 
 typedef short int bool;
 static const bool YES = 1;
@@ -38,6 +39,7 @@ static const bool NO = 0;
 struct MockHTTP {
     apr_pool_t *pool;
     linkedlist_t *reqs;
+    servCtx_t *servCtx;
 };
 
 struct mhMatchingPattern_t {
@@ -73,7 +75,9 @@ mhResponse_t *_mhMatchRequest(MockHTTP *mh, mhRequest_t *req);
 bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, mhRequest_t *req);
 
 /* Test servers */
-void _mhInitTestServer(MockHTTP *mh, const char *hostname, apr_port_t port);
+servCtx_t *_mhInitTestServer(MockHTTP *mh, const char *hostname,
+                             apr_port_t port);
+apr_status_t _mhRunServerLoop(servCtx_t *ctx);
 
 #ifdef __cplusplus
 }
