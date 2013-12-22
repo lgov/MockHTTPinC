@@ -25,6 +25,11 @@
 static const int DefaultSrvPort =   30080;
 static const int DefaultProxyPort = 38080;
 
+struct mhMatchingPattern_t {
+    const void *baton;
+    matchfunc_t matcher;
+};
+
 typedef struct ReqMatcherRespPair_t {
     mhRequestMatcher_t *rm;
     mhResponse_t *resp;
@@ -196,7 +201,7 @@ mhMatchMethodEqualTo(MockHTTP *mh, const char *expected)
 }
 
 static mhRequestMatcher_t *
-createRequestMatcher(MockHTTP *mh, const char *method)
+constructRequestMatcher(MockHTTP *mh, const char *method, va_list argp)
 {
     apr_pool_t *pool = mh->pool;
 
@@ -204,14 +209,6 @@ createRequestMatcher(MockHTTP *mh, const char *method)
     rm->pool = pool;
     rm->method = apr_pstrdup(pool, method);
     rm->matchers = apr_array_make(pool, 5, sizeof(mhMatchingPattern_t *));
-
-    return rm;
-}
-
-static mhRequestMatcher_t *
-constructRequestMatcher(MockHTTP *mh, const char *method, va_list argp)
-{
-    mhRequestMatcher_t *rm = createRequestMatcher(mh, method);
 
     while (1) {
         mhMatchingPattern_t *mp;
@@ -276,7 +273,7 @@ mhResponse_t *mhResponse(MockHTTP *mh, ...)
 
     mhResponse_t *resp = apr_palloc(pool, sizeof(mhResponse_t));
     resp->pool = pool;
-    resp->status = 200;
+    resp->code = 200;
     resp->body = "";
     resp->hdrs = apr_hash_make(pool);
     resp->builders = apr_array_make(pool, 5, sizeof(mhRespBuilder_t *));
@@ -294,30 +291,30 @@ mhResponse_t *mhResponse(MockHTTP *mh, ...)
 }
 
 typedef struct RespBuilderHelper_t {
-    int status;
+    int code;
     const char *body;
     const char *header;
     const char *value;
     bool chunked;
 } RespBuilderHelper_t;
 
-static void respStatusSetter(mhResponse_t *resp, void *baton)
+static void respCodeSetter(mhResponse_t *resp, void *baton)
 {
     RespBuilderHelper_t *rbh = baton;
-    resp->status = rbh->status;
+    resp->code = rbh->code;
 }
 
-mhRespBuilder_t *mhRespSetStatus(MockHTTP *mh, unsigned int status)
+mhRespBuilder_t *mhRespSetCode(MockHTTP *mh, unsigned int code)
 {
     apr_pool_t *pool = mh->pool;
     mhRespBuilder_t *rb;
 
     RespBuilderHelper_t *rbh = apr_palloc(pool, sizeof(RespBuilderHelper_t));
-    rbh->status = status;
+    rbh->code = code;
 
     rb = apr_palloc(pool, sizeof(mhRespBuilder_t));
     rb->baton = rbh;
-    rb->builder = respStatusSetter;
+    rb->builder = respCodeSetter;
     return rb;
 }
 

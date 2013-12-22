@@ -38,8 +38,6 @@ extern "C" {
 
 typedef int (*matchfunc_t)(const mhMatchingPattern_t *mp,
                            const mhRequest_t *req);
-typedef struct block_t block_t;
-typedef struct linkedlist_t linkedlist_t;
 typedef struct servCtx_t servCtx_t;
 
 typedef short int bool;
@@ -49,14 +47,9 @@ static const bool NO = 0;
 struct MockHTTP {
     apr_pool_t *pool;
     apr_array_header_t *reqMatchers;
-    servCtx_t *servCtx;
-    apr_queue_t *reqQueue; /* thread safe FIFO queue */
     apr_array_header_t *reqsReceived;
-};
-
-struct mhMatchingPattern_t {
-    const void *baton;
-    matchfunc_t matcher;
+    servCtx_t *servCtx;
+    apr_queue_t *reqQueue; /* Thread safe FIFO queue. */
 };
 
 struct mhRequest_t {
@@ -72,7 +65,7 @@ struct mhRequest_t {
 struct mhResponse_t {
     apr_pool_t *pool;
 
-    unsigned int status;
+    unsigned int code;
     const char *body;
     bool chunked;
     apr_hash_t *hdrs;

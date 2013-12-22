@@ -43,7 +43,7 @@ CTEST_TEARDOWN(expectations)
     mhCleanup(data->mh);
 }
 
-#if 1
+#if 0
 CTEST2(expectations, test_mock_init)
 {
     MockHTTP *mh = data->mh;
@@ -129,8 +129,8 @@ CTEST2(expectations, test_basic_reqmatch_response)
 
         /* Respond */
         __resp = mhResponse(__mh,
-                            /*     WithStatus(200) */
-                            mhRespSetStatus(__mh, 200),
+                            /*     WithCode(200) */
+                            mhRespSetCode(__mh, 200),
                             /*     WithHeader("Connection", "Close") */
                             mhRespAddHeader(__mh, "Connection", "Close"),
                             /*     WithBody("blabla") */
@@ -159,7 +159,7 @@ CTEST2(expectations, test_basic_reqmatch_response_with_macros)
       GetRequest(
         URLEqualTo("/index.html"))
       Respond(
-        WithStatus(200),
+        WithCode(200),
         WithHeader("Connection", "Close"),
         WithBody("blabla"))
     SubmitGiven
@@ -180,7 +180,7 @@ CTEST2(expectations, test_one_request_received)
       GetRequest(
         URLEqualTo("/index.html"))
       Respond(
-        WithStatus(200),
+        WithCode(200),
         WithHeader("Connection", "Close"),
         WithBody("blabla"))
     SubmitGiven
@@ -258,7 +258,6 @@ CTEST2(expectations, test_verify_all_reqs_received)
         ASSERT_TRUE(VerifyAllRequestsReceived);
     SubmitVerify
 }
-#endif
 
 CTEST2(expectations, test_verify_all_reqs_received_inverse)
 {
@@ -353,8 +352,8 @@ CTEST2(expectations, test_verify_all_reqs_received_in_order_more)
       ASSERT_TRUE(VerifyAllRequestsReceivedInOrder);
     SubmitVerify
 }
+#endif
 
-#if 0
 CTEST2(expectations, test_one_request_response)
 {
     MockHTTP *mh = data->mh;
@@ -362,22 +361,22 @@ CTEST2(expectations, test_one_request_response)
     mhRequest_t *req;
 
     Given(mh)
-      GetRequest
-        URLEqualTo("/index.html")
-      Respond
-        WithStatus(200)
-        WithHeader("Connection", "Close")
-        WithBody("blabla")
+      GetRequest(
+        URLEqualTo("/index.html"))
+      Respond(
+        WithCode(200),
+        WithHeader("Connection", "Close"),
+        WithBody("blabla"))
     SubmitGiven
 
     /* system under test */
     {
         clientCtx_t *ctx = initClient(mh);
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
+
         sendRequest(ctx, "GET", "/index.html", hdrs, "1");
-        while (1) {
-            mhRunServerLoop(mh);
-        }
+        mhRunServerLoop(mh);
+        mhRunServerLoop(mh);
         receiveResponse(ctx);
     }
 
@@ -387,7 +386,6 @@ CTEST2(expectations, test_one_request_response)
     resp = _mhMatchRequest(mh, req);
     ASSERT_NOT_NULL(resp);
 }
-#endif
 
 int main(int argc, const char *argv[])
 {

@@ -23,6 +23,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
+/* TODO: replace Submit* with some better word. */
 #define Given(mh)\
             {\
                 MockHTTP *__mh = mh;\
@@ -39,8 +40,8 @@ extern "C" {
 #define   Respond(...)\
                 __resp = mhResponse(__mh, __VA_ARGS__, NULL);\
                 mhSetRespForReq(__mh, __rm, __resp);
-#define     WithStatus(x)\
-                mhRespSetStatus(__mh, (x))
+#define     WithCode(x)\
+                mhRespSetCode(__mh, (x))
 #define     WithHeader(h,v)\
                 mhRespAddHeader(__mh, (h), (v))
 #define     WithBody(x)\
@@ -49,7 +50,7 @@ extern "C" {
                 mhRespSetChunkedBody(__mh, (x));
 /* Assign local variables to NULL to avoid 'variable unused' warnings. */
 #define SubmitGiven\
-            __resp = NULL; __rm = NULL; __mh = NULL;\
+                __resp = NULL; __rm = NULL; __mh = NULL;\
             }
 
 #define Verify(mh)\
@@ -76,41 +77,39 @@ typedef struct mhRequestMatcher_t mhRequestMatcher_t;
 typedef struct mhResponse_t mhResponse_t;
 typedef struct mhRespBuilder_t mhRespBuilder_t;
 
-/* Define a mock server */
+/* Setup a mock HTTP server */
 MockHTTP *mhInit(void);
 void mhCleanup(MockHTTP *mh);
 void mhRunServerLoop(MockHTTP *mh);
-
-void mhPushRequest(MockHTTP *mh, mhRequestMatcher_t *rm);
-void mhSetRespForReq(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp);
 
 /* Define expectations*/
 
 /* Request functions */
 mhRequestMatcher_t *mhGetRequest(MockHTTP *mh, ...);
 mhRequestMatcher_t *mhPostRequest(MockHTTP *mh, ...);
+#define mhGetRequestReceivedFor mhGetRequest
+#define mhPostRequestReceivedFor mhPostRequest
 
-/*  */
+/* Request matching functions */
 mhMatchingPattern_t *mhMatchURLEqualTo(MockHTTP *mh, const char *expected);
 mhMatchingPattern_t *mhMatchMethodEqualTo(MockHTTP *mh, const char *expected);
-    
 
 /* Response functions */
 mhResponse_t *mhResponse(MockHTTP *mh, ...);
-mhRespBuilder_t *mhRespSetStatus(MockHTTP *mh, unsigned int status);
+mhRespBuilder_t *mhRespSetCode(MockHTTP *mh, unsigned int status);
 mhRespBuilder_t *mhRespSetBody(MockHTTP *mh, const char *body);
 mhRespBuilder_t *mhRespSetChunkedBody(MockHTTP *mh, const char *body);
-mhRespBuilder_t *
-    mhRespAddHeader(MockHTTP *mh, const char *header, const char *value);
+mhRespBuilder_t *mhRespAddHeader(MockHTTP *mh, const char *header,
+                                 const char *value);
+
+/* Define request/response pairs */
+void mhPushRequest(MockHTTP *mh, mhRequestMatcher_t *rm);
+void mhSetRespForReq(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp);
 
 /* Verify */
 int mhVerifyRequestReceived(MockHTTP *mh, mhRequestMatcher_t *rm);
 int mhVerifyAllRequestsReceived(MockHTTP *mh);
 int mhVerifyAllRequestsReceivedInOrder(MockHTTP *mh);
-
-/* There's no difference in these two functions for now. */
-#define mhGetRequestReceivedFor mhGetRequest
-#define mhPostRequestReceivedFor mhPostRequest
 
 #ifdef __cplusplus
 }
