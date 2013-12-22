@@ -25,70 +25,10 @@
 static const int DefaultSrvPort =   30080;
 static const int DefaultProxyPort = 38080;
 
-/******************************************************************************/
-/* Linked list                                                                */
-/******************************************************************************/
-typedef struct llnode_t llnode_t;
-typedef llnode_t lliter_t;
-
-struct llnode_t {
-    const void *ptr1;
-    const void *ptr2;
-    llnode_t *next;
-};
-
-struct linkedlist_t {
-    apr_pool_t *pool;
-    llnode_t *first;
-    llnode_t *last;
-};
-
-static linkedlist_t *linkedlist_init(apr_pool_t *pool)
-{
-    linkedlist_t *l = apr_palloc(pool, sizeof(linkedlist_t));
-    l->pool = pool;
-    l->first = l->last = NULL;
-    return l;
-}
-
-static void ll_add(linkedlist_t *l, const void *ptr1, const void *ptr2)
-{
-    llnode_t *n = apr_palloc(l->pool, sizeof(struct llnode_t));
-    n->ptr1 = ptr1;
-    n->ptr2 = ptr2;
-    n->next = NULL;
-    if (l->first == NULL)
-        l->first = l->last = n;
-    else {
-        l->last->next = n;
-        l->last = l->last->next;
-    }
-}
-
-static lliter_t *ll_iter(linkedlist_t *l)
-{
-    return l->first;
-}
-
-static bool ll_hasnext(lliter_t *iter)
-{
-    if (iter)
-        return YES;
-    return NO;
-}
-
-static void ll_next(lliter_t **itptr, const void **ptr1, const void **ptr2)
-{
-    lliter_t *iter = *itptr;
-    *itptr = (*itptr)->next;
-
-    if (iter) {
-        if (ptr1) *ptr1 = iter->ptr1;
-        if (ptr2) *ptr2 = iter->ptr2;
-    } else {
-        *ptr1 = *ptr2 = NULL;
-    }
-}
+typedef struct ReqMatcherRespPair_t {
+    mhRequestMatcher_t *rm;
+    mhResponse_t *resp;
+} ReqMatcherRespPair_t;
 
 /* Define a MockHTTP context */
 MockHTTP *mhInit()
@@ -102,7 +42,7 @@ MockHTTP *mhInit()
     apr_pool_create(&pool, NULL);
     mh = apr_palloc(pool, sizeof(struct MockHTTP));
     mh->pool = pool;
-    mh->reqs = linkedlist_init(pool);
+    mh->reqMatchers = apr_array_make(pool, 5, sizeof(ReqMatcherRespPair_t *));;
     apr_queue_create(&mh->reqQueue, 5, pool);
     mh->reqsReceived = apr_array_make(pool, 5, sizeof(mhRequest_t *));
 
@@ -133,31 +73,50 @@ void mhRunServerLoop(MockHTTP *mh)
     if (apr_queue_trypop(mh->reqQueue, &data) == APR_SUCCESS) {
         req = data;
         *((mhRequest_t **)apr_array_push(mh->reqsReceived)) = req;
-        printf("reaquest added to incoming queue: %s\n", req->method);
+        printf("request added to incoming queue: %s\n", req->method);
     }
 }
 
 mhResponse_t *_mhMatchRequest(MockHTTP *mh, mhRequest_t *req)
 {
-    mhResponse_t *resp;
-    lliter_t *iter;
+    int i;
 
-    iter = ll_iter(mh->reqs);
-    while (ll_hasnext(iter)) {
-        const mhRequestMatcher_t *rm;
+    for (i = 0 ; i < mh->reqMatchers->nelts; i++) {
+        const ReqMatcherRespPair_t *pair;
 
-        ll_next(&iter, (const void **)&rm, (const void **)&resp);
-        if (_mhRequestMatcherMatch(rm, req) == YES)
-            return resp;
+        pair = APR_ARRAY_IDX(mh->reqMatchers, i, ReqMatcherRespPair_t *);
+
+        if (_mhRequestMatcherMatch(pair->rm, req) == YES)
+            return pair->resp;
     }
     return NULL;
 }
 
 /* Define expectations*/
 
-void mhPushReqResp(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp)
+void mhPushRequest(MockHTTP *mh, mhRequestMatcher_t *rm)
 {
-    ll_add(mh->reqs, rm, resp);
+    ReqMatcherRespPair_t *pair;
+    pair = apr_palloc(mh->pool, sizeof(ReqMatcherRespPair_t *));
+    pair->rm = rm;
+    pair->resp = NULL;
+    *((ReqMatcherRespPair_t **)apr_array_push(mh->reqMatchers)) = pair;
+}
+
+void mhSetRespForReq(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp)
+{
+    int i;
+
+    for (i = 0 ; i < mh->reqMatchers->nelts; i++) {
+        ReqMatcherRespPair_t *pair;
+
+        pair = APR_ARRAY_IDX(mh->reqMatchers, i, ReqMatcherRespPair_t *);
+
+        if (rm == pair->rm) {
+            pair->resp = resp;
+            break;
+        }
+    }
 }
 
 mhRequest_t *_mhRequestInit(MockHTTP *mh)
@@ -244,7 +203,7 @@ createRequestMatcher(MockHTTP *mh, const char *method)
     mhRequestMatcher_t *rm = apr_palloc(pool, sizeof(mhRequestMatcher_t));
     rm->pool = pool;
     rm->method = apr_pstrdup(pool, method);
-    rm->matchers = linkedlist_init(pool);
+    rm->matchers = apr_array_make(pool, 5, sizeof(mhMatchingPattern_t *));
 
     return rm;
 }
@@ -258,7 +217,7 @@ constructRequestMatcher(MockHTTP *mh, const char *method, va_list argp)
         mhMatchingPattern_t *mp;
         mp = va_arg(argp, mhMatchingPattern_t *);
         if (mp == NULL) break;
-        ll_add(rm->matchers, mp, NULL);
+        *((mhMatchingPattern_t **)apr_array_push(rm->matchers)) = mp;
     }
     return rm;
 }
@@ -289,17 +248,16 @@ mhRequestMatcher_t *mhPostRequest(MockHTTP *mh, ...)
 
 bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, mhRequest_t *req)
 {
-    lliter_t *iter;
+    int i;
 
     if (strcicmp(rm->method, req->method) != 0) {
         return NO;
     }
 
-    iter = ll_iter(rm->matchers);
-    while (ll_hasnext(iter)) {
+    for (i = 0 ; i < rm->matchers->nelts; i++) {
         const mhMatchingPattern_t *mp;
 
-        ll_next(&iter, (const void **)&mp, NULL);
+        mp = APR_ARRAY_IDX(rm->matchers, i, mhMatchingPattern_t *);
         if (mp->matcher(mp, req) == YES)
             return YES;
     }
@@ -319,15 +277,15 @@ mhResponse_t *mhResponse(MockHTTP *mh, ...)
     resp->pool = pool;
     resp->status = 200;
     resp->body = "";
-    resp->hdrs = linkedlist_init(pool);
-    resp->builders = linkedlist_init(pool);
+    resp->hdrs = apr_hash_make(pool);
+    resp->builders = apr_array_make(pool, 5, sizeof(mhRespBuilder_t *));
 
     va_start(argp, mh);
     while (1) {
         mhRespBuilder_t *rb;
         rb = va_arg(argp, mhRespBuilder_t *);
         if (rb == NULL) break;
-        ll_add(resp->builders, rb, NULL);
+        *((mhRespBuilder_t **)apr_array_push(resp->builders)) = rb;
     }
     va_end(argp);
 
@@ -401,7 +359,7 @@ mhRespBuilder_t * mhRespSetChunkedBody(MockHTTP *mh, const char *body)
 static void respHeaderSetter(mhResponse_t *resp, void *baton)
 {
     RespBuilderHelper_t *rbh = baton;
-    ll_add(resp->hdrs, rbh->header, rbh->value);
+    apr_hash_set(resp->hdrs, rbh->header, APR_HASH_KEY_STRING, rbh->value);
 }
 
 mhRespBuilder_t *
@@ -435,4 +393,31 @@ int mhVerifyRequestReceived(MockHTTP *mh, mhRequestMatcher_t *rm)
     }
 
     return NO;
+}
+
+int mhVerifyAllRequestsReceived(MockHTTP *mh)
+{
+    int i;
+
+    for (i = 0; i < mh->reqsReceived->nelts; i++)
+    {
+        mhRequest_t *req = APR_ARRAY_IDX(mh->reqsReceived, i, mhRequest_t *);
+        int j;
+        bool matched = NO;
+
+        for (j = 0 ; j < mh->reqMatchers->nelts; j++) {
+            const ReqMatcherRespPair_t *pair;
+
+            pair = APR_ARRAY_IDX(mh->reqMatchers, i, ReqMatcherRespPair_t *);
+
+            if (_mhRequestMatcherMatch(pair->rm, req) == YES) {
+                matched = YES;
+                break;
+            }
+        }
+
+        if (matched == NO)
+            return NO;
+    }
+    return YES;
 }

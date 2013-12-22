@@ -43,7 +43,7 @@ CTEST_TEARDOWN(expectations)
     mhCleanup(data->mh);
 }
 
-#if 1
+#if 0
 CTEST2(expectations, test_mock_init)
 {
     MockHTTP *mh = data->mh;
@@ -122,6 +122,7 @@ CTEST2(expectations, test_basic_reqmatch_response)
                             /*     URLEqualTo("/index.html") */
                             mhMatchURLEqualTo(__mh, "/index.html"),
                             NULL);
+        mhPushRequest(__mh, __rm);
         ASSERT_NOT_NULL(__rm);
 
         ;
@@ -135,10 +136,10 @@ CTEST2(expectations, test_basic_reqmatch_response)
                             /*     WithBody("blabla") */
                             mhRespSetBody(__mh, "blabla"),
                             NULL);
+        mhSetRespForReq(__mh, __rm, __resp);
         ASSERT_NOT_NULL(__resp);
 
     /* SubmitGiven */
-        mhPushReqResp(__mh, __rm, __resp);
     }
 
     req = _mhRequestInit(mh);
@@ -213,7 +214,6 @@ CTEST2(expectations, test_one_request_received)
                         URLEqualTo("/index.html")));
     SubmitVerify
 }
-#endif
 
 CTEST2(expectations, test_match_method)
 {
@@ -233,6 +233,56 @@ CTEST2(expectations, test_match_method)
                          URLEqualTo("/index.html")));
         ASSERT_TRUE(PostRequestReceivedFor(
                          URLEqualTo("/index.html")));
+    SubmitVerify
+}
+#endif
+
+CTEST2(expectations, test_verify_all_reqs_received)
+{
+    MockHTTP *mh = data->mh;
+
+    Given(mh)
+      GetRequest(
+        URLEqualTo("/index.html"))
+    SubmitGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendRequest(ctx, "GET", "/index.html", hdrs, "1");
+        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+        ASSERT_TRUE(VerifyAllRequestsReceived);
+    SubmitVerify
+}
+
+CTEST2(expectations, test_verify_all_reqs_received_inverse)
+{
+    MockHTTP *mh = data->mh;
+
+    Given(mh)
+      GetRequest(
+        URLEqualTo("/index.html"))
+      PostRequest(
+        URLEqualTo("/index2.html"))
+    SubmitGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendRequest(ctx, "GET", "/noindex.html", hdrs, "1");
+        sendRequest(ctx, "OPTIONS", "/index.html", hdrs, "2");
+        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+        ASSERT_FALSE(VerifyAllRequestsReceived);
     SubmitVerify
 }
 

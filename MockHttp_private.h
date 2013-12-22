@@ -48,7 +48,7 @@ static const bool NO = 0;
 
 struct MockHTTP {
     apr_pool_t *pool;
-    linkedlist_t *reqs;
+    apr_array_header_t *reqMatchers;
     servCtx_t *servCtx;
     apr_queue_t *reqQueue; /* thread safe FIFO queue */
     apr_array_header_t *reqsReceived;
@@ -75,15 +75,15 @@ struct mhResponse_t {
     unsigned int status;
     const char *body;
     bool chunked;
-    linkedlist_t *hdrs;
-    linkedlist_t *builders;
+    apr_hash_t *hdrs;
+    apr_array_header_t *builders;
 };
 
 struct mhRequestMatcher_t {
     apr_pool_t *pool;
 
     const char *method;
-    linkedlist_t *matchers;
+    apr_array_header_t *matchers;
 };
 
 typedef void (* respbuilderfunc_t)(mhResponse_t *resp, void *baton);

@@ -29,12 +29,16 @@ extern "C" {
                 mhResponse_t *__resp;\
                 mhRequestMatcher_t *__rm;
 #define   GetRequest(x)\
-                __rm = mhGetRequestReceivedFor(__mh, (x), NULL);
+                __rm = mhGetRequest(__mh, (x), NULL);\
+                mhPushRequest(__mh, __rm);
+#define   PostRequest(x)\
+                __rm = mhPostRequest(__mh, (x), NULL);\
+                mhPushRequest(__mh, __rm);
 #define     URLEqualTo(x)\
                 mhMatchURLEqualTo(__mh, (x))
 #define   Respond(...)\
                 __resp = mhResponse(__mh, __VA_ARGS__, NULL);\
-                mhPushReqResp(__mh, __rm, __resp);
+                mhSetRespForReq(__mh, __rm, __resp);
 #define     WithStatus(x)\
                 mhRespSetStatus(__mh, (x))
 #define     WithHeader(h,v)\
@@ -57,6 +61,8 @@ extern "C" {
 #define   PostRequestReceivedFor(x)\
                 mhVerifyRequestReceived(__mh,\
                     mhPostRequestReceivedFor(__mh, (x), NULL))
+#define   VerifyAllRequestsReceived\
+                mhVerifyAllRequestsReceived(__mh)
 #define SubmitVerify\
             }
 
@@ -73,7 +79,8 @@ MockHTTP *mhInit(void);
 void mhCleanup(MockHTTP *mh);
 void mhRunServerLoop(MockHTTP *mh);
 
-void mhPushReqResp(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp);
+void mhPushRequest(MockHTTP *mh, mhRequestMatcher_t *rm);
+void mhSetRespForReq(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp);
 
 /* Define expectations*/
 
@@ -96,6 +103,8 @@ mhRespBuilder_t *
 
 /* Verify */
 int mhVerifyRequestReceived(MockHTTP *mh, mhRequestMatcher_t *rm);
+int mhVerifyAllRequestsReceived(MockHTTP *mh);
+
 /* There's no difference in these two functions for now. */
 #define mhGetRequestReceivedFor mhGetRequest
 #define mhPostRequestReceivedFor mhPostRequest
