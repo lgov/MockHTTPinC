@@ -187,15 +187,15 @@ static apr_status_t processData(clientCtx_t *cctx)
 
             start = ptr = buf;
             while (*ptr != ' ' && *ptr != '\r') ptr++;
-            cctx->req->method = apr_pmemdup(cctx->pool, start, ptr-start);
+            cctx->req->method = apr_pstrndup(cctx->pool, start, ptr-start);
 
             ptr++; start = ptr;
             while (*ptr != ' ' && *ptr != '\r') ptr++;
-            cctx->req->url = apr_pmemdup(cctx->pool, start, ptr-start);
+            cctx->req->url = apr_pstrndup(cctx->pool, start, ptr-start);
 
             ptr++; start = ptr;
             while (*ptr != ' ' && *ptr != '\r') ptr++;
-            version = apr_pmemdup(cctx->pool, start, ptr-start);
+            version = apr_pstrndup(cctx->pool, start, ptr-start);
             cctx->req->version = (version[5] - '0') * 100 +
             version[7] - '0';
 
@@ -211,11 +211,11 @@ static apr_status_t processData(clientCtx_t *cctx)
                 const char *start = buf, *ptr = buf;
                 const char *hdr, *val;
                 while (*ptr != ':' && *ptr != '\r') ptr++;
-                hdr = apr_pmemdup(cctx->pool, start, ptr-start);
+                hdr = apr_pstrndup(cctx->pool, start, ptr-start);
 
                 ptr++; while (*ptr == ' ') ptr++; start = ptr;
                 while (*ptr != '\r') ptr++;
-                val = apr_pmemdup(cctx->pool, start, ptr-start);
+                val = apr_pstrndup(cctx->pool, start, ptr-start);
 
                 apr_hash_set(cctx->req->hdrs, hdr, APR_HASH_KEY_STRING, val);
             } else {
@@ -236,7 +236,7 @@ static apr_status_t processData(clientCtx_t *cctx)
                 cctx->req->body = apr_palloc(cctx->pool, cl);
             }
 
-            len = cctx->buflen;
+            len = cctx->buflen < (cl - cctx->req->bodyLen) ? cctx->buflen : cl;
             memcpy(cctx->req->body + cctx->req->bodyLen, cctx->buf, len);
             cctx->req->bodyLen += len;
 

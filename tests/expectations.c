@@ -43,7 +43,7 @@ CTEST_TEARDOWN(expectations)
     mhCleanup(data->mh);
 }
 
-#if 0
+#if 1
 CTEST2(expectations, test_mock_init)
 {
     MockHTTP *mh = data->mh;
@@ -235,7 +235,6 @@ CTEST2(expectations, test_match_method)
                          URLEqualTo("/index.html")));
     SubmitVerify
 }
-#endif
 
 CTEST2(expectations, test_verify_all_reqs_received)
 {
@@ -259,6 +258,7 @@ CTEST2(expectations, test_verify_all_reqs_received)
         ASSERT_TRUE(VerifyAllRequestsReceived);
     SubmitVerify
 }
+#endif
 
 CTEST2(expectations, test_verify_all_reqs_received_inverse)
 {
@@ -283,6 +283,32 @@ CTEST2(expectations, test_verify_all_reqs_received_inverse)
 
     Verify(mh)
         ASSERT_FALSE(VerifyAllRequestsReceived);
+    SubmitVerify
+}
+
+CTEST2(expectations, test_verify_all_reqs_received_in_order)
+{
+    MockHTTP *mh = data->mh;
+
+    Given(mh)
+      GetRequest(
+        URLEqualTo("/index.html"))
+      PostRequest(
+        URLEqualTo("/index2.html"))
+    SubmitGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendRequest(ctx, "GET", "/index.html", hdrs, "1");
+        sendRequest(ctx, "POST", "/index2.html", hdrs, "1");
+        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+        ASSERT_TRUE(VerifyAllRequestsReceivedInOrder);
     SubmitVerify
 }
 

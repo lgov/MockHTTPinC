@@ -70,7 +70,7 @@ void mhRunServerLoop(MockHTTP *mh)
     void *data;
 
     _mhRunServerLoop(mh->servCtx);
-    if (apr_queue_trypop(mh->reqQueue, &data) == APR_SUCCESS) {
+    while (apr_queue_trypop(mh->reqQueue, &data) == APR_SUCCESS) {
         req = data;
         *((mhRequest_t **)apr_array_push(mh->reqsReceived)) = req;
         printf("request added to incoming queue: %s\n", req->method);
@@ -246,7 +246,8 @@ mhRequestMatcher_t *mhPostRequest(MockHTTP *mh, ...)
     return rm;
 }
 
-bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, mhRequest_t *req)
+bool
+_mhRequestMatcherMatch(const mhRequestMatcher_t *rm, const mhRequest_t *req)
 {
     int i;
 
@@ -418,6 +419,28 @@ int mhVerifyAllRequestsReceived(MockHTTP *mh)
 
         if (matched == NO)
             return NO;
+    }
+    return YES;
+}
+
+int mhVerifyAllRequestsReceivedInOrder(MockHTTP *mh)
+{
+    int i;
+
+    if (mh->reqsReceived->nelts != mh->reqMatchers->nelts)
+        return NO;
+
+    for (i = 0; i < mh->reqsReceived->nelts; i++)
+    {
+        const ReqMatcherRespPair_t *pair;
+        const mhRequest_t *req;
+
+        pair = APR_ARRAY_IDX(mh->reqMatchers, i, ReqMatcherRespPair_t *);
+        req  = APR_ARRAY_IDX(mh->reqsReceived, i, mhRequest_t *);
+
+        if (_mhRequestMatcherMatch(pair->rm, req) == NO) {
+            return NO;
+        }
     }
     return YES;
 }

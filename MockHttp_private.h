@@ -97,7 +97,8 @@ struct mhRespBuilder_t {
 mhRequest_t *_mhRequestInit(MockHTTP *mh);
 mhResponse_t *_mhMatchRequest(MockHTTP *mh, mhRequest_t *req);
 
-bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, mhRequest_t *req);
+bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm,
+                            const mhRequest_t *req);
 
 /* Test servers */
 servCtx_t *_mhInitTestServer(MockHTTP *mh, const char *hostname,

@@ -63,6 +63,8 @@ extern "C" {
                     mhPostRequestReceivedFor(__mh, (x), NULL))
 #define   VerifyAllRequestsReceived\
                 mhVerifyAllRequestsReceived(__mh)
+#define   VerifyAllRequestsReceivedInOrder\
+                mhVerifyAllRequestsReceivedInOrder(__mh)
 #define SubmitVerify\
             }
 
@@ -104,6 +106,7 @@ mhRespBuilder_t *
 /* Verify */
 int mhVerifyRequestReceived(MockHTTP *mh, mhRequestMatcher_t *rm);
 int mhVerifyAllRequestsReceived(MockHTTP *mh);
+int mhVerifyAllRequestsReceivedInOrder(MockHTTP *mh);
 
 /* There's no difference in these two functions for now. */
 #define mhGetRequestReceivedFor mhGetRequest
