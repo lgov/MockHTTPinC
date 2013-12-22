@@ -76,6 +76,7 @@ struct mhResponse_t {
     const char *body;
     bool chunked;
     linkedlist_t *hdrs;
+    linkedlist_t *builders;
 };
 
 struct mhRequestMatcher_t {
@@ -83,6 +84,13 @@ struct mhRequestMatcher_t {
 
     const char *method;
     linkedlist_t *matchers;
+};
+
+typedef void (* respbuilderfunc_t)(mhResponse_t *resp, void *baton);
+
+struct mhRespBuilder_t {
+    const void *baton;
+    respbuilderfunc_t builder;
 };
 
 /* Initialize a mhRequest_t object. */

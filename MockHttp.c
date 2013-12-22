@@ -186,15 +186,13 @@ static int url_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
 }
 
 mhMatchingPattern_t *
-mhMatchURLEqualTo(mhRequestMatcher_t *rm, const char *expected)
+mhMatchURLEqualTo(MockHTTP *mh, const char *expected)
 {
-    apr_pool_t *pool = rm->pool;
+    apr_pool_t *pool = mh->pool;
 
     mhMatchingPattern_t *mp = apr_palloc(pool, sizeof(mhMatchingPattern_t));
     mp->baton = apr_pstrdup(pool, expected);
     mp->matcher = url_matcher;
-
-    ll_add(rm->matchers, mp, NULL);
 
     return mp;
 }
@@ -227,15 +225,13 @@ static int method_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
 }
 
 mhMatchingPattern_t *
-mhMatchMethodEqualTo(mhRequestMatcher_t *rm, const char *expected)
+mhMatchMethodEqualTo(MockHTTP *mh, const char *expected)
 {
-    apr_pool_t *pool = rm->pool;
+    apr_pool_t *pool = mh->pool;
 
     mhMatchingPattern_t *mp = apr_palloc(pool, sizeof(mhMatchingPattern_t));
     mp->baton = apr_pstrdup(pool, expected);
     mp->matcher = method_matcher;
-
-    ll_add(rm->matchers, mp, NULL);
 
     return mp;
 }
@@ -253,9 +249,22 @@ createRequestMatcher(MockHTTP *mh, const char *method)
     return rm;
 }
 
-mhRequestMatcher_t *mhGetRequest(MockHTTP *mh)
+mhRequestMatcher_t *mhGetRequest(MockHTTP *mh, ...)
 {
-    return createRequestMatcher(mh, "GET");
+    va_list argp;
+
+    mhRequestMatcher_t *rm = createRequestMatcher(mh, "GET");
+
+    va_start(argp, mh);
+    while (1) {
+        mhMatchingPattern_t *mp;
+        mp = va_arg(argp, mhMatchingPattern_t *);
+        if (mp == NULL) break;
+        ll_add(rm->matchers, mp, NULL);
+    }
+    va_end(argp);
+
+    return rm;
 }
 
 bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, mhRequest_t *req)
@@ -281,43 +290,114 @@ bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, mhRequest_t *req)
 /******************************************************************************/
 /* Response                                                                   */
 /******************************************************************************/
-mhResponse_t *mhResponse(MockHTTP *mh)
+mhResponse_t *mhResponse(MockHTTP *mh, ...)
 {
     apr_pool_t *pool = mh->pool;
+    va_list argp;
 
     mhResponse_t *resp = apr_palloc(pool, sizeof(mhResponse_t));
     resp->pool = pool;
     resp->status = 200;
     resp->body = "";
     resp->hdrs = linkedlist_init(pool);
+    resp->builders = linkedlist_init(pool);
+
+    va_start(argp, mh);
+    while (1) {
+        mhRespBuilder_t *rb;
+        rb = va_arg(argp, mhRespBuilder_t *);
+        if (rb == NULL) break;
+        ll_add(resp->builders, rb, NULL);
+    }
+    va_end(argp);
 
     return resp;
 }
 
-void mhRespSetStatus(mhResponse_t *resp, unsigned int status)
+typedef struct RespBuilderHelper_t {
+    int status;
+    const char *body;
+    const char *header;
+    const char *value;
+    bool chunked;
+} RespBuilderHelper_t;
+
+static void respStatusSetter(mhResponse_t *resp, void *baton)
 {
-    resp->status = status;
+    RespBuilderHelper_t *rbh = baton;
+    resp->status = rbh->status;
 }
 
-void mhRespSetBody(mhResponse_t *resp, const char *body)
+mhRespBuilder_t *mhRespSetStatus(MockHTTP *mh, unsigned int status)
 {
-    apr_pool_t *pool = resp->pool;
+    apr_pool_t *pool = mh->pool;
+    mhRespBuilder_t *rb;
 
-    resp->body = apr_pstrdup(pool, body);
-    resp->chunked = NO;
+    RespBuilderHelper_t *rbh = apr_palloc(pool, sizeof(RespBuilderHelper_t));
+    rbh->status = status;
+
+    rb = apr_palloc(pool, sizeof(mhRespBuilder_t));
+    rb->baton = rbh;
+    rb->builder = respStatusSetter;
+    return rb;
 }
 
-void mhRespSetChunkedBody(mhResponse_t *resp, const char *body)
+static void respBodySetter(mhResponse_t *resp, void *baton)
 {
-    apr_pool_t *pool = resp->pool;
-
-    resp->body = apr_pstrdup(pool, body);
-    resp->chunked = YES;
+    RespBuilderHelper_t *rbh = baton;
+    resp->body = rbh->body;
 }
 
-void mhRespAddHeader(mhResponse_t *resp, const char *header, const char *value)
+mhRespBuilder_t * mhRespSetBody(MockHTTP *mh, const char *body)
 {
-    ll_add(resp->hdrs, header, value);
+    apr_pool_t *pool = mh->pool;
+    mhRespBuilder_t *rb;
+
+    RespBuilderHelper_t *rbh = apr_palloc(pool, sizeof(RespBuilderHelper_t));
+    rbh->body = apr_pstrdup(pool, body);
+    rbh->chunked = NO;
+
+    rb = apr_palloc(pool, sizeof(mhRespBuilder_t));
+    rb->baton = rbh;
+    rb->builder = respBodySetter;
+    return rb;
+}
+
+mhRespBuilder_t * mhRespSetChunkedBody(MockHTTP *mh, const char *body)
+{
+    apr_pool_t *pool = mh->pool;
+    mhRespBuilder_t *rb;
+
+    RespBuilderHelper_t *rbh = apr_palloc(pool, sizeof(RespBuilderHelper_t));
+    rbh->body = apr_pstrdup(pool, body);
+    rbh->chunked = YES;
+
+    rb = apr_palloc(pool, sizeof(mhRespBuilder_t));
+    rb->baton = rbh;
+    rb->builder = respBodySetter;
+    return rb;
+}
+
+static void respHeaderSetter(mhResponse_t *resp, void *baton)
+{
+    RespBuilderHelper_t *rbh = baton;
+    ll_add(resp->hdrs, rbh->header, rbh->value);
+}
+
+mhRespBuilder_t *
+mhRespAddHeader(MockHTTP *mh, const char *header, const char *value)
+{
+    apr_pool_t *pool = mh->pool;
+    mhRespBuilder_t *rb;
+
+    RespBuilderHelper_t *rbh = apr_palloc(pool, sizeof(RespBuilderHelper_t));
+    rbh->header = apr_pstrdup(pool, header);
+    rbh->value = apr_pstrdup(pool, value);
+
+    rb = apr_palloc(pool, sizeof(mhRespBuilder_t));
+    rb->baton = rbh;
+    rb->builder = respHeaderSetter;
+    return rb;
 }
 
 /******************************************************************************/

@@ -43,7 +43,7 @@ CTEST_TEARDOWN(expectations)
     mhCleanup(data->mh);
 }
 
-#if 0
+#if 1
 CTEST2(expectations, test_mock_init)
 {
     MockHTTP *mh = data->mh;
@@ -58,7 +58,7 @@ CTEST2(expectations, test_urlmatcher)
     mhRequest_t *req;
 
     rm = mhGetRequest(mh);
-    mp = mhMatchURLEqualTo(rm, "/index.html");
+    mp = mhMatchURLEqualTo(mh, "/index.html");
     ASSERT_NOT_NULL(mp);
 
     /* Create a fake request and check that the matcher works */
@@ -74,9 +74,9 @@ CTEST2(expectations, test_methodmatcher)
     mhMatchingPattern_t *mp;
     mhRequest_t *req;
 
-    rm = mhGetRequest(mh);
-    mp = mhMatchMethodEqualTo(rm, "get");
-    ASSERT_NOT_NULL(mp);
+    mp = mhMatchMethodEqualTo(mh, "get");
+    rm = mhGetRequest(mh, mp, NULL);
+    ASSERT_NOT_NULL(rm);
 
     /* Create a fake request and check that the matcher works */
     req = _mhRequestInit(mh);
@@ -90,8 +90,7 @@ CTEST2(expectations, test_matchrequest)
     mhRequestMatcher_t *rm;
     mhRequest_t *req;
 
-    rm = mhGetRequest(mh);
-    mhMatchURLEqualTo(rm, "/index.html");
+    rm = mhGetRequest(mh, mhMatchURLEqualTo(mh, "/index.html"), NULL);
 
     /* Create a fake request and check that the matcher works */
     req = _mhRequestInit(mh);
@@ -105,6 +104,7 @@ CTEST2(expectations, test_matchrequest)
     req->url = "/notexisting.html";
     ASSERT_EQUAL(_mhRequestMatcherMatch(rm, req), NO);
 }
+#endif
 
 CTEST2(expectations, test_basic_reqmatch_response)
 {
@@ -112,43 +112,33 @@ CTEST2(expectations, test_basic_reqmatch_response)
     mhResponse_t *resp;
     mhRequest_t *req;
 
-    /*
-     GIVEN(mh)
-       GET_REQUEST
-         URL_EQUALTO("/index.html")
-       RESPOND
-         WITH_STATUS(200)
-         WITH_HEADER("Connection", "Close")
-         WITH_BODY("blabla")
-     SUBMIT_GIVEN
-     */
-
-    /* GIVEN(mh) */
+    /* Given(mh) */
     {
         MockHTTP *__mh = mh;
         mhRequestMatcher_t *__rm;
         mhResponse_t *__resp;
 
-        /* GET_REQUEST */
-        __rm = mhGetRequest(__mh);
+        /* GetRequest */
+        __rm = mhGetRequest(__mh,
+                            /*     URLEqualTo("/index.html") */
+                            mhMatchURLEqualTo(__mh, "/index.html"),
+                            NULL);
         ASSERT_NOT_NULL(__rm);
 
-        /*     URL_EQUALTO("/index.html") */
-        mhMatchURLEqualTo(__rm, "/index.html");
+        ;
 
-        /* RESPOND */
-        __resp = mhResponse(__mh);
+        /* Respond */
+        __resp = mhResponse(__mh,
+                            /*     WithStatus(200) */
+                            mhRespSetStatus(__mh, 200),
+                            /*     WithHeader("Connection", "Close") */
+                            mhRespAddHeader(__mh, "Connection", "Close"),
+                            /*     WithBody("blabla") */
+                            mhRespSetBody(__mh, "blabla"),
+                            NULL);
+        ASSERT_NOT_NULL(__resp);
 
-        /*     WITH_STATUS(200) */
-        mhRespSetStatus(__resp, 200);
-
-        /*     WITH_HEADER("Connection", "Close") */
-        mhRespAddHeader(__resp, "Connection", "Close");
-
-        /*     WITH_BODY("blabla") */
-        mhRespSetBody(__resp, "blabla");
-
-    /* SUBMIT_GIVEN */
+    /* SubmitGiven */
         mhPushReqResp(__mh, __rm, __resp);
     }
 
@@ -158,7 +148,6 @@ CTEST2(expectations, test_basic_reqmatch_response)
     resp = _mhMatchRequest(mh, req);
     ASSERT_NOT_NULL(resp);
 }
-#endif
 
 CTEST2(expectations, test_basic_reqmatch_response_with_macros)
 {
@@ -167,12 +156,12 @@ CTEST2(expectations, test_basic_reqmatch_response_with_macros)
     mhRequest_t *req;
 
     Given(mh)
-      GetRequest
-        URLEqualTo("/index.html")
-      Respond
-        WithStatus(200)
-        WithHeader("Connection", "Close")
-        WithBody("blabla")
+      GetRequest(
+        URLEqualTo("/index.html"))
+      Respond(
+        WithStatus(200),
+        WithHeader("Connection", "Close"),
+        WithBody("blabla"))
     SubmitGiven
 
     /* verify that the request was received */
@@ -188,47 +177,42 @@ CTEST2(expectations, test_one_request_received)
     MockHTTP *mh = data->mh;
 
     Given(mh)
-      GetRequest
-        URLEqualTo("/index.html")
-      Respond
-        WithStatus(200)
-        WithHeader("Connection", "Close")
-        WithBody("blabla")
+      GetRequest(
+        URLEqualTo("/index.html"))
+      Respond(
+        WithStatus(200),
+        WithHeader("Connection", "Close"),
+        WithBody("blabla"))
     SubmitGiven
 
     /* system under test */
     {
-        int i;
-
         clientCtx_t *ctx = initClient(mh);
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendRequest(ctx, "GET", "/index.html", hdrs, "1");
-        mhRunServerLoop(mh); /* run 3 times, should be sufficient. */
-        mhRunServerLoop(mh);
+        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
         mhRunServerLoop(mh);
     }
 
     /* Verify(mh) */
     {
         MockHTTP *__mh = mh;
-        mhRequestMatcher_t *__rm;
 
         /* GetRequestReceivedFor */
-        __rm = mhGetRequest(__mh);
-
         /*     URLEqualTo("/index.html") */
-        mhMatchURLEqualTo(__rm, "/index.html");
-
+        ASSERT_TRUE(mhVerifyRequestReceived(__mh,
+                        mhGetRequestReceivedFor(__mh,
+                                mhMatchURLEqualTo(__mh, "/index.html")
+                                                ))
+                    );
         /* SubmitVerify */
-        ASSERT_TRUE(mhVerifyRequestReceived(__mh, __rm));
     }
 
-#if 0
+    /* Now with the macro's */
     Verify(mh)
-      GetRequestReceivedFor
-        URLEqualTo("/index.html")
+        ASSERT_TRUE(GetRequestReceivedFor(
+                        URLEqualTo("/index.html")));
     SubmitVerify
-#endif
 }
 
 #if 0
