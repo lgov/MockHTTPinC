@@ -43,13 +43,14 @@ extern "C" {
                 mhRespSetBody(__mh, (x))
 #define     WithChunkedBody(x)\
                 mhRespSetChunkedBody(__mh, (x));
+/* Assign local variables to NULL to avoid 'variable unused' warnings. */
 #define SubmitGiven\
+            __resp = NULL; __rm = NULL; __mh = NULL;\
             }
 
 #define Verify(mh)\
             {\
                 MockHTTP *__mh = mh;
-/* TODO: multiple arguments (variadic macro's) */
 #define   GetRequestReceivedFor(x)\
                 mhVerifyRequestReceived(__mh,\
                     mhGetRequestReceivedFor(__mh, (x), NULL))

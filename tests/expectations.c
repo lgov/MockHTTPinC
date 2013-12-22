@@ -104,7 +104,6 @@ CTEST2(expectations, test_matchrequest)
     req->url = "/notexisting.html";
     ASSERT_EQUAL(_mhRequestMatcherMatch(rm, req), NO);
 }
-#endif
 
 CTEST2(expectations, test_basic_reqmatch_response)
 {
@@ -212,6 +211,32 @@ CTEST2(expectations, test_one_request_received)
     Verify(mh)
         ASSERT_TRUE(GetRequestReceivedFor(
                         URLEqualTo("/index.html")));
+    SubmitVerify
+}
+#endif
+
+CTEST2(expectations, test_match_method)
+{
+    MockHTTP *mh = data->mh;
+
+    Given(mh)
+        GetRequest(
+                   URLEqualTo("/index.html"))
+    SubmitGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendRequest(ctx, "POST", "/index.html", hdrs, "1");
+        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        mhRunServerLoop(mh);
+    }
+
+    /* Now with the macro's */
+    Verify(mh)
+        ASSERT_FALSE(GetRequestReceivedFor(
+                         URLEqualTo("/index.html")));
     SubmitVerify
 }
 
