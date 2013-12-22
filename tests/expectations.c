@@ -233,9 +233,10 @@ CTEST2(expectations, test_match_method)
         mhRunServerLoop(mh);
     }
 
-    /* Now with the macro's */
     Verify(mh)
         ASSERT_FALSE(GetRequestReceivedFor(
+                         URLEqualTo("/index.html")));
+        ASSERT_TRUE(PostRequestReceivedFor(
                          URLEqualTo("/index.html")));
     SubmitVerify
 }

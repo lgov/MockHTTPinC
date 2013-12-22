@@ -249,19 +249,39 @@ createRequestMatcher(MockHTTP *mh, const char *method)
     return rm;
 }
 
-mhRequestMatcher_t *mhGetRequest(MockHTTP *mh, ...)
+static mhRequestMatcher_t *
+constructRequestMatcher(MockHTTP *mh, const char *method, va_list argp)
 {
-    va_list argp;
+    mhRequestMatcher_t *rm = createRequestMatcher(mh, method);
 
-    mhRequestMatcher_t *rm = createRequestMatcher(mh, "GET");
-
-    va_start(argp, mh);
     while (1) {
         mhMatchingPattern_t *mp;
         mp = va_arg(argp, mhMatchingPattern_t *);
         if (mp == NULL) break;
         ll_add(rm->matchers, mp, NULL);
     }
+    return rm;
+}
+
+mhRequestMatcher_t *mhGetRequest(MockHTTP *mh, ...)
+{
+    va_list argp;
+    mhRequestMatcher_t *rm;
+
+    va_start(argp, mh);
+    rm = constructRequestMatcher(mh, "GET", argp);
+    va_end(argp);
+
+    return rm;
+}
+
+mhRequestMatcher_t *mhPostRequest(MockHTTP *mh, ...)
+{
+    va_list argp;
+    mhRequestMatcher_t *rm;
+
+    va_start(argp, mh);
+    rm = constructRequestMatcher(mh, "POST", argp);
     va_end(argp);
 
     return rm;

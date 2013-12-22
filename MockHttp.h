@@ -54,6 +54,9 @@ extern "C" {
 #define   GetRequestReceivedFor(x)\
                 mhVerifyRequestReceived(__mh,\
                     mhGetRequestReceivedFor(__mh, (x), NULL))
+#define   PostRequestReceivedFor(x)\
+                mhVerifyRequestReceived(__mh,\
+                    mhPostRequestReceivedFor(__mh, (x), NULL))
 #define SubmitVerify\
             }
 
@@ -76,6 +79,7 @@ void mhPushReqResp(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp);
 
 /* Request functions */
 mhRequestMatcher_t *mhGetRequest(MockHTTP *mh, ...);
+mhRequestMatcher_t *mhPostRequest(MockHTTP *mh, ...);
 
 /*  */
 mhMatchingPattern_t *mhMatchURLEqualTo(MockHTTP *mh, const char *expected);
@@ -94,6 +98,7 @@ mhRespBuilder_t *
 int mhVerifyRequestReceived(MockHTTP *mh, mhRequestMatcher_t *rm);
 /* There's no difference in these two functions for now. */
 #define mhGetRequestReceivedFor mhGetRequest
+#define mhPostRequestReceivedFor mhPostRequest
 
 #ifdef __cplusplus
 }
