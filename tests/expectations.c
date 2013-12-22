@@ -312,6 +312,48 @@ CTEST2(expectations, test_verify_all_reqs_received_in_order)
     SubmitVerify
 }
 
+CTEST2(expectations, test_verify_all_reqs_received_in_order_more)
+{
+    MockHTTP *mh = data->mh;
+
+    Given(mh)
+      GetRequest(URLEqualTo("/index1.html"))
+      PostRequest(URLEqualTo("/index2.html"))
+      GetRequest(URLEqualTo("/index3.html"))
+      PostRequest(URLEqualTo("/index4.html"))
+      GetRequest(URLEqualTo("/index5.html"))
+      PostRequest(URLEqualTo("/index6.html"))
+      GetRequest(URLEqualTo("/index7.html"))
+      PostRequest(URLEqualTo("/index8.html"))
+    SubmitGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendRequest(ctx, "GET", "/index1.html", hdrs, "1");
+        mhRunServerLoop(mh);
+        sendRequest(ctx, "POST", "/index2.html", hdrs, "2");
+        mhRunServerLoop(mh);
+        sendRequest(ctx, "GET", "/index3.html", hdrs, "3");
+        mhRunServerLoop(mh);
+        sendRequest(ctx, "POST", "/index4.html", hdrs, "4");
+        mhRunServerLoop(mh);
+        sendRequest(ctx, "GET", "/index5.html", hdrs, "5");
+        mhRunServerLoop(mh);
+        sendRequest(ctx, "POST", "/index6.html", hdrs, "6");
+        mhRunServerLoop(mh);
+        sendRequest(ctx, "GET", "/index7.html", hdrs, "7");
+        mhRunServerLoop(mh);
+        sendRequest(ctx, "POST", "/index8.html", hdrs, "8");
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+      ASSERT_TRUE(VerifyAllRequestsReceivedInOrder);
+    SubmitVerify
+}
+
 #if 0
 CTEST2(expectations, test_one_request_response)
 {
