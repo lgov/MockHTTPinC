@@ -29,11 +29,11 @@ extern "C" {
                 MockHTTP *__mh = mh;\
                 mhResponse_t *__resp;\
                 mhRequestMatcher_t *__rm;
-#define   GetRequest(x)\
-                __rm = mhGetRequest(__mh, (x), NULL);\
+#define   GetRequest(...)\
+                __rm = mhGetRequest(__mh, __VA_ARGS__, NULL);\
                 mhPushRequest(__mh, __rm);
-#define   PostRequest(x)\
-                __rm = mhPostRequest(__mh, (x), NULL);\
+#define   PostRequest(...)\
+                __rm = mhPostRequest(__mh, __VA_ARGS__, NULL);\
                 mhPushRequest(__mh, __rm);
 #define     URLEqualTo(x)\
                 mhMatchURLEqualTo(__mh, (x))
