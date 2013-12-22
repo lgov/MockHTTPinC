@@ -23,27 +23,27 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#define mhGIVEN(mh)\
+#define Given(mh)\
             {\
                 MockHTTP *__mh = mh;\
                 mhRequestMatcher_t *__rm;\
                 mhResponse_t *__resp;
-#define   mhGET_REQUEST\
+#define   GetRequest\
                 __rm = mhGetRequest(__mh);
-#define     mhURL_EQUALTO(x)\
+#define     URLEqualTo(x)\
                 mhMatchURLEqualTo(__rm, (x));
-#define   mhRESPOND\
+#define   Respond\
                 __resp = mhResponse(__mh);\
                 mhPushReqResp(__mh, __rm, __resp);
-#define     mhWITH_STATUS(x)\
+#define     WithStatus(x)\
                 mhRespSetStatus(__resp, (x));
-#define     mhWITH_HEADER(h,v)\
+#define     WithHeader(h,v)\
                 mhRespAddHeader(__resp, (h), (v));
-#define     mhWITH_BODY(x)\
+#define     WithBody(x)\
                 mhRespSetBody(__resp, (x));
-#define     mhWITH_CHUNKED_BODY(x)\
+#define     WithChunkedBody(x)\
                 mhRespSetChunkedBody(__resp, (x));
-#define mhSUBMIT_GIVEN\
+#define SubmitGiven\
             }
 
 typedef struct MockHTTP MockHTTP;
@@ -59,6 +59,7 @@ void mhCleanup(MockHTTP *mh);
 void mhRunServerLoop(MockHTTP *mh);
 
 void mhPushReqResp(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp);
+int mhVerifyRequestReceived(MockHTTP *mh, mhRequestMatcher_t *rm);
 
 /* Define expectations*/
 

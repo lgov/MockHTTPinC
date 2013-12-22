@@ -103,10 +103,11 @@ MockHTTP *mhInit()
     mh = apr_palloc(pool, sizeof(struct MockHTTP));
     mh->pool = pool;
     mh->reqs = linkedlist_init(pool);
-    apr_queue_create(&mh->recvdReqs, 5, pool);
+    apr_queue_create(&mh->reqQueue, 5, pool);
+    mh->reqsReceived = apr_array_make(pool, 5, sizeof(mhRequest_t *));
 
     mh->servCtx = _mhInitTestServer(mh, "localhost", DefaultSrvPort,
-                                    mh->recvdReqs);
+                                    mh->reqQueue);
 
     return mh;
 }
@@ -129,8 +130,9 @@ void mhRunServerLoop(MockHTTP *mh)
     void *data;
 
     _mhRunServerLoop(mh->servCtx);
-    if (apr_queue_trypop(mh->recvdReqs, &data) == APR_SUCCESS) {
+    if (apr_queue_trypop(mh->reqQueue, &data) == APR_SUCCESS) {
         req = data;
+        *((mhRequest_t **)apr_array_push(mh->reqsReceived)) = req;
         printf("reaquest added to incoming queue: %s\n", req->method);
     }
 }
@@ -316,4 +318,21 @@ void mhRespSetChunkedBody(mhResponse_t *resp, const char *body)
 void mhRespAddHeader(mhResponse_t *resp, const char *header, const char *value)
 {
     ll_add(resp->hdrs, header, value);
+}
+
+/******************************************************************************/
+/* Verify results                                                             */
+/******************************************************************************/
+int mhVerifyRequestReceived(MockHTTP *mh, mhRequestMatcher_t *rm)
+{
+    int i;
+
+    for (i = 0; i < mh->reqsReceived->nelts; i++)
+    {
+        mhRequest_t *req = APR_ARRAY_IDX(mh->reqsReceived, i, mhRequest_t *);
+        if (_mhRequestMatcherMatch(rm, req) == YES)
+            return YES;
+    }
+
+    return NO;
 }

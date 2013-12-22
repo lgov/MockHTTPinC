@@ -6,6 +6,17 @@
 	objectVersion = 46;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		F34297A91865F87700138981 /* MockHTTP_server.c in Sources */ = {isa = PBXBuildFile; fileRef = F33CD839185F9871008890DD /* MockHTTP_server.c */; };
+		F34297AA1865F87E00138981 /* MockHTTP_private.h in Headers */ = {isa = PBXBuildFile; fileRef = F33CD836185C62DD008890DD /* MockHTTP_private.h */; };
+		F34297AB1865F88000138981 /* MockHTTP.c in Sources */ = {isa = PBXBuildFile; fileRef = F33CD834185BBA22008890DD /* MockHTTP.c */; };
+		F34297AC1865F88600138981 /* MockHTTP.h in Headers */ = {isa = PBXBuildFile; fileRef = F31C552F185B9683006958E7 /* MockHTTP.h */; };
+		F34297AD1865F88A00138981 /* ctest.h in Headers */ = {isa = PBXBuildFile; fileRef = F33CD828185BA2C9008890DD /* ctest.h */; };
+		F34297AE1865F88A00138981 /* expectations.c in Sources */ = {isa = PBXBuildFile; fileRef = F33CD829185BA2E0008890DD /* expectations.c */; };
+		F34297AF1865F88A00138981 /* httpClient.c in Sources */ = {isa = PBXBuildFile; fileRef = F33CD83A1860DCC5008890DD /* httpClient.c */; };
+		F34297B01865F88A00138981 /* tests.h in Headers */ = {isa = PBXBuildFile; fileRef = F33CD83B1860DD7D008890DD /* tests.h */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		F31C552F185B9683006958E7 /* MockHTTP.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MockHTTP.h; sourceTree = "<group>"; };
 		F33CD826185B9F6C008890DD /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
@@ -16,7 +27,18 @@
 		F33CD839185F9871008890DD /* MockHTTP_server.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = MockHTTP_server.c; sourceTree = "<group>"; };
 		F33CD83A1860DCC5008890DD /* httpClient.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = httpClient.c; sourceTree = "<group>"; };
 		F33CD83B1860DD7D008890DD /* tests.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tests.h; sourceTree = "<group>"; };
+		F34297A41865F86A00138981 /* libdummylib.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libdummylib.a; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		F34297A11865F86A00138981 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		F31C5524185B964C006958E7 = {
@@ -28,6 +50,7 @@
 				F33CD826185B9F6C008890DD /* Makefile */,
 				F31C552F185B9683006958E7 /* MockHTTP.h */,
 				F33CD827185BA2C9008890DD /* tests */,
+				F34297A51865F86A00138981 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
@@ -42,7 +65,29 @@
 			path = tests;
 			sourceTree = "<group>";
 		};
+		F34297A51865F86A00138981 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F34297A41865F86A00138981 /* libdummylib.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		F34297A21865F86A00138981 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F34297B01865F88A00138981 /* tests.h in Headers */,
+				F34297AD1865F88A00138981 /* ctest.h in Headers */,
+				F34297AC1865F88600138981 /* MockHTTP.h in Headers */,
+				F34297AA1865F87E00138981 /* MockHTTP_private.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
 
 /* Begin PBXLegacyTarget section */
 		F31C5529185B964C006958E7 /* MockHTTPInC.temp_caseinsensitive_rename */ = {
@@ -61,6 +106,26 @@
 		};
 /* End PBXLegacyTarget section */
 
+/* Begin PBXNativeTarget section */
+		F34297A31865F86A00138981 /* dummylib */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F34297A81865F86A00138981 /* Build configuration list for PBXNativeTarget "dummylib" */;
+			buildPhases = (
+				F34297A01865F86A00138981 /* Sources */,
+				F34297A11865F86A00138981 /* Frameworks */,
+				F34297A21865F86A00138981 /* Headers */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = dummylib;
+			productName = dummylib;
+			productReference = F34297A41865F86A00138981 /* libdummylib.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+/* End PBXNativeTarget section */
+
 /* Begin PBXProject section */
 		F31C5525185B964C006958E7 /* Project object */ = {
 			isa = PBXProject;
@@ -76,13 +141,29 @@
 				en,
 			);
 			mainGroup = F31C5524185B964C006958E7;
+			productRefGroup = F34297A51865F86A00138981 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				F31C5529185B964C006958E7 /* MockHTTPInC.temp_caseinsensitive_rename */,
+				F34297A31865F86A00138981 /* dummylib */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		F34297A01865F86A00138981 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F34297AF1865F88A00138981 /* httpClient.c in Sources */,
+				F34297A91865F87700138981 /* MockHTTP_server.c in Sources */,
+				F34297AB1865F88000138981 /* MockHTTP.c in Sources */,
+				F34297AE1865F88A00138981 /* expectations.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
 		F31C552A185B964C006958E7 /* Debug */ = {
@@ -174,6 +255,26 @@
 			};
 			name = Release;
 		};
+		F34297A61865F86A00138981 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		F34297A71865F86A00138981 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -194,6 +295,14 @@
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
+		};
+		F34297A81865F86A00138981 /* Build configuration list for PBXNativeTarget "dummylib" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F34297A61865F86A00138981 /* Debug */,
+				F34297A71865F86A00138981 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
 		};
 /* End XCConfigurationList section */
 	};

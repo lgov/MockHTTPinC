@@ -19,6 +19,7 @@
 #include <apr_pools.h>
 #include <apr_hash.h>
 #include <apr_queue.h>
+#include <apr_tables.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,7 +50,8 @@ struct MockHTTP {
     apr_pool_t *pool;
     linkedlist_t *reqs;
     servCtx_t *servCtx;
-    apr_queue_t *recvdReqs;
+    apr_queue_t *reqQueue; /* thread safe FIFO queue */
+    apr_array_header_t *reqsReceived;
 };
 
 struct mhMatchingPattern_t {
