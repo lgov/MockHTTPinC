@@ -219,11 +219,6 @@ CTEST2(expectations, test_match_method)
 {
     MockHTTP *mh = data->mh;
 
-    Given(mh)
-        GetRequest(
-                   URLEqualTo("/index.html"))
-    SubmitGiven
-
     /* system under test */
     {
         clientCtx_t *ctx = initClient(mh);
