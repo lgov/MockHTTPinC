@@ -25,11 +25,6 @@
 static const int DefaultSrvPort =   30080;
 static const int DefaultProxyPort = 38080;
 
-struct mhMatchingPattern_t {
-    const void *baton;
-    matchfunc_t matcher;
-};
-
 typedef struct ReqMatcherRespPair_t {
     mhRequestMatcher_t *rm;
     mhResponse_t *resp;

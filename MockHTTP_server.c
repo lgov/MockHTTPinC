@@ -150,6 +150,8 @@ _mhInitTestServer(MockHTTP *mh, const char *hostname,apr_port_t port,
 /* Parse a request structure from incoming data                               */
 /******************************************************************************/
 
+/* *len will be non-0 if a line ending with CRLF was found. buf will be copied 
+   in mem allocatod from cctx->pool, cctx->buf ptrs will be moved. */
 static void readLine(clientCtx_t *cctx, const char **buf, apr_size_t *len)
 {
     const char *ptr = cctx->buf;
@@ -157,114 +159,160 @@ static void readLine(clientCtx_t *cctx, const char **buf, apr_size_t *len)
     *len = 0;
     while (*ptr && ptr - cctx->buf < cctx->buflen) {
         if (*ptr == '\r' && *(ptr+1) == '\n') {
-            *buf = cctx->buf;
             *len = ptr - cctx->buf + 2;
+            *buf = apr_pstrndup(cctx->pool, cctx->buf, *len);
+
+            cctx->buflen -= *len; /* eat line */
+            cctx->bufrem += *len;
+            memcpy(cctx->buf, cctx->buf + *len, cctx->buflen);
+
             break;
         }
         ptr++;
     }
 }
 
-/* New request data was made available, read status line/hdrs/body (chunks) */
-static apr_status_t processData(clientCtx_t *cctx)
+/* APR_EAGAIN if no line ready, APR_SUCCESS + done = YES if request line parsed */
+static apr_status_t readReqLine(clientCtx_t *cctx, mhRequest_t *req, bool *done)
+{
+    const char *start, *ptr, *version;
+    const char *buf;
+    apr_size_t len;
+
+    *done = FALSE;
+
+    readLine(cctx, &buf, &len);
+    if (!len) return APR_EAGAIN;
+
+    /* TODO: add checks for incomplete request line */
+    start = ptr = buf;
+    while (*ptr != ' ' && *ptr != '\r') ptr++;
+    req->method = apr_pstrndup(cctx->pool, start, ptr-start);
+
+    ptr++; start = ptr;
+    while (*ptr != ' ' && *ptr != '\r') ptr++;
+    req->url = apr_pstrndup(cctx->pool, start, ptr-start);
+
+    ptr++; start = ptr;
+    while (*ptr != ' ' && *ptr != '\r') ptr++;
+    version = apr_pstrndup(cctx->pool, start, ptr-start);
+    req->version = (version[5] - '0') * 100 +
+    version[7] - '0';
+
+    *done = TRUE;
+
+    return APR_SUCCESS;
+}
+
+/* APR_EAGAIN if no line ready, APR_SUCCESS + done = YES when LAST header was
+   parsed */
+static apr_status_t readHeader(clientCtx_t *cctx, mhRequest_t *req, bool *done)
 {
     const char *buf;
     apr_size_t len;
+
+    *done = NO;
+
+    readLine(cctx, &buf, &len);
+    if (!len) return APR_EAGAIN;
+
+    if (len == 2 && *buf == '\r' && *(buf+1) == '\n') {
+        *done = YES;
+        return APR_SUCCESS;
+    } else {
+        const char *start = buf, *ptr = buf;
+        const char *hdr, *val;
+        while (*ptr != ':' && *ptr != '\r') ptr++;
+        hdr = apr_pstrndup(cctx->pool, start, ptr-start);
+
+        ptr++; while (*ptr == ' ') ptr++; start = ptr;
+        while (*ptr != '\r') ptr++;
+        val = apr_pstrndup(cctx->pool, start, ptr-start);
+
+        apr_hash_set(cctx->req->hdrs, hdr, APR_HASH_KEY_STRING, val);
+    }
+    return APR_SUCCESS;
+}
+
+/* APR_EAGAIN if not all data is ready, APR_SUCCESS + done = YES if body
+   completely received. */
+static apr_status_t readBody(clientCtx_t *cctx, mhRequest_t *req, bool *done)
+{
+    const char *clstr;
+    long cl;
+    apr_size_t len;
+
+    clstr = apr_hash_get(cctx->req->hdrs, "Content-Length",
+                         APR_HASH_KEY_STRING);
+    cl = atol(clstr);
+    if (cctx->req->body == NULL) {
+        cctx->req->body = apr_palloc(cctx->pool, cl);
+    }
+
+    len = (cctx->buflen < (cl - cctx->req->bodyLen)) ?
+                    cctx->buflen : /* partial body */
+                    cl;            /* full body */
+    memcpy(cctx->req->body + cctx->req->bodyLen, cctx->buf, len);
+    cctx->req->bodyLen += len;
+
+    cctx->buflen -= len; /* eat body */
+    cctx->bufrem += len;
+    memcpy(cctx->buf, cctx->buf + len, cctx->buflen);
+
+    if (cctx->req->bodyLen < cl)
+        return APR_EAGAIN;
+
+    *done = YES;
+    return APR_SUCCESS;
+}
+
+/* New request data was made available, read status line/hdrs/body (chunks) */
+static apr_status_t processData(clientCtx_t *cctx)
+{
+    bool done;
     apr_status_t status = APR_SUCCESS;
+
+    if (cctx->buflen == 0)
+        return APR_EAGAIN; /* more data needed */
 
     if (cctx->req == NULL) {
         cctx->req = apr_pcalloc(cctx->pool, sizeof(mhRequest_t));
         cctx->req->hdrs = apr_hash_make(cctx->pool);
     }
 
+    done = NO;
     switch(cctx->req->readState) {
         case 0: /* status line */
-        {
-            const char *start, *ptr, *version;
-
-            readLine(cctx, &buf, &len);
-            if (!len) return APR_EAGAIN;
-
-            start = ptr = buf;
-            while (*ptr != ' ' && *ptr != '\r') ptr++;
-            cctx->req->method = apr_pstrndup(cctx->pool, start, ptr-start);
-
-            ptr++; start = ptr;
-            while (*ptr != ' ' && *ptr != '\r') ptr++;
-            cctx->req->url = apr_pstrndup(cctx->pool, start, ptr-start);
-
-            ptr++; start = ptr;
-            while (*ptr != ' ' && *ptr != '\r') ptr++;
-            version = apr_pstrndup(cctx->pool, start, ptr-start);
-            cctx->req->version = (version[5] - '0') * 100 +
-            version[7] - '0';
-
-            cctx->req->readState++;
+            STATUSREADERR(readReqLine(cctx, cctx->req, &done));
             break;
-        }
         case 1: /* headers */
-        {
-            readLine(cctx, &buf, &len);
-            if (!len) return APR_EAGAIN;
-
-            if (len > 2) {
-                const char *start = buf, *ptr = buf;
-                const char *hdr, *val;
-                while (*ptr != ':' && *ptr != '\r') ptr++;
-                hdr = apr_pstrndup(cctx->pool, start, ptr-start);
-
-                ptr++; while (*ptr == ' ') ptr++; start = ptr;
-                while (*ptr != '\r') ptr++;
-                val = apr_pstrndup(cctx->pool, start, ptr-start);
-
-                apr_hash_set(cctx->req->hdrs, hdr, APR_HASH_KEY_STRING, val);
-            } else {
-                cctx->req->readState++;
-            }
+            STATUSREADERR(readHeader(cctx, cctx->req, &done));
             break;
-        }
         case 2: /* body */
         {
             const char *clstr;
-            long cl;
             clstr = apr_hash_get(cctx->req->hdrs, "Content-Length",
                                  APR_HASH_KEY_STRING);
-            /* TODO: chunked */
-            cl = atol(clstr);
-
-            if (cctx->req->body == NULL) {
-                cctx->req->body = apr_palloc(cctx->pool, cl);
+            if (clstr) {
+                STATUSREADERR(readBody(cctx, cctx->req, &done));
+            } else {
+                /* TODO: chunked */
             }
-
-            len = cctx->buflen < (cl - cctx->req->bodyLen) ? cctx->buflen : cl;
-            memcpy(cctx->req->body + cctx->req->bodyLen, cctx->buf, len);
-            cctx->req->bodyLen += len;
-
-            if (cctx->req->bodyLen >= cl)
-                cctx->req->readState++;
-            else
-                status = APR_EAGAIN;
-
             break;
         }
         case 3: /* finished */
-        {
-            len = 0;
             printf("server received request: %s\n", cctx->req->method);
-            return APR_EOF;
-        }
+            status = APR_EOF;
+            break;
     }
+    if (done) cctx->req->readState++;
 
-    if (len) {
-        cctx->buflen -= len; /* eat line */
-        cctx->bufrem += len;
-        memcpy(cctx->buf, cctx->buf+len, cctx->buflen);
-    }
+/*    printf("buflen: %ld\n", cctx->buflen);*/
 
-    if (*cctx->buf == '\0')
+    if (cctx->buflen == 0)
         return APR_EOF;
 
-    return APR_SUCCESS;
+    return status;
 }
 
 static apr_status_t readRequest(clientCtx_t *cctx, apr_queue_t *reqQueue)
@@ -289,7 +337,8 @@ static apr_status_t readRequest(clientCtx_t *cctx, apr_queue_t *reqQueue)
                 if (cctx->req) {
                     apr_queue_push(reqQueue, cctx->req);
                     cctx->req = NULL;
-                }
+                } else
+                    break; /* no more data */
             }
             if (status == APR_EAGAIN)
                 break;

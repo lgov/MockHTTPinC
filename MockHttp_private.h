@@ -79,6 +79,11 @@ struct mhRequestMatcher_t {
     apr_array_header_t *matchers;
 };
 
+struct mhMatchingPattern_t {
+    const void *baton;
+    matchfunc_t matcher;
+};
+
 typedef void (* respbuilderfunc_t)(mhResponse_t *resp, void *baton);
 
 struct mhRespBuilder_t {
