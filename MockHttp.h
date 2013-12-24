@@ -47,7 +47,7 @@ extern "C" {
 #define     WithBody(x)\
                 mhRespSetBody(__mh, (x))
 #define     WithChunkedBody(x)\
-                mhRespSetChunkedBody(__mh, (x));
+                mhRespSetChunkedBody(__mh, (x))
 /* Assign local variables to NULL to avoid 'variable unused' warnings. */
 #define SubmitGiven\
                 __resp = NULL; __rm = NULL; __mh = NULL;\
