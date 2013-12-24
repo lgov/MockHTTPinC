@@ -11,7 +11,7 @@ xcuserdata
 *.mode2v3
 
 .svn
-simplespdy
-
 # osx noise
 profile
+
+tests/mockhttp_tests
