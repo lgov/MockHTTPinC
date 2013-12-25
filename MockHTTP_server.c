@@ -301,30 +301,36 @@ static apr_status_t readChunk(clientCtx_t *cctx, mhRequest_t *req, bool *done)
 
     *done = NO;
 
-    /* TODO: state2 **/
+    /* TODO: state2 for partial chunks **/
     readLine(cctx, &buf, &len);
     if (!len) return APR_EAGAIN;
     
     chlen = apr_strtoi64(buf, NULL, 16); /* read hex chunked length */
 
-    if (cctx->req->body == NULL) {
-        cctx->req->body = apr_palloc(cctx->pool, chlen);
-    } else {
-        /* TODO: more than one chunk */
+    if (chlen) {
+        if (cctx->req->body == NULL) {
+            cctx->req->body = apr_palloc(cctx->pool, chlen+1);
+        } else {
+            char *newbody;
+            newbody = apr_palloc(cctx->pool, chlen + cctx->buflen+1);
+            memcpy(newbody, cctx->req->body, cctx->req->bodyLen);
+            cctx->req->body = newbody;
+        }
+
+        len = (cctx->buflen < (chlen - cctx->req->bodyLen)) ?
+                        cctx->buflen : /* partial chunk */
+                        chlen;         /* full chunk */
+        memcpy(cctx->req->body + cctx->req->bodyLen, cctx->buf, len);
+        cctx->req->bodyLen += len;
+        *(cctx->req->body + cctx->req->bodyLen) = '\0';
+
+        cctx->buflen -= len; /* eat chunk */
+        cctx->bufrem += len;
+        memcpy(cctx->buf, cctx->buf + len, cctx->buflen);
+
+        if (len < chlen) /* TODO: fix */
+            return APR_EAGAIN;
     }
-
-    len = (cctx->buflen < (chlen - cctx->req->bodyLen)) ?
-                    cctx->buflen : /* partial chunk */
-                    chlen;         /* full chunk */
-    memcpy(cctx->req->body + cctx->req->bodyLen, cctx->buf, len);
-    cctx->req->bodyLen += len;
-
-    cctx->buflen -= len; /* eat chunk */
-    cctx->bufrem += len;
-    memcpy(cctx->buf, cctx->buf + len, cctx->buflen);
-
-    if (cctx->req->bodyLen < chlen)
-        return APR_EAGAIN;
 
     readLine(cctx, &buf, &len);
     if (len < 2) return APR_EAGAIN;

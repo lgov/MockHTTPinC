@@ -130,18 +130,19 @@ mhRequest_t *_mhRequestInit(MockHTTP *mh)
 /* Requests matchers: define criteria to match different aspects of a HTTP    */
 /* request received by the MockHTTP server.                                   */
 /******************************************************************************/
-static int url_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
+static int str_matcher(const mhMatchingPattern_t *mp, const char *actual)
 {
     const char *expected = mp->baton;
 
-    /* Explicitly asked to test the URL, so ensure all strings are set */
-    if (expected == NULL || req->url == NULL)
-        return NO;
-
-    if (strcmp(expected, req->url) == 0)
+    if (expected && actual && strcmp(expected, actual) == 0)
         return YES;
 
     return NO;
+}
+
+static int url_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
+{
+    return str_matcher(mp, req->url);
 }
 
 mhMatchingPattern_t *
@@ -152,6 +153,23 @@ mhMatchURLEqualTo(MockHTTP *mh, const char *expected)
     mhMatchingPattern_t *mp = apr_palloc(pool, sizeof(mhMatchingPattern_t));
     mp->baton = apr_pstrdup(pool, expected);
     mp->matcher = url_matcher;
+
+    return mp;
+}
+
+static int body_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
+{
+    return str_matcher(mp, req->body);
+}
+
+mhMatchingPattern_t *
+mhMatchBodyEqualTo(MockHTTP *mh, const char *expected)
+{
+    apr_pool_t *pool = mh->pool;
+
+    mhMatchingPattern_t *mp = apr_palloc(pool, sizeof(mhMatchingPattern_t));
+    mp->baton = apr_pstrdup(pool, expected);
+    mp->matcher = body_matcher;
 
     return mp;
 }
@@ -251,11 +269,11 @@ _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, const mhRequest_t *req)
         const mhMatchingPattern_t *mp;
 
         mp = APR_ARRAY_IDX(rm->matchers, i, mhMatchingPattern_t *);
-        if (mp->matcher(mp, req) == YES)
-            return YES;
+        if (mp->matcher(mp, req) == NO)
+            return NO;
     }
 
-    return NO;
+    return YES;
 }
 
 /******************************************************************************/

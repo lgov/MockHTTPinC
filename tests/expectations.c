@@ -360,16 +360,18 @@ CTEST2(expectations, test_verify_req_chunked_body)
 
     Given(mh)
       GetRequest(
-        URLEqualTo("/index1.html"))
+        URLEqualTo("/index1.html"),
+        BodyEqualTo("1"))
       GetRequest(
-        URLEqualTo("/index2.html"))
+        URLEqualTo("/index2.html"),
+        BodyEqualTo("chunk1chunk2"))
     SubmitGiven
 
     /* system under test */
     {
         clientCtx_t *ctx = initClient(mh);
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
-        sendChunkedRequest(ctx, "GET", "/index.html", hdrs, "1", NULL);
+        sendChunkedRequest(ctx, "GET", "/index1.html", hdrs, "1", NULL);
         mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
         mhRunServerLoop(mh);
         sendChunkedRequest(ctx, "GET", "/index2.html", hdrs, "chunk1",
