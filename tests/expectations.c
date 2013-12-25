@@ -43,7 +43,7 @@ CTEST_TEARDOWN(expectations)
     mhCleanup(data->mh);
 }
 
-#if 0
+#if 1
 CTEST2(expectations, test_mock_init)
 {
     MockHTTP *mh = data->mh;
@@ -361,10 +361,11 @@ CTEST2(expectations, test_verify_req_chunked_body)
     Given(mh)
       GetRequest(
         URLEqualTo("/index1.html"),
-        BodyEqualTo("1"))
+        ChunkedBodyEqualTo("1"))
       GetRequest(
         URLEqualTo("/index2.html"),
-        BodyEqualTo("chunk1chunk2"))
+        ChunkedBodyEqualTo("chunk1chunk2"))
+
     SubmitGiven
 
     /* system under test */

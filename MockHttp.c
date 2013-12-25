@@ -130,7 +130,7 @@ mhRequest_t *_mhRequestInit(MockHTTP *mh)
 /* Requests matchers: define criteria to match different aspects of a HTTP    */
 /* request received by the MockHTTP server.                                   */
 /******************************************************************************/
-static int str_matcher(const mhMatchingPattern_t *mp, const char *actual)
+static bool str_matcher(const mhMatchingPattern_t *mp, const char *actual)
 {
     const char *expected = mp->baton;
 
@@ -140,7 +140,7 @@ static int str_matcher(const mhMatchingPattern_t *mp, const char *actual)
     return NO;
 }
 
-static int url_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
+static bool url_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
 {
     return str_matcher(mp, req->url);
 }
@@ -157,8 +157,10 @@ mhMatchURLEqualTo(MockHTTP *mh, const char *expected)
     return mp;
 }
 
-static int body_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
+static bool body_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
 {
+    if (req->chunked == YES)
+        return NO;
     return str_matcher(mp, req->body);
 }
 
@@ -170,6 +172,26 @@ mhMatchBodyEqualTo(MockHTTP *mh, const char *expected)
     mhMatchingPattern_t *mp = apr_palloc(pool, sizeof(mhMatchingPattern_t));
     mp->baton = apr_pstrdup(pool, expected);
     mp->matcher = body_matcher;
+
+    return mp;
+}
+
+static bool
+chunked_body_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
+{
+    if (req->chunked == NO)
+        return NO;
+    return str_matcher(mp, req->body);
+}
+
+mhMatchingPattern_t *
+mhMatchChunkedBodyEqualTo(MockHTTP *mh, const char *expected)
+{
+    apr_pool_t *pool = mh->pool;
+
+    mhMatchingPattern_t *mp = apr_palloc(pool, sizeof(mhMatchingPattern_t));
+    mp->baton = apr_pstrdup(pool, expected);
+    mp->matcher = chunked_body_matcher;
 
     return mp;
 }
@@ -191,7 +213,8 @@ static int strcicmp(const char *a, const char *b)
     }
 }
 
-static int method_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
+static bool
+method_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
 {
     const char *expected = mp->baton;
 

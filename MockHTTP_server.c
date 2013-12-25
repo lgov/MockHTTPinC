@@ -271,6 +271,8 @@ static apr_status_t readBody(clientCtx_t *cctx, mhRequest_t *req, bool *done)
     long cl;
     apr_size_t len;
 
+    req->chunked = NO;
+
     clstr = getHeader(cctx->pool, cctx->req->hdrs, "Content-Length");
     cl = atol(clstr);
     if (cctx->req->body == NULL) {
@@ -351,6 +353,7 @@ static apr_status_t readChunked(clientCtx_t *cctx, mhRequest_t *req, bool *done)
     apr_status_t status;
 
     *done = NO;
+    req->chunked = YES;
 
     while (*done == NO)
         STATUSERR(readChunk(cctx, req, done));

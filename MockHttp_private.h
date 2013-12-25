@@ -36,13 +36,13 @@ extern "C" {
 #define STATUSREADERR(x) if (((status = (x)) && READ_ERROR(status)))\
                             return status;
 
-typedef int (*matchfunc_t)(const mhMatchingPattern_t *mp,
-                           const mhRequest_t *req);
-typedef struct servCtx_t servCtx_t;
-
 typedef short int bool;
 static const bool YES = 1;
 static const bool NO = 0;
+
+typedef bool (*matchfunc_t)(const mhMatchingPattern_t *mp,
+                           const mhRequest_t *req);
+typedef struct servCtx_t servCtx_t;
 
 struct MockHTTP {
     apr_pool_t *pool;
@@ -59,6 +59,7 @@ struct mhRequest_t {
     int version;
     char *body;
     apr_size_t bodyLen;
+    bool chunked;
     int readState;
 };
 
