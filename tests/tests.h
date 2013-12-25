@@ -28,6 +28,9 @@ typedef struct clientCtx_t clientCtx_t ;
 clientCtx_t *initClient(MockHTTP *mh);
 void sendRequest(clientCtx_t *ctx, const char *method, const char *url,
                  apr_hash_t *hdrs, const char *body);
+void sendChunkedRequest(clientCtx_t *ctx, const char *method, const char *url,
+                        apr_hash_t *hdrs, ...);
+
 void receiveResponse(clientCtx_t *ctx);
 
 #endif /* MockHTTPInC_tests.h */

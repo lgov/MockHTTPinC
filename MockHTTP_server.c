@@ -15,6 +15,8 @@
 
 #include <apr_thread_proc.h>
 #include <apr_strings.h>
+#include <apr_lib.h>
+
 #include <stdlib.h>
 
 #include "MockHTTP.h"
@@ -150,6 +152,33 @@ _mhInitTestServer(MockHTTP *mh, const char *hostname,apr_port_t port,
 /* Parse a request structure from incoming data                               */
 /******************************************************************************/
 
+static const char *toLower(apr_pool_t *pool, const char *str)
+{
+    char *lstr, *l;
+    const char *u;
+
+    lstr = apr_palloc(pool, strlen(str) + 1);
+    for (u = str, l = lstr; *u != 0; u++, l++)
+        *l = (char)apr_tolower(*u);
+    *l = '\0';
+
+    return lstr;
+}
+
+static void setHeader(apr_pool_t *pool, apr_hash_t *hdrs, const char *hdr, const char *val)
+{
+    const char *lhdr = toLower(pool, hdr);
+
+    apr_hash_set(hdrs, lhdr, APR_HASH_KEY_STRING, val);
+}
+
+static const char *
+getHeader(apr_pool_t *pool, apr_hash_t *hdrs, const char *hdr)
+{
+    const char *lhdr = toLower(pool, hdr);
+    return apr_hash_get(hdrs, lhdr, APR_HASH_KEY_STRING);
+}
+
 /* *len will be non-0 if a line ending with CRLF was found. buf will be copied 
    in mem allocatod from cctx->pool, cctx->buf ptrs will be moved. */
 static void readLine(clientCtx_t *cctx, const char **buf, apr_size_t *len)
@@ -229,7 +258,7 @@ static apr_status_t readHeader(clientCtx_t *cctx, mhRequest_t *req, bool *done)
         while (*ptr != '\r') ptr++;
         val = apr_pstrndup(cctx->pool, start, ptr-start);
 
-        apr_hash_set(cctx->req->hdrs, hdr, APR_HASH_KEY_STRING, val);
+        setHeader(cctx->pool, cctx->req->hdrs, hdr, val);
     }
     return APR_SUCCESS;
 }
@@ -242,8 +271,7 @@ static apr_status_t readBody(clientCtx_t *cctx, mhRequest_t *req, bool *done)
     long cl;
     apr_size_t len;
 
-    clstr = apr_hash_get(cctx->req->hdrs, "Content-Length",
-                         APR_HASH_KEY_STRING);
+    clstr = getHeader(cctx->pool, cctx->req->hdrs, "Content-Length");
     cl = atol(clstr);
     if (cctx->req->body == NULL) {
         cctx->req->body = apr_palloc(cctx->pool, cl);
@@ -264,6 +292,64 @@ static apr_status_t readBody(clientCtx_t *cctx, mhRequest_t *req, bool *done)
 
     *done = YES;
     return APR_SUCCESS;
+}
+
+static apr_status_t readChunk(clientCtx_t *cctx, mhRequest_t *req, bool *done)
+{
+    const char *buf;
+    apr_size_t len, chlen;
+
+    *done = NO;
+
+    /* TODO: state2 **/
+    readLine(cctx, &buf, &len);
+    if (!len) return APR_EAGAIN;
+    
+    chlen = apr_strtoi64(buf, NULL, 16); /* read hex chunked length */
+
+    if (cctx->req->body == NULL) {
+        cctx->req->body = apr_palloc(cctx->pool, chlen);
+    } else {
+        /* TODO: more than one chunk */
+    }
+
+    len = (cctx->buflen < (chlen - cctx->req->bodyLen)) ?
+                    cctx->buflen : /* partial chunk */
+                    chlen;         /* full chunk */
+    memcpy(cctx->req->body + cctx->req->bodyLen, cctx->buf, len);
+    cctx->req->bodyLen += len;
+
+    cctx->buflen -= len; /* eat chunk */
+    cctx->bufrem += len;
+    memcpy(cctx->buf, cctx->buf + len, cctx->buflen);
+
+    if (cctx->req->bodyLen < chlen)
+        return APR_EAGAIN;
+
+    readLine(cctx, &buf, &len);
+    if (len < 2) return APR_EAGAIN;
+
+    if (len == 2 && *buf == '\r' && *(buf+1) == '\n') {
+        if (chlen == 0) /* body ends with chunk of length 0 */
+            *done = YES;
+        return APR_SUCCESS;
+    } else {
+        return APR_EGENERAL; /* TODO: error code */
+    }
+
+    return APR_SUCCESS;
+}
+
+static apr_status_t readChunked(clientCtx_t *cctx, mhRequest_t *req, bool *done)
+{
+    apr_status_t status;
+
+    *done = NO;
+
+    while (*done == NO)
+        STATUSERR(readChunk(cctx, req, done));
+
+    return status;
 }
 
 /* New request data was made available, read status line/hdrs/body (chunks) */
@@ -290,13 +376,17 @@ static apr_status_t processData(clientCtx_t *cctx)
             break;
         case 2: /* body */
         {
-            const char *clstr;
-            clstr = apr_hash_get(cctx->req->hdrs, "Content-Length",
-                                 APR_HASH_KEY_STRING);
+            const char *clstr, *chstr;
+            clstr = getHeader(cctx->pool, cctx->req->hdrs,
+                              "Content-Length");
             if (clstr) {
                 STATUSREADERR(readBody(cctx, cctx->req, &done));
             } else {
-                /* TODO: chunked */
+                chstr = getHeader(cctx->pool, cctx->req->hdrs,
+                                  "Transfer-Encoding");
+                /* TODO: chunked can be one or more encodings */
+                if (apr_strnatcasecmp(chstr, "chunked") == 0)
+                    STATUSREADERR(readChunked(cctx, cctx->req, &done));
             }
             break;
         }

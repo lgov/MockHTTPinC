@@ -73,8 +73,8 @@ clientCtx_t *initClient(MockHTTP *mh)
     return ctx;
 }
 
-void sendRequest(clientCtx_t *ctx, const char *method, const char *url,
-                 apr_hash_t *hdrs, const char *body)
+static void _sendRequest(clientCtx_t *ctx, const char *method, const char *url,
+                         apr_hash_t *hdrs, const char *body)
 {
     const char *line;
     const char *hdrstr;
@@ -91,16 +91,7 @@ void sendRequest(clientCtx_t *ctx, const char *method, const char *url,
     apr_uri_parse(ctx->pool, url, &uri);
 
     /* request line */
-    line = apr_psprintf(ctx->pool, "%s %s HTTP/1.1\r\n",
-                        method, uri.path);
-
-    /* body */
-    if (1) { /* not chunked */
-        len = strlen(body);
-        apr_hash_set(hdrs, "Content-Length", APR_HASH_KEY_STRING,
-                     apr_itoa(ctx->pool, len));
-
-    }
+    line = apr_psprintf(ctx->pool, "%s %s HTTP/1.1\r\n", method, uri.path);
 
     /* headers */
     {
@@ -123,6 +114,45 @@ void sendRequest(clientCtx_t *ctx, const char *method, const char *url,
     len = strlen(line);
 
     status = apr_socket_send(ctx->skt, line, &len);
+}
+
+
+void sendChunkedRequest(clientCtx_t *ctx, const char *method, const char *url,
+                        apr_hash_t *hdrs, ...)
+{
+    va_list argp;
+    const char *body = "";
+
+    apr_hash_set(hdrs, "Transfer-Encoding", APR_HASH_KEY_STRING, "chunked");
+
+    va_start(argp, hdrs);
+    while (1) {
+        const char *chunk;
+        apr_size_t len;
+
+        chunk = va_arg(argp, const char *);
+        if (chunk == NULL) break;
+
+        len = strlen(chunk);
+        body = apr_psprintf(ctx->pool, "%s%" APR_UINT64_T_HEX_FMT "\r\n%s\r\n",
+                            body, (apr_uint64_t)len, chunk);
+    }
+    body = apr_psprintf(ctx->pool, "%s0\r\n\r\n", body);
+    va_end(argp);
+
+    _sendRequest(ctx, method, url, hdrs, body);
+}
+
+void sendRequest(clientCtx_t *ctx, const char *method, const char *url,
+                 apr_hash_t *hdrs, const char *body)
+{
+    apr_size_t len;
+
+    len = strlen(body);
+    apr_hash_set(hdrs, "Content-Length", APR_HASH_KEY_STRING,
+                 apr_itoa(ctx->pool, len));
+
+    _sendRequest(ctx, method, url, hdrs, body);
 }
 
 static apr_status_t receiveData(clientCtx_t *ctx, char *buf, apr_size_t *len)

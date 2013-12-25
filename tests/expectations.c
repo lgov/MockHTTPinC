@@ -43,7 +43,7 @@ CTEST_TEARDOWN(expectations)
     mhCleanup(data->mh);
 }
 
-#if 1
+#if 0
 CTEST2(expectations, test_mock_init)
 {
     MockHTTP *mh = data->mh;
@@ -284,7 +284,6 @@ CTEST2(expectations, test_verify_all_reqs_received_inverse)
         ASSERT_FALSE(VerifyAllRequestsReceived);
     SubmitVerify
 }
-#endif
 
 CTEST2(expectations, test_verify_all_reqs_received_in_order)
 {
@@ -353,6 +352,37 @@ CTEST2(expectations, test_verify_all_reqs_received_in_order_more)
       ASSERT_TRUE(VerifyAllRequestsReceivedInOrder);
     SubmitVerify
 }
+#endif
+
+CTEST2(expectations, test_verify_req_chunked_body)
+{
+    MockHTTP *mh = data->mh;
+
+    Given(mh)
+      GetRequest(
+        URLEqualTo("/index1.html"))
+      GetRequest(
+        URLEqualTo("/index2.html"))
+    SubmitGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendChunkedRequest(ctx, "GET", "/index.html", hdrs, "1", NULL);
+        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        mhRunServerLoop(mh);
+        sendChunkedRequest(ctx, "GET", "/index2.html", hdrs, "chunk1",
+                           "chunk2", NULL);
+        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+      ASSERT_TRUE(VerifyAllRequestsReceived);
+    SubmitVerify
+}
+
 #if 0
 CTEST2(expectations, test_one_request_response)
 {
