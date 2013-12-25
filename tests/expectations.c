@@ -364,8 +364,7 @@ CTEST2(expectations, test_verify_req_chunked_body)
         ChunkedBodyEqualTo("1"))
       GetRequest(
         URLEqualTo("/index2.html"),
-        ChunkedBodyEqualTo("chunk1chunk2"))
-
+        ChunkedBodyChunksEqualTo("chunk1", "chunk2"))
     SubmitGiven
 
     /* system under test */
@@ -384,6 +383,53 @@ CTEST2(expectations, test_verify_req_chunked_body)
     Verify(mh)
       ASSERT_TRUE(VerifyAllRequestsReceived);
     SubmitVerify
+}
+
+CTEST2(expectations, test_verify_req_chunked_body_fails)
+{
+    MockHTTP *mh = data->mh;
+
+    Given(mh)
+      GetRequest(
+        URLEqualTo("/index.html"),
+          ChunkedBodyChunksEqualTo("chunk1", "chunk2"))
+    SubmitGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendChunkedRequest(ctx, "GET", "/index.html", hdrs, "chunk1",
+                           "chunk2", "chunk3", NULL);
+        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+      ASSERT_FALSE(VerifyAllRequestsReceived);
+    SubmitVerify
+
+    Given(mh)
+      GetRequest(
+        URLEqualTo("/index2.html"),
+          ChunkedBodyChunksEqualTo("chunk1", "chunk2"))
+    SubmitGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendChunkedRequest(ctx, "GET", "/index.html", hdrs, "chunk notfound",
+                           "chunk2", NULL);
+        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+      ASSERT_FALSE(VerifyAllRequestsReceived);
+    SubmitVerify
+
+
 }
 
 #if 0

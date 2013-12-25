@@ -310,21 +310,20 @@ static apr_status_t readChunk(clientCtx_t *cctx, mhRequest_t *req, bool *done)
     chlen = apr_strtoi64(buf, NULL, 16); /* read hex chunked length */
 
     if (chlen) {
-        if (cctx->req->body == NULL) {
-            cctx->req->body = apr_palloc(cctx->pool, chlen+1);
-        } else {
-            char *newbody;
-            newbody = apr_palloc(cctx->pool, chlen + cctx->buflen+1);
-            memcpy(newbody, cctx->req->body, cctx->req->bodyLen);
-            cctx->req->body = newbody;
-        }
+        char *chunk;
 
+        if (cctx->req->chunks == NULL) {
+            cctx->req->chunks = apr_array_make(cctx->pool, 5,
+                                               sizeof(const char *));
+        }
+        chunk = apr_palloc(cctx->pool, chlen + 1);
         len = (cctx->buflen < (chlen - cctx->req->bodyLen)) ?
                         cctx->buflen : /* partial chunk */
                         chlen;         /* full chunk */
-        memcpy(cctx->req->body + cctx->req->bodyLen, cctx->buf, len);
-        cctx->req->bodyLen += len;
-        *(cctx->req->body + cctx->req->bodyLen) = '\0';
+        memcpy(chunk, cctx->buf, len);
+        *(chunk + len) = '\0';
+
+        *((const char **)apr_array_push(cctx->req->chunks)) = chunk;
 
         cctx->buflen -= len; /* eat chunk */
         cctx->bufrem += len;

@@ -39,8 +39,13 @@ extern "C" {
                 mhMatchURLEqualTo(__mh, (x))
 #define     BodyEqualTo(x)\
                 mhMatchBodyEqualTo(__mh, (x))
+/*          Network-level tests */
+#define     NotChunkedBodyEqualTo(x)\
+                mhMatchNotChunkedBodyEqualTo(__mh, (x))
 #define     ChunkedBodyEqualTo(x)\
                 mhMatchChunkedBodyEqualTo(__mh, (x))
+#define     ChunkedBodyChunksEqualTo(...)\
+                mhMatchChunkedBodyChunksEqualTo(__mh, __VA_ARGS__, NULL)
 #define   Respond(...)\
                 __resp = mhResponse(__mh, __VA_ARGS__, NULL);\
                 mhSetRespForReq(__mh, __rm, __resp);
@@ -98,7 +103,12 @@ mhRequestMatcher_t *mhPostRequest(MockHTTP *mh, ...);
 mhMatchingPattern_t *mhMatchURLEqualTo(MockHTTP *mh, const char *expected);
 mhMatchingPattern_t *mhMatchMethodEqualTo(MockHTTP *mh, const char *expected);
 mhMatchingPattern_t *mhMatchBodyEqualTo(MockHTTP *mh, const char *expected);
-mhMatchingPattern_t *mhMatchChunkedBodyEqualTo(MockHTTP *mh, const char *expected);
+/* Network level matching functions, for testing of http libraries */
+mhMatchingPattern_t *mhMatchBodyNotChunkedEqualTo(MockHTTP *mh,
+                                                  const char *expected);
+mhMatchingPattern_t *mhMatchChunkedBodyEqualTo(MockHTTP *mh,
+                                               const char *expected);
+mhMatchingPattern_t *mhMatchChunkedBodyChunksEqualTo(MockHTTP *mh, ...);
 
 /* Response functions */
 mhResponse_t *mhResponse(MockHTTP *mh, ...);

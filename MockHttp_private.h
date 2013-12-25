@@ -60,6 +60,7 @@ struct mhRequest_t {
     char *body;
     apr_size_t bodyLen;
     bool chunked;
+    apr_array_header_t *chunks;
     int readState;
 };
 
