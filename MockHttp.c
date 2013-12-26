@@ -319,7 +319,7 @@ static bool
 header_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
                const mhRequest_t *req)
 {
-    const char *actual = getHeader(mp, req->hdrs, mp->baton2);
+    const char *actual = getHeader(pool, req->hdrs, mp->baton2);
     return str_matcher(mp, actual);
 }
 
@@ -336,29 +336,12 @@ mhMatchHeaderEqualTo(MockHTTP *mh, const char *hdr, const char *value)
     return mp;
 }
 
-static int strcicmp(const char *a, const char *b)
-{
-    for (;; a++, b++) {
-        int d;
-        if (!*a) {
-            if (!*b)
-                return 0;
-            return -1;
-        } else if (!*b) {
-            return 1;
-        }
-        d = tolower(*a) - tolower(*b);
-        if (d != 0)
-            return d;
-    }
-}
-
 static bool method_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
                            const mhRequest_t *req)
 {
     const char *expected = mp->baton;
 
-    if (strcicmp(expected, req->method) == 0)
+    if (apr_strnatcasecmp(expected, req->method) == 0)
         return YES;
 
     return NO;
@@ -425,7 +408,7 @@ _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, const mhRequest_t *req)
     int i;
     apr_pool_t *match_pool;
 
-    if (strcicmp(rm->method, req->method) != 0) {
+    if (apr_strnatcasecmp(rm->method, req->method) != 0) {
         return NO;
     }
 
