@@ -39,6 +39,8 @@ extern "C" {
                 mhMatchURLEqualTo(__mh, (x))
 #define     BodyEqualTo(x)\
                 mhMatchBodyEqualTo(__mh, (x))
+#define     HeaderEqualTo(h, v)\
+                mhMatchHeaderEqualTo(__mh, (h), (v))
 /*          Network-level tests */
 #define     NotChunkedBodyEqualTo(x)\
                 mhMatchNotChunkedBodyEqualTo(__mh, (x))
@@ -109,6 +111,8 @@ mhMatchingPattern_t *mhMatchBodyNotChunkedEqualTo(MockHTTP *mh,
 mhMatchingPattern_t *mhMatchChunkedBodyEqualTo(MockHTTP *mh,
                                                const char *expected);
 mhMatchingPattern_t *mhMatchChunkedBodyChunksEqualTo(MockHTTP *mh, ...);
+mhMatchingPattern_t *mhMatchHeaderEqualTo(MockHTTP *mh,
+                                          const char *hdr, const char *value);
 
 /* Response functions */
 mhResponse_t *mhResponse(MockHTTP *mh, ...);

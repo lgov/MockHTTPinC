@@ -64,7 +64,7 @@ CTEST2(expectations, test_urlmatcher)
     /* Create a fake request and check that the matcher works */
     req = _mhRequestInit(mh);
     req->url = "/index.html";
-    ASSERT_EQUAL(mp->matcher(mp, req), YES);
+    ASSERT_EQUAL(mp->matcher(mh->pool, mp, req), YES);
 }
 
 CTEST2(expectations, test_methodmatcher)
@@ -81,7 +81,7 @@ CTEST2(expectations, test_methodmatcher)
     /* Create a fake request and check that the matcher works */
     req = _mhRequestInit(mh);
     req->method = "get";
-    ASSERT_EQUAL(mp->matcher(mp, req), YES);
+    ASSERT_EQUAL(mp->matcher(mh->pool, mp, req), YES);
 }
 
 CTEST2(expectations, test_matchrequest)
@@ -430,6 +430,39 @@ CTEST2(expectations, test_verify_req_chunked_body_fails)
     SubmitVerify
 
 
+}
+
+/* TW9ja0hUVFA6TW9ja0hUVFBwd2Q= is Base64 encoding of MockHTTP:MockHTTPpwd */
+CTEST2(expectations, test_verify_req_header)
+{
+    MockHTTP *mh = data->mh;
+
+    Given(mh)
+      GetRequest(
+        URLEqualTo("/index1.html"),
+        HeaderEqualTo("Authorization", "TW9ja0hUVFA6TW9ja0hUVFBwd2Q="))
+    GetRequest( /* header names are case insensitive */
+        URLEqualTo("/index2.html"),
+        HeaderEqualTo("autHORIZation", "TW9ja0hUVFA6TW9ja0hUVFBwd2Q="))
+    SubmitGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        apr_hash_set(hdrs, "Authorization", APR_HASH_KEY_STRING,
+                     "TW9ja0hUVFA6TW9ja0hUVFBwd2Q=");
+        sendChunkedRequest(ctx, "GET", "/index1.html", hdrs, "1", NULL);
+        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        mhRunServerLoop(mh);
+        sendChunkedRequest(ctx, "GET", "/index2.html", hdrs, "2", NULL);
+        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+      ASSERT_TRUE(VerifyAllRequestsReceivedInOrder);
+    SubmitVerify
 }
 
 #if 0
