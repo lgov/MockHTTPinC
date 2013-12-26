@@ -50,7 +50,7 @@ extern "C" {
                 mhMatchChunkedBodyEqualTo(__mh, (x))
 #define     ChunkedBodyChunksEqualTo(...)\
                 mhMatchChunkedBodyChunksEqualTo(__mh, __VA_ARGS__, NULL)
-/* TODO: http version, headers, conditional, */
+/* TODO: http version, conditional, */
 /*        Responses */
 #define   Respond(...)\
                 __resp = mhResponse(__mh, __VA_ARGS__, NULL);\
@@ -81,6 +81,8 @@ extern "C" {
                 mhVerifyAllRequestsReceived(__mh)
 #define   VerifyAllRequestsReceivedInOrder\
                 mhVerifyAllRequestsReceivedInOrder(__mh)
+#define   ErrorMessage\
+                mhGetLastErrorString(__mh)
 #define SubmitVerify\
             }
 
@@ -134,6 +136,7 @@ void mhSetRespForReq(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp);
 int mhVerifyRequestReceived(MockHTTP *mh, mhRequestMatcher_t *rm);
 int mhVerifyAllRequestsReceived(MockHTTP *mh);
 int mhVerifyAllRequestsReceivedInOrder(MockHTTP *mh);
+const char *mhGetLastErrorString(MockHTTP *mh);
 
 #ifdef __cplusplus
 }

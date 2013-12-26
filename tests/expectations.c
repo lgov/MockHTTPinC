@@ -494,6 +494,40 @@ CTEST2(expectations, test_verify_req_header_fails)
     SubmitVerify
 }
 
+CTEST2(expectations, test_verify_error_message)
+{
+    MockHTTP *mh = data->mh;
+
+    Given(mh)
+    GetRequest(
+      URLEqualTo("/index1.html"),
+      HeaderEqualTo("Authorization", "incorrect_value"))
+    GetRequest( /* header names are case insensitive */
+      URLEqualTo("/index2.html"),
+      HeaderEqualTo("autHORIZation", "TW9ja0hUVFA6TW9ja0hUVFBwd2Q="))
+    SubmitGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        apr_hash_set(hdrs, "Authorization", APR_HASH_KEY_STRING,
+                     "TW9ja0hUVFA6TW9ja0hUVFBwd2Q=");
+        sendChunkedRequest(ctx, "GET", "/index1.html", hdrs, "1", NULL);
+        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        mhRunServerLoop(mh);
+        sendChunkedRequest(ctx, "GET", "/index2.html", hdrs, "2", NULL);
+        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+      ASSERT_FALSE(VerifyAllRequestsReceivedInOrder);
+      ASSERT_NOT_NULL((void *)ErrorMessage);
+      ASSERT_NOT_EQUAL('\0', *ErrorMessage);
+    SubmitVerify
+}
+
 #if 0
 CTEST2(expectations, test_one_request_response)
 {

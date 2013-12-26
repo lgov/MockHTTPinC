@@ -50,6 +50,7 @@ struct MockHTTP {
     apr_array_header_t *reqsReceived;
     servCtx_t *servCtx;
     apr_queue_t *reqQueue; /* Thread safe FIFO queue. */
+    char *errmsg;
 };
 
 struct mhRequest_t {

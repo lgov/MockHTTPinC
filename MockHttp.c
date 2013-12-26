@@ -60,6 +60,31 @@ void setHeader(apr_pool_t *pool, apr_hash_t *hdrs,
     apr_hash_set(hdrs, lhdr, APR_HASH_KEY_STRING, val);
 }
 
+/* To enable calls like Assert(expected, Verify...(), ErrorMessage()), with the
+   evaluation order of the arguments not specified in C, we need the pointer to 
+   where an error message will be stored before the call to Verify...().
+   So we allocate up to ERRMSG_MAXSIZE bytes for the error message memory up 
+   front and use it when needed */
+#define ERRMSG_MAXSIZE 65000
+
+static void appendErrMessage(MockHTTP *mh, const char *fmt, ...)
+{
+    apr_pool_t *scratchpool;
+    apr_size_t startpos = strlen(mh->errmsg);
+    apr_size_t len;
+    const char *msg;
+    va_list argp;
+
+    apr_pool_create(&scratchpool, mh->pool);
+    msg = apr_pvsprintf(scratchpool, fmt, argp);
+
+    len = strlen(msg) + 1; /* include trailing \0 */
+    len = startpos + len > ERRMSG_MAXSIZE ? ERRMSG_MAXSIZE - startpos - 1: len;
+    memcpy(mh->errmsg + startpos, msg, len);
+
+    apr_pool_destroy(scratchpool);
+}
+
 /* Define a MockHTTP context */
 MockHTTP *mhInit()
 {
@@ -75,6 +100,8 @@ MockHTTP *mhInit()
     mh->reqMatchers = apr_array_make(pool, 5, sizeof(ReqMatcherRespPair_t *));;
     apr_queue_create(&mh->reqQueue, 5, pool);
     mh->reqsReceived = apr_array_make(pool, 5, sizeof(mhRequest_t *));
+    mh->errmsg = apr_palloc(pool, ERRMSG_MAXSIZE);
+    *mh->errmsg = '\0';
 
     mh->servCtx = _mhInitTestServer(mh, "localhost", DefaultSrvPort,
                                     mh->reqQueue);
@@ -587,8 +614,13 @@ int mhVerifyAllRequestsReceivedInOrder(MockHTTP *mh)
 {
     int i;
 
-    if (mh->reqsReceived->nelts != mh->reqMatchers->nelts)
+    if (mh->reqsReceived->nelts > mh->reqMatchers->nelts) {
+        appendErrMessage(mh, "More requests received than expected!");
         return NO;
+    } else if (mh->reqsReceived->nelts > mh->reqMatchers->nelts) {
+        appendErrMessage(mh, "Less requests received than expected!");
+        return NO;
+    }
 
     for (i = 0; i < mh->reqsReceived->nelts; i++)
     {
@@ -599,8 +631,14 @@ int mhVerifyAllRequestsReceivedInOrder(MockHTTP *mh)
         req  = APR_ARRAY_IDX(mh->reqsReceived, i, mhRequest_t *);
 
         if (_mhRequestMatcherMatch(pair->rm, req) == NO) {
+            appendErrMessage(mh, "Requests don't match!");
             return NO;
         }
     }
     return YES;
+}
+
+const char *mhGetLastErrorString(MockHTTP *mh)
+{
+    return mh->errmsg;
 }
