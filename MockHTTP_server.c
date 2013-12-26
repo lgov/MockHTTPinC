@@ -15,7 +15,6 @@
 
 #include <apr_thread_proc.h>
 #include <apr_strings.h>
-#include <apr_lib.h>
 
 #include <stdlib.h>
 
@@ -99,6 +98,7 @@ static apr_status_t setupTCPServer(servCtx_t *ctx, bool blocking)
     STATUSERR(apr_socket_timeout_set(ctx->skt, 0));
     STATUSERR(apr_socket_opt_set(ctx->skt, APR_SO_REUSEADDR, 1));
 
+    /* TODO: try the next port until bind succeeds */
     STATUSERR(apr_socket_bind(ctx->skt, serv_addr));
 
     /* Listen for clients */
@@ -157,33 +157,6 @@ _mhInitTestServer(MockHTTP *mh, const char *hostname,apr_port_t port,
 /******************************************************************************/
 /* Parse a request structure from incoming data                               */
 /******************************************************************************/
-
-static const char *toLower(apr_pool_t *pool, const char *str)
-{
-    char *lstr, *l;
-    const char *u;
-
-    lstr = apr_palloc(pool, strlen(str) + 1);
-    for (u = str, l = lstr; *u != 0; u++, l++)
-        *l = (char)apr_tolower(*u);
-    *l = '\0';
-
-    return lstr;
-}
-
-static void setHeader(apr_pool_t *pool, apr_hash_t *hdrs, const char *hdr, const char *val)
-{
-    const char *lhdr = toLower(pool, hdr);
-
-    apr_hash_set(hdrs, lhdr, APR_HASH_KEY_STRING, val);
-}
-
-static const char *
-getHeader(apr_pool_t *pool, apr_hash_t *hdrs, const char *hdr)
-{
-    const char *lhdr = toLower(pool, hdr);
-    return apr_hash_get(hdrs, lhdr, APR_HASH_KEY_STRING);
-}
 
 /* *len will be non-0 if a line ending with CRLF was found. buf will be copied 
    in mem allocatod from cctx->pool, cctx->buf ptrs will be moved. */

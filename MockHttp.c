@@ -21,6 +21,7 @@
 #include <ctype.h>
 
 #include <apr_strings.h>
+#include <apr_lib.h>
 
 static const int DefaultSrvPort =   30080;
 static const int DefaultProxyPort = 38080;
@@ -29,6 +30,35 @@ typedef struct ReqMatcherRespPair_t {
     mhRequestMatcher_t *rm;
     mhResponse_t *resp;
 } ReqMatcherRespPair_t;
+
+/* private functions */
+static const char *toLower(apr_pool_t *pool, const char *str)
+{
+    char *lstr, *l;
+    const char *u;
+
+    lstr = apr_palloc(pool, strlen(str) + 1);
+    for (u = str, l = lstr; *u != 0; u++, l++)
+        *l = (char)apr_tolower(*u);
+    *l = '\0';
+
+    return lstr;
+}
+
+const char *
+getHeader(apr_pool_t *pool, apr_hash_t *hdrs, const char *hdr)
+{
+    const char *lhdr = toLower(pool, hdr);
+    return apr_hash_get(hdrs, lhdr, APR_HASH_KEY_STRING);
+}
+
+void setHeader(apr_pool_t *pool, apr_hash_t *hdrs,
+               const char *hdr, const char *val)
+{
+    const char *lhdr = toLower(pool, hdr);
+
+    apr_hash_set(hdrs, lhdr, APR_HASH_KEY_STRING, val);
+}
 
 /* Define a MockHTTP context */
 MockHTTP *mhInit()
@@ -140,7 +170,8 @@ static bool str_matcher(const mhMatchingPattern_t *mp, const char *actual)
     return NO;
 }
 
-static bool url_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
+static bool url_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+                        const mhRequest_t *req)
 {
     return str_matcher(mp, req->url);
 }
@@ -157,7 +188,8 @@ mhMatchURLEqualTo(MockHTTP *mh, const char *expected)
     return mp;
 }
 
-static bool body_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
+static bool body_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+                         const mhRequest_t *req)
 {
     /* ignore chunked or not chunked */
     if (req->chunked == YES)
@@ -179,7 +211,8 @@ mhMatchBodyEqualTo(MockHTTP *mh, const char *expected)
 }
 
 static bool
-body_notchunked_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
+body_notchunked_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+                        const mhRequest_t *req)
 {
     if (req->chunked == YES)
         return NO;
@@ -199,7 +232,8 @@ mhMatchBodyNotChunkedEqualTo(MockHTTP *mh, const char *expected)
 }
 
 static bool
-chunked_body_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
+chunked_body_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+                     const mhRequest_t *req)
 {
     apr_size_t curpos = 0;
     const char *expected = mp->baton;
@@ -232,7 +266,8 @@ mhMatchChunkedBodyEqualTo(MockHTTP *mh, const char *expected)
 
     return mp;
 }
-static bool chunked_body_chunks_matcher(const mhMatchingPattern_t *mp,
+static bool chunked_body_chunks_matcher(apr_pool_t *pool,
+                                        const mhMatchingPattern_t *mp,
                                         const mhRequest_t *req)
 {
     const apr_array_header_t *chunks;
@@ -280,29 +315,33 @@ mhMatchChunkedBodyChunksEqualTo(MockHTTP *mh, ...)
     return mp;
 }
 
-static int strcicmp(const char *a, const char *b)
+static bool
+header_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+               const mhRequest_t *req)
 {
-    for (;; a++, b++) {
-        int d;
-        if (!*a) {
-            if (!*b)
-                return 0;
-            return -1;
-        } else if (!*b) {
-            return 1;
-        }
-        d = tolower(*a) - tolower(*b);
-        if (d != 0)
-            return d;
-    }
+    const char *actual = getHeader(pool, req->hdrs, mp->baton2);
+    return str_matcher(mp, actual);
 }
 
-static bool
-method_matcher(const mhMatchingPattern_t *mp, const mhRequest_t *req)
+mhMatchingPattern_t *
+mhMatchHeaderEqualTo(MockHTTP *mh, const char *hdr, const char *value)
+{
+    apr_pool_t *pool = mh->pool;
+
+    mhMatchingPattern_t *mp = apr_palloc(pool, sizeof(mhMatchingPattern_t));
+    mp->baton = apr_pstrdup(pool, value);
+    mp->baton2 = apr_pstrdup(pool, hdr);
+    mp->matcher = header_matcher;
+
+    return mp;
+}
+
+static bool method_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+                           const mhRequest_t *req)
 {
     const char *expected = mp->baton;
 
-    if (strcicmp(expected, req->method) == 0)
+    if (apr_strnatcasecmp(expected, req->method) == 0)
         return YES;
 
     return NO;
@@ -367,18 +406,22 @@ bool
 _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, const mhRequest_t *req)
 {
     int i;
+    apr_pool_t *match_pool;
 
-    if (strcicmp(rm->method, req->method) != 0) {
+    if (apr_strnatcasecmp(rm->method, req->method) != 0) {
         return NO;
     }
+
+    apr_pool_create(&match_pool, rm->pool);
 
     for (i = 0 ; i < rm->matchers->nelts; i++) {
         const mhMatchingPattern_t *mp;
 
         mp = APR_ARRAY_IDX(rm->matchers, i, mhMatchingPattern_t *);
-        if (mp->matcher(mp, req) == NO)
+        if (mp->matcher(match_pool, mp, req) == NO)
             return NO;
     }
+    apr_pool_destroy(match_pool);
 
     return YES;
 }

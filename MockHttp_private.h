@@ -40,8 +40,8 @@ typedef short int bool;
 static const bool YES = 1;
 static const bool NO = 0;
 
-typedef bool (*matchfunc_t)(const mhMatchingPattern_t *mp,
-                           const mhRequest_t *req);
+typedef bool (*matchfunc_t)(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+                            const mhRequest_t *req);
 typedef struct servCtx_t servCtx_t;
 
 struct MockHTTP {
@@ -82,7 +82,8 @@ struct mhRequestMatcher_t {
 };
 
 struct mhMatchingPattern_t {
-    const void *baton;
+    const void *baton; /* use this for an expected string */
+    const void *baton2;
     matchfunc_t matcher;
 };
 
@@ -92,6 +93,10 @@ struct mhRespBuilder_t {
     const void *baton;
     respbuilderfunc_t builder;
 };
+
+const char *getHeader(apr_pool_t *pool, apr_hash_t *hdrs, const char *hdr);
+void setHeader(apr_pool_t *pool, apr_hash_t *hdrs,
+               const char *hdr, const char *val);
 
 /* Initialize a mhRequest_t object. */
 mhRequest_t *_mhRequestInit(MockHTTP *mh);
