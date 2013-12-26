@@ -23,12 +23,14 @@
 extern "C" {
 #endif /* __cplusplus */
 
+/* TODO: define defaults, eg HTTP/1.1 in req/resp */
 /* TODO: replace Submit* with some better word. */
 #define Given(mh)\
             {\
                 MockHTTP *__mh = mh;\
                 mhResponse_t *__resp;\
                 mhRequestMatcher_t *__rm;
+/*        Requests and high level tests */
 #define   GetRequest(...)\
                 __rm = mhGetRequest(__mh, __VA_ARGS__, NULL);\
                 mhPushRequest(__mh, __rm);
@@ -46,6 +48,8 @@ extern "C" {
                 mhMatchChunkedBodyEqualTo(__mh, (x))
 #define     ChunkedBodyChunksEqualTo(...)\
                 mhMatchChunkedBodyChunksEqualTo(__mh, __VA_ARGS__, NULL)
+/* TODO: http version, headers, conditional, */
+/*        Responses */
 #define   Respond(...)\
                 __resp = mhResponse(__mh, __VA_ARGS__, NULL);\
                 mhSetRespForReq(__mh, __rm, __resp);
