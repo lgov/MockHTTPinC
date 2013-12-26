@@ -43,7 +43,7 @@ CTEST_TEARDOWN(expectations)
     mhCleanup(data->mh);
 }
 
-#if 1
+#if 0
 CTEST2(expectations, test_mock_init)
 {
     MockHTTP *mh = data->mh;
@@ -179,10 +179,6 @@ CTEST2(expectations, test_one_request_received)
     Given(mh)
       GetRequest(
         URLEqualTo("/index.html"))
-      Respond(
-        WithCode(200),
-        WithHeader("Connection", "Close"),
-        WithBody("blabla"))
     SubmitGiven
 
     /* system under test */
@@ -352,7 +348,6 @@ CTEST2(expectations, test_verify_all_reqs_received_in_order_more)
       ASSERT_TRUE(VerifyAllRequestsReceivedInOrder);
     SubmitVerify
 }
-#endif
 
 CTEST2(expectations, test_verify_req_chunked_body)
 {
@@ -527,8 +522,8 @@ CTEST2(expectations, test_verify_error_message)
       ASSERT_NOT_EQUAL('\0', *ErrorMessage);
     SubmitVerify
 }
+#endif
 
-#if 0
 CTEST2(expectations, test_one_request_response)
 {
     MockHTTP *mh = data->mh;
@@ -552,6 +547,7 @@ CTEST2(expectations, test_one_request_response)
         sendRequest(ctx, "GET", "/index.html", hdrs, "1");
         mhRunServerLoop(mh);
         mhRunServerLoop(mh);
+        mhRunServerLoop(mh);
         receiveResponse(ctx);
     }
 
@@ -561,7 +557,7 @@ CTEST2(expectations, test_one_request_response)
     resp = _mhMatchRequest(mh, req);
     ASSERT_NOT_NULL(resp);
 }
-#endif
+
 int main(int argc, const char *argv[])
 {
     return ctest_main(argc, argv);

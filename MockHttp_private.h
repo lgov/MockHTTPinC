@@ -50,6 +50,7 @@ struct MockHTTP {
     apr_array_header_t *reqsReceived;
     servCtx_t *servCtx;
     apr_queue_t *reqQueue; /* Thread safe FIFO queue. */
+    apr_queue_t *respQueue; /* Thread safe FIFO queue. */
     char *errmsg;
 };
 
@@ -71,6 +72,7 @@ struct mhResponse_t {
     unsigned int code;
     const char *body;
     bool chunked;
+    apr_array_header_t *chunks;
     apr_hash_t *hdrs;
     apr_array_header_t *builders;
 };
@@ -107,8 +109,8 @@ bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm,
                             const mhRequest_t *req);
 
 /* Test servers */
-servCtx_t *_mhInitTestServer(MockHTTP *mh, const char *hostname,
-                             apr_port_t port, apr_queue_t *reqQueue);
+servCtx_t *_mhInitTestServer(MockHTTP *mh, const char *host, apr_port_t port,
+                             apr_queue_t *reqQueue, apr_queue_t *respQueue);
 apr_status_t _mhRunServerLoop(servCtx_t *ctx);
 
 #ifdef __cplusplus

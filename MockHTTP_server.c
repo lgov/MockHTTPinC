@@ -28,15 +28,6 @@
 #endif
 #endif
 
-struct servCtx_t {
-    apr_pool_t *pool;
-    const char *hostname;
-    apr_port_t port;
-    apr_pollset_t *pollset;
-    apr_socket_t *skt;
-    apr_queue_t *reqQueue;
-};
-
 #define BUFSIZE 32768
 typedef struct clientCtx_t {
     apr_pool_t *pool;
@@ -45,7 +36,22 @@ typedef struct clientCtx_t {
     apr_size_t buflen;
     apr_size_t bufrem;
     mhRequest_t *req;
+    apr_int16_t reqevents;
+    char *respBody;
+    apr_size_t respRem;
 } clientCtx_t;
+
+struct servCtx_t {
+    apr_pool_t *pool;
+    const char *hostname;
+    apr_port_t port;
+    apr_pollset_t *pollset;
+    apr_socket_t *skt;
+    apr_queue_t *reqQueue;   /* thread safe, pass received reqs back to test, */
+    apr_queue_t *respQueue;  /*  test will queue a response */
+    /* TODO: allow more connections */
+    clientCtx_t *cctx;
+};
 
 static apr_status_t setupTCPServer(servCtx_t *ctx, bool blocking);
 
@@ -127,7 +133,7 @@ static apr_status_t setupTCPServer(servCtx_t *ctx, bool blocking)
 
 servCtx_t *
 _mhInitTestServer(MockHTTP *mh, const char *hostname,apr_port_t port,
-                  apr_queue_t *reqQueue)
+                  apr_queue_t *reqQueue, apr_queue_t *respQueue)
 {
     apr_thread_t *thread;
     apr_pool_t *pool = mh->pool;
@@ -137,6 +143,7 @@ _mhInitTestServer(MockHTTP *mh, const char *hostname,apr_port_t port,
     ctx->hostname = apr_pstrdup(pool, hostname);
     ctx->port = port;
     ctx->reqQueue = reqQueue;
+    ctx->respQueue = respQueue;
 
     apr_pool_cleanup_register(pool, ctx,
                               cleanupServer,
@@ -425,6 +432,112 @@ static apr_status_t readRequest(clientCtx_t *cctx, apr_queue_t *reqQueue)
     return status;
 }
 
+static const char *codeToString(unsigned int code)
+{
+    switch(code) {
+        case 100: return "Continue"; break;
+        case 101: return "Switching Protocols"; break;
+        case 200: return "OK"; break;
+        case 201: return "Created"; break;
+        case 202: return "Accepted"; break;
+        case 203: return "Non-Authoritative Information"; break;
+        case 204: return "No Content"; break;
+        case 205: return "Reset Content"; break;
+        case 206: return "Partial Content"; break;
+        case 300: return "Multiple Choices"; break;
+        case 301: return "Moved Permanently"; break;
+        case 302: return "Found"; break;
+        case 303: return "See Other"; break;
+        case 304: return "Not Modified"; break;
+        case 305: return "Use Proxy"; break;
+        case 307: return "Temporary Redirect"; break;
+        case 400: return "Bad Request"; break;
+        case 401: return "Unauthorized"; break;
+        case 402: return "Payment Required"; break;
+        case 403: return "Forbidden"; break;
+        case 404: return "Not Found"; break;
+        case 405: return "Method Not Allowed"; break;
+        case 406: return "Not Acceptable"; break;
+        case 407: return "Proxy Authentication Required"; break;
+        case 408: return "Request Timeout"; break;
+        case 409: return "Conflict"; break;
+        case 410: return "Gone"; break;
+        case 411: return "Length Required"; break;
+        case 412: return "Precondition Failed"; break;
+        case 413: return "Request Entity Too Large"; break;
+        case 414: return "Request-URI Too Long"; break;
+        case 415: return "Unsupported Media Type"; break;
+        case 416: return "Requested Range Not Satisfiable"; break;
+        case 417: return "Expectation Failed"; break;
+        case 500: return "Internal Server Error"; break;
+        case 501: return "Not Implemented"; break;
+        case 502: return "Bad Gateway"; break;
+        case 503: return "Service Unavailable"; break;
+        case 504: return "Gateway Timeout"; break;
+        case 505: return "HTTP Version Not Supported"; break;
+        default: return "<not defined>";
+    }
+}
+
+/******************************************************************************/
+/* Send a response                                                            */
+/******************************************************************************/
+
+static char *respToString(apr_pool_t *pool, mhResponse_t *resp)
+{
+    char *str;
+    apr_hash_index_t *hi;
+    void *val;
+    const void *key;
+    apr_ssize_t klen;
+
+    /* status line */
+    str = apr_psprintf(pool, "HTTP/1.1 %d %s\r\n", resp->code,
+                       codeToString(resp->code));
+
+    if (resp->chunked == NO) {
+        /* TODO: add to existing header */
+        apr_hash_set(resp->hdrs, "Transfer-Encoding", APR_HASH_KEY_STRING,
+                     "chunked");
+    } else {
+        apr_hash_set(resp->hdrs, "Content-Length", APR_HASH_KEY_STRING,
+                     apr_itoa(pool, strlen(resp->body)));
+    }
+
+    for (hi = apr_hash_first(pool, resp->hdrs); hi; hi = apr_hash_next(hi)) {
+        apr_hash_this(hi, &key, &klen, &val);
+
+        str = apr_psprintf(pool, "%s%s: %s\r\n", str,
+                                 (const char *) key, (const char *)val);
+    }
+
+    if (resp->chunked == NO) {
+        str = apr_psprintf(pool, "%s%s", str, resp->body);
+    } else {
+
+    }
+    return str;
+}
+
+static apr_status_t writeResponse(clientCtx_t *cctx, mhResponse_t *resp)
+{
+    apr_pool_t *pool = cctx->pool;
+    apr_size_t len;
+    apr_status_t status;
+
+    if (!cctx->respRem) {
+        cctx->respBody = respToString(pool, resp);
+        cctx->respRem = strlen(cctx->respBody);
+    }
+
+    len = cctx->respRem;
+    STATUSREADERR(apr_socket_send(cctx->skt, cctx->respBody, &len));
+    if (len < cctx->respRem) {
+        memcpy(cctx->respBody, cctx->respBody + len, cctx->respRem - len + 1);
+        cctx->respRem -= len;
+    }
+    return APR_SUCCESS;
+}
 
 /******************************************************************************/
 /* Process socket events                                                      */
@@ -436,6 +549,20 @@ apr_status_t _mhRunServerLoop(servCtx_t *ctx)
     apr_status_t status;
 
     printf(".\n");
+    if (apr_queue_size(ctx->respQueue) > 0) {
+        /* something to write */
+        apr_pollfd_t pfd = { 0 };
+        /* TODO: which connection do we want to write the response? */
+        pfd.desc_type = APR_POLL_SOCKET;
+        pfd.desc.s = ctx->cctx->skt;
+        pfd.reqevents = ctx->cctx->reqevents;
+        pfd.client_data = ctx->cctx;
+        apr_pollset_remove(ctx->pollset, &pfd);
+
+        ctx->cctx->reqevents |= APR_POLLOUT;
+        pfd.reqevents = ctx->cctx->reqevents;
+        apr_pollset_add(ctx->pollset, &pfd);
+    }
 
     STATUSERR(apr_pollset_poll(ctx->pollset, APR_USEC_PER_SEC >> 1,
                                &num, &desc));
@@ -462,6 +589,8 @@ apr_status_t _mhRunServerLoop(servCtx_t *ctx)
             cctx->skt = cskt;
             cctx->buflen = 0;
             cctx->bufrem = BUFSIZE;
+            cctx->reqevents = pfd.reqevents;
+            ctx->cctx = cctx;
         } else {
             /* one of the client sockets */
             clientCtx_t *cctx = desc->client_data;
@@ -470,7 +599,14 @@ apr_status_t _mhRunServerLoop(servCtx_t *ctx)
                 printf("/");
                 readRequest(cctx, ctx->reqQueue);
             } else if (desc->rtnevents & APR_POLLOUT) {
+                void *data;
+                mhResponse_t *resp;
+
                 printf("|");
+                STATUSERR(apr_queue_trypop(ctx->respQueue, &data));
+                resp = data;
+
+                writeResponse(cctx, resp);
             }
         }
     }

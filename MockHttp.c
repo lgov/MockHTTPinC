@@ -25,6 +25,7 @@
 
 static const int DefaultSrvPort =   30080;
 static const int DefaultProxyPort = 38080;
+static const int MaxReqRespQueueSize = 50;
 
 typedef struct ReqMatcherRespPair_t {
     mhRequestMatcher_t *rm;
@@ -98,13 +99,14 @@ MockHTTP *mhInit()
     mh = apr_palloc(pool, sizeof(struct MockHTTP));
     mh->pool = pool;
     mh->reqMatchers = apr_array_make(pool, 5, sizeof(ReqMatcherRespPair_t *));;
-    apr_queue_create(&mh->reqQueue, 5, pool);
+    apr_queue_create(&mh->reqQueue, MaxReqRespQueueSize, pool);
+    apr_queue_create(&mh->respQueue, MaxReqRespQueueSize, pool);
     mh->reqsReceived = apr_array_make(pool, 5, sizeof(mhRequest_t *));
     mh->errmsg = apr_palloc(pool, ERRMSG_MAXSIZE);
     *mh->errmsg = '\0';
 
     mh->servCtx = _mhInitTestServer(mh, "localhost", DefaultSrvPort,
-                                    mh->reqQueue);
+                                    mh->reqQueue, mh->respQueue);
 
     return mh;
 }
@@ -123,15 +125,28 @@ void mhCleanup(MockHTTP *mh)
 
 void mhRunServerLoop(MockHTTP *mh)
 {
-    mhRequest_t *req;
-    void *data;
+    apr_status_t status;
 
-    _mhRunServerLoop(mh->servCtx);
-    while (apr_queue_trypop(mh->reqQueue, &data) == APR_SUCCESS) {
-        req = data;
-        *((mhRequest_t **)apr_array_push(mh->reqsReceived)) = req;
-        printf("request added to incoming queue: %s\n", req->method);
-    }
+    do {
+        void *data;
+
+        status = _mhRunServerLoop(mh->servCtx);
+
+        while (apr_queue_trypop(mh->reqQueue, &data) == APR_SUCCESS) {
+            mhRequest_t *req;
+            mhResponse_t *resp;
+
+            req = data;
+            *((mhRequest_t **)apr_array_push(mh->reqsReceived)) = req;
+
+            resp = _mhMatchRequest(mh, req);
+            if (resp)
+                apr_queue_trypush(mh->respQueue, resp);
+
+            printf("request added to incoming queue: %s\n", req->method);
+        }
+
+    } while (apr_queue_size(mh->respQueue) > 0 && status == APR_SUCCESS);
 }
 
 mhResponse_t *_mhMatchRequest(MockHTTP *mh, mhRequest_t *req)
@@ -614,11 +629,12 @@ int mhVerifyAllRequestsReceivedInOrder(MockHTTP *mh)
 {
     int i;
 
+    /* TODO: improve error message */
     if (mh->reqsReceived->nelts > mh->reqMatchers->nelts) {
-        appendErrMessage(mh, "More requests received than expected!");
+        appendErrMessage(mh, "More requests received than expected!\n");
         return NO;
     } else if (mh->reqsReceived->nelts > mh->reqMatchers->nelts) {
-        appendErrMessage(mh, "Less requests received than expected!");
+        appendErrMessage(mh, "Less requests received than expected!\n");
         return NO;
     }
 
@@ -631,7 +647,7 @@ int mhVerifyAllRequestsReceivedInOrder(MockHTTP *mh)
         req  = APR_ARRAY_IDX(mh->reqsReceived, i, mhRequest_t *);
 
         if (_mhRequestMatcherMatch(pair->rm, req) == NO) {
-            appendErrMessage(mh, "Requests don't match!");
+            appendErrMessage(mh, "Requests don't match!\n");
             return NO;
         }
     }

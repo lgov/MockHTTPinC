@@ -25,6 +25,7 @@ extern "C" {
 
 /* TODO: define defaults, eg HTTP/1.1 in req/resp */
 /* TODO: replace Submit* with some better word. */
+/* TODO: use requests only once, use them in order, use best matching first */
 #define Given(mh)\
             {\
                 MockHTTP *__mh = mh;\
