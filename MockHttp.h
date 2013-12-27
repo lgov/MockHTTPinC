@@ -99,6 +99,7 @@ typedef struct mhRespBuilder_t mhRespBuilder_t;
 MockHTTP *mhInit(void);
 void mhCleanup(MockHTTP *mh);
 void mhRunServerLoop(MockHTTP *mh);
+int mhServerPortNr(MockHTTP *mh);
 
 /* Define expectations*/
 

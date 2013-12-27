@@ -625,3 +625,8 @@ apr_status_t _mhRunServerLoop(servCtx_t *ctx)
 
     return APR_SUCCESS;
 }
+
+int mhServerPortNr(MockHTTP *mh)
+{
+    return mh->servCtx->port;
+}
