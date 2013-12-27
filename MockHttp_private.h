@@ -90,10 +90,10 @@ struct mhMatchingPattern_t {
     matchfunc_t matcher;
 };
 
-typedef void (* respbuilderfunc_t)(mhResponse_t *resp, void *baton);
+typedef void (* respbuilderfunc_t)(mhResponse_t *resp, const void *baton);
 
 struct mhRespBuilder_t {
-    const void *baton;
+    void *baton;
     respbuilderfunc_t builder;
 };
 

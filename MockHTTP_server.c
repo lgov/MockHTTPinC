@@ -495,7 +495,7 @@ static char *respToString(apr_pool_t *pool, mhResponse_t *resp)
     str = apr_psprintf(pool, "HTTP/1.1 %d %s\r\n", resp->code,
                        codeToString(resp->code));
 
-    if (resp->chunked == NO) {
+    if (resp->chunked == YES) {
         /* TODO: add to existing header */
         apr_hash_set(resp->hdrs, "Transfer-Encoding", APR_HASH_KEY_STRING,
                      "chunked");
@@ -510,11 +510,22 @@ static char *respToString(apr_pool_t *pool, mhResponse_t *resp)
         str = apr_psprintf(pool, "%s%s: %s\r\n", str,
                                  (const char *) key, (const char *)val);
     }
+    str = apr_psprintf(pool, "%s\r\n", str);
 
     if (resp->chunked == NO) {
         str = apr_psprintf(pool, "%s%s", str, resp->body);
     } else {
+        int i;
+        for (i = 0 ; i < resp->chunks->nelts; i++) {
+            const char *chunk;
+            apr_size_t len;
 
+            chunk = APR_ARRAY_IDX(resp->chunks, i, const char *);
+            len = strlen(chunk);
+            str = apr_psprintf(pool, "%s%" APR_UINT64_T_HEX_FMT "\r\n%s\r\n",
+                               str, (apr_uint64_t)len, chunk);
+        }
+        str = apr_psprintf(pool, "%s0\r\n\r\n", str);
     }
     return str;
 }
@@ -526,6 +537,7 @@ static apr_status_t writeResponse(clientCtx_t *cctx, mhResponse_t *resp)
     apr_status_t status;
 
     if (!cctx->respRem) {
+        mhRespEvaluate(resp);
         cctx->respBody = respToString(pool, resp);
         cctx->respRem = strlen(cctx->respBody);
     }

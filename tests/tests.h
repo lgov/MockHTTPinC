@@ -31,6 +31,6 @@ void sendRequest(clientCtx_t *ctx, const char *method, const char *url,
 void sendChunkedRequest(clientCtx_t *ctx, const char *method, const char *url,
                         apr_hash_t *hdrs, ...);
 
-void receiveResponse(clientCtx_t *ctx);
+apr_status_t receiveResponse(clientCtx_t *ctx, char **buf, apr_size_t *len);
 
 #endif /* MockHTTPInC_tests.h */

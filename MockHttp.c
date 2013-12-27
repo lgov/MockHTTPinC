@@ -169,7 +169,7 @@ mhResponse_t *_mhMatchRequest(MockHTTP *mh, mhRequest_t *req)
 void mhPushRequest(MockHTTP *mh, mhRequestMatcher_t *rm)
 {
     ReqMatcherRespPair_t *pair;
-    pair = apr_palloc(mh->pool, sizeof(ReqMatcherRespPair_t *));
+    pair = apr_palloc(mh->pool, sizeof(ReqMatcherRespPair_t));
     pair->rm = rm;
     pair->resp = NULL;
     *((ReqMatcherRespPair_t **)apr_array_push(mh->reqMatchers)) = pair;
@@ -503,9 +503,9 @@ typedef struct RespBuilderHelper_t {
     bool chunked;
 } RespBuilderHelper_t;
 
-static void respCodeSetter(mhResponse_t *resp, void *baton)
+static void respCodeSetter(mhResponse_t *resp, const void *baton)
 {
-    RespBuilderHelper_t *rbh = baton;
+    const RespBuilderHelper_t *rbh = baton;
     resp->code = rbh->code;
 }
 
@@ -523,10 +523,11 @@ mhRespBuilder_t *mhRespSetCode(MockHTTP *mh, unsigned int code)
     return rb;
 }
 
-static void respBodySetter(mhResponse_t *resp, void *baton)
+static void respBodySetter(mhResponse_t *resp, const void *baton)
 {
-    RespBuilderHelper_t *rbh = baton;
+    const RespBuilderHelper_t *rbh = baton;
     resp->body = rbh->body;
+    resp->chunked = NO;
 }
 
 mhRespBuilder_t * mhRespSetBody(MockHTTP *mh, const char *body)
@@ -559,9 +560,9 @@ mhRespBuilder_t * mhRespSetChunkedBody(MockHTTP *mh, const char *body)
     return rb;
 }
 
-static void respHeaderSetter(mhResponse_t *resp, void *baton)
+static void respHeaderSetter(mhResponse_t *resp, const void *baton)
 {
-    RespBuilderHelper_t *rbh = baton;
+    const RespBuilderHelper_t *rbh = baton;
     apr_hash_set(resp->hdrs, rbh->header, APR_HASH_KEY_STRING, rbh->value);
 }
 
@@ -579,6 +580,17 @@ mhRespAddHeader(MockHTTP *mh, const char *header, const char *value)
     rb->baton = rbh;
     rb->builder = respHeaderSetter;
     return rb;
+}
+
+void mhRespEvaluate(mhResponse_t *resp)
+{
+    int i;
+    for (i = 0 ; i < resp->builders->nelts; i++) {
+        const mhRespBuilder_t *rb;
+
+        rb = APR_ARRAY_IDX(resp->builders, i, mhRespBuilder_t *);
+        rb->builder(resp, rb->baton);
+    }
 }
 
 /******************************************************************************/

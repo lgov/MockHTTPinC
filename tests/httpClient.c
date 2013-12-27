@@ -155,23 +155,29 @@ void sendRequest(clientCtx_t *ctx, const char *method, const char *url,
     _sendRequest(ctx, method, url, hdrs, body);
 }
 
-static apr_status_t receiveData(clientCtx_t *ctx, char *buf, apr_size_t *len)
+static apr_status_t receiveData(clientCtx_t *ctx, char *buf,
+                                apr_size_t *len)
 {
     apr_status_t status;
 
-    status = apr_socket_recv(ctx->skt, buf, len);
+    STATUSREADERR(apr_socket_recv(ctx->skt, buf, len));
 
     return status;
 }
 
-
-void receiveResponse(clientCtx_t *ctx)
+apr_status_t receiveResponse(clientCtx_t *ctx, char **buf,
+                             apr_size_t *len)
 {
-    char buf[8192];
-    apr_size_t len = 8192;
+    apr_size_t bufsize = 4096;
     apr_status_t status;
 
-    status = receiveData(ctx, buf, &len);
+    *buf = apr_palloc(ctx->pool, bufsize);
+    *len = bufsize;
 
+    status = receiveData(ctx, *buf, len);
+
+    printf("response: %.*s", (int)*len, *buf);
+
+    return status;
 }
 

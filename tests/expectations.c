@@ -527,8 +527,6 @@ CTEST2(expectations, test_verify_error_message)
 CTEST2(expectations, test_one_request_response)
 {
     MockHTTP *mh = data->mh;
-    mhResponse_t *resp;
-    mhRequest_t *req;
 
     Given(mh)
       GetRequest(
@@ -539,23 +537,35 @@ CTEST2(expectations, test_one_request_response)
         WithBody("blabla"))
     SubmitGiven
 
+
     /* system under test */
     {
+        const char *exp_body = "HTTP/1.1 200 OK\r\nContent-Length: 6\r\n"
+                               "Connection: Close\r\n\r\nblabla";
         clientCtx_t *ctx = initClient(mh);
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        char *buf;
+        apr_size_t len;
+        apr_status_t status;
 
         sendRequest(ctx, "GET", "/index.html", hdrs, "1");
         mhRunServerLoop(mh);
         mhRunServerLoop(mh);
         mhRunServerLoop(mh);
-        receiveResponse(ctx);
+        do {
+            int curpos = 0;
+            status = receiveResponse(ctx, &buf, &len);
+            ASSERT_TRUE(strncmp(exp_body + curpos, buf, len) == 0);
+            curpos += len;
+        } while (status == APR_EAGAIN);
     }
-
-    req = _mhRequestInit(mh);
-    req->method = "get";
-    req->url = "/index.html";
-    resp = _mhMatchRequest(mh, req);
-    ASSERT_NOT_NULL(resp);
+#if 0
+    /* connection should have been dropped */
+    ASSERT_EQUAL(APR_EOF, status);
+#endif
+    Verify(mh)
+      ASSERT_TRUE(VerifyAllRequestsReceivedInOrder);
+    SubmitVerify
 }
 
 int main(int argc, const char *argv[])
