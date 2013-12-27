@@ -62,8 +62,8 @@ extern "C" {
                 mhRespAddHeader(__mh, (h), (v))
 #define     WithBody(x)\
                 mhRespSetBody(__mh, (x))
-#define     WithChunkedBody(x)\
-                mhRespSetChunkedBody(__mh, (x))
+#define     WithChunkedBody(...)\
+                mhRespSetChunkedBody(__mh, __VA_ARGS__, NULL)
 /* Assign local variables to NULL to avoid 'variable unused' warnings. */
 #define SubmitGiven\
                 __resp = NULL; __rm = NULL; __mh = NULL;\
@@ -125,7 +125,7 @@ mhMatchingPattern_t *mhMatchHeaderEqualTo(MockHTTP *mh,
 mhResponse_t *mhResponse(MockHTTP *mh, ...);
 mhRespBuilder_t *mhRespSetCode(MockHTTP *mh, unsigned int status);
 mhRespBuilder_t *mhRespSetBody(MockHTTP *mh, const char *body);
-mhRespBuilder_t *mhRespSetChunkedBody(MockHTTP *mh, const char *body);
+mhRespBuilder_t *mhRespSetChunkedBody(MockHTTP *mh, ...);
 mhRespBuilder_t *mhRespAddHeader(MockHTTP *mh, const char *header,
                                  const char *value);
 void mhRespEvaluate(mhResponse_t *resp);

@@ -501,6 +501,7 @@ typedef struct RespBuilderHelper_t {
     const char *header;
     const char *value;
     bool chunked;
+    apr_array_header_t *chunks;
 } RespBuilderHelper_t;
 
 static void respCodeSetter(mhResponse_t *resp, const void *baton)
@@ -545,18 +546,36 @@ mhRespBuilder_t * mhRespSetBody(MockHTTP *mh, const char *body)
     return rb;
 }
 
-mhRespBuilder_t * mhRespSetChunkedBody(MockHTTP *mh, const char *body)
+static void respChunksSetter(mhResponse_t *resp, const void *baton)
+{
+    const RespBuilderHelper_t *rbh = baton;
+    resp->chunks = rbh->chunks;
+    resp->chunked = YES;
+}
+
+mhRespBuilder_t * mhRespSetChunkedBody(MockHTTP *mh, ...)
 {
     apr_pool_t *pool = mh->pool;
     mhRespBuilder_t *rb;
+    apr_array_header_t *chunks;
+    va_list argp;
 
     RespBuilderHelper_t *rbh = apr_palloc(pool, sizeof(RespBuilderHelper_t));
-    rbh->body = apr_pstrdup(pool, body);
+
+    chunks = apr_array_make(pool, 5, sizeof(const char *));
+    va_start(argp, mh);
+    while (1) {
+        const char *chunk = va_arg(argp, const char *);
+        if (chunk == NULL) break;
+        *((const char **)apr_array_push(chunks)) = chunk;
+    }
+    va_end(argp);
     rbh->chunked = YES;
+    rbh->chunks = chunks;
 
     rb = apr_palloc(pool, sizeof(mhRespBuilder_t));
     rb->baton = rbh;
-    rb->builder = respBodySetter;
+    rb->builder = respChunksSetter;
     return rb;
 }
 

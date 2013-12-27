@@ -522,7 +522,6 @@ CTEST2(expectations, test_verify_error_message)
       ASSERT_NOT_EQUAL('\0', *ErrorMessage);
     SubmitVerify
 }
-#endif
 
 CTEST2(expectations, test_one_request_response)
 {
@@ -559,12 +558,54 @@ CTEST2(expectations, test_one_request_response)
             curpos += len;
         } while (status == APR_EAGAIN);
     }
+
+    Verify(mh)
+      ASSERT_TRUE(VerifyAllRequestsReceivedInOrder);
+    SubmitVerify
+}
+#endif
+
+CTEST2(expectations, test_one_request_response_chunked)
+{
+    MockHTTP *mh = data->mh;
+
+    Given(mh)
+    GetRequest(
+               URLEqualTo("/index.html"))
+    Respond(
+            WithCode(200),
+            WithHeader("Connection", "Close"),
+            WithChunkedBody("chunk1", "chunk2"))
+    SubmitGiven
+
+
+    /* system under test */
+    {
+        const char *exp_body = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked"
+        "\r\nConnection: Close\r\n\r\n6\r\nchunk1\r\n6\r\nchunk2\r\n0\r\n\r\n";
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        char *buf;
+        apr_size_t len;
+        apr_status_t status;
+
+        sendRequest(ctx, "GET", "/index.html", hdrs, "1");
+        mhRunServerLoop(mh);
+        mhRunServerLoop(mh);
+        mhRunServerLoop(mh);
+        do {
+            int curpos = 0;
+            status = receiveResponse(ctx, &buf, &len);
+            ASSERT_TRUE(strncmp(exp_body + curpos, buf, len) == 0);
+            curpos += len;
+        } while (status == APR_EAGAIN);
+    }
 #if 0
     /* connection should have been dropped */
     ASSERT_EQUAL(APR_EOF, status);
 #endif
     Verify(mh)
-      ASSERT_TRUE(VerifyAllRequestsReceivedInOrder);
+    ASSERT_TRUE(VerifyAllRequestsReceivedInOrder);
     SubmitVerify
 }
 
