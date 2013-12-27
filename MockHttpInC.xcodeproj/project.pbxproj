@@ -90,17 +90,17 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXLegacyTarget section */
-		F31C5529185B964C006958E7 /* MockHTTPInC.temp_caseinsensitive_rename */ = {
+		F31C5529185B964C006958E7 /* MockHTTPInC */ = {
 			isa = PBXLegacyTarget;
 			buildArgumentsString = "$(ACTION)";
-			buildConfigurationList = F31C552C185B964C006958E7 /* Build configuration list for PBXLegacyTarget "MockHTTPInC.temp_caseinsensitive_rename" */;
+			buildConfigurationList = F31C552C185B964C006958E7 /* Build configuration list for PBXLegacyTarget "MockHTTPInC" */;
 			buildPhases = (
 			);
 			buildToolPath = make;
 			buildWorkingDirectory = /Users/lgo/dev/MockHTTPInC;
 			dependencies = (
 			);
-			name = MockHTTPInC.temp_caseinsensitive_rename;
+			name = MockHTTPInC;
 			passBuildSettingsInEnvironment = 1;
 			productName = MockHttpInC;
 		};
@@ -145,7 +145,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				F31C5529185B964C006958E7 /* MockHTTPInC.temp_caseinsensitive_rename */,
+				F31C5529185B964C006958E7 /* MockHTTPInC */,
 				F34297A31865F86A00138981 /* dummylib */,
 			);
 		};
@@ -287,7 +287,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		F31C552C185B964C006958E7 /* Build configuration list for PBXLegacyTarget "MockHTTPInC.temp_caseinsensitive_rename" */ = {
+		F31C552C185B964C006958E7 /* Build configuration list for PBXLegacyTarget "MockHTTPInC" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F31C552D185B964C006958E7 /* Debug */,
@@ -303,6 +303,7 @@
 				F34297A71865F86A00138981 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
