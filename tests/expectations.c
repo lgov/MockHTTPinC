@@ -600,12 +600,9 @@ CTEST2(expectations, test_one_request_response_chunked)
             curpos += len;
         } while (status == APR_EAGAIN);
     }
-#if 0
-    /* connection should have been dropped */
-    ASSERT_EQUAL(APR_EOF, status);
-#endif
+
     Verify(mh)
-    ASSERT_TRUE(VerifyAllRequestsReceivedInOrder);
+      ASSERT_TRUE(VerifyAllRequestsReceivedInOrder);
     SubmitVerify
 }
 
