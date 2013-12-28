@@ -18,12 +18,14 @@ $(OBJDIR)/%.o : %.c
 
 # configstore.c : simplespdy.h
 
+tests/CuTest/%.o : tests/CuTest/%.c
+		$(CC) $(CFLAGS) $(INC_PATHS) -I.. -o tests/CuTest/$*.o -c $<
 tests/%.o : tests/%.c
 		$(CC) $(CFLAGS) $(INC_PATHS) -I.. -o tests/$*.o -c $<
 
-test: $(OBJS) tests/expectations.o tests/httpClient.o
+test: $(OBJS) tests/expectations.o tests/httpClient.o tests/CuTest/CuTest.o
 	$(CC) -o tests/mockhttp_tests $(LIB_PATHS) $(LIBS) $(OBJS)\
-		tests/expectations.o tests/httpClient.o
+		tests/expectations.o tests/httpClient.o tests/CuTest/CuTest.o
 
 clean:
 	rm -f tests/mockhttp_tests build/*.o tests/*.o

@@ -22,71 +22,69 @@
 #include "MockHTTP_private.h"
 
 #include "tests.h"
-#define CTEST_MAIN
-#include "ctest.h"
+#include "CuTest/CuTest.h"
 
-CTEST_DATA(expectations) {
-    MockHTTP *mh;
-};
 
-/* CTest note: the test struct is available in setup/teardown/run
-   functions as 'data'. */
-CTEST_SETUP(expectations)
+void *test_setup(void *dummy)
 {
     MockHTTP *mh = mhInit();
 
-    data->mh = mh;
+    return mh;
 }
 
-CTEST_TEARDOWN(expectations)
+void *test_teardown(void *baton)
 {
-    mhCleanup(data->mh);
+    MockHTTP *mh = baton;
+
+    mhCleanup(mh);
+
+    return NULL;
 }
 
-#if 0
-CTEST2(expectations, test_mock_init)
+#if 1
+static void test_mock_init(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
-    ASSERT_NOT_NULL(mh);
+    MockHTTP *mh = tc->testBaton;
+    CuAssertPtrNotNull(tc, mh);
 }
 
-CTEST2(expectations, test_urlmatcher)
+static void test_urlmatcher(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
     mhRequestMatcher_t *rm;
     mhMatchingPattern_t *mp;
     mhRequest_t *req;
 
     rm = mhGetRequest(mh);
     mp = mhMatchURLEqualTo(mh, "/index.html");
-    ASSERT_NOT_NULL(mp);
+    CuAssertPtrNotNull(tc, mp);
 
     /* Create a fake request and check that the matcher works */
     req = _mhRequestInit(mh);
     req->url = "/index.html";
-    ASSERT_EQUAL(mp->matcher(mh->pool, mp, req), YES);
+    CuAssertIntEquals(tc, mp->matcher(mh->pool, mp, req), YES);
 }
 
-CTEST2(expectations, test_methodmatcher)
+static void test_methodmatcher(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
     mhRequestMatcher_t *rm;
     mhMatchingPattern_t *mp;
     mhRequest_t *req;
 
     mp = mhMatchMethodEqualTo(mh, "get");
     rm = mhGetRequest(mh, mp, NULL);
-    ASSERT_NOT_NULL(rm);
+    CuAssertPtrNotNull(tc, rm);
 
     /* Create a fake request and check that the matcher works */
     req = _mhRequestInit(mh);
     req->method = "get";
-    ASSERT_EQUAL(mp->matcher(mh->pool, mp, req), YES);
+    CuAssertIntEquals(tc, mp->matcher(mh->pool, mp, req), YES);
 }
 
-CTEST2(expectations, test_matchrequest)
+static void test_matchrequest(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
     mhRequestMatcher_t *rm;
     mhRequest_t *req;
 
@@ -96,18 +94,18 @@ CTEST2(expectations, test_matchrequest)
     req = _mhRequestInit(mh);
     req->method = "get";
     req->url = "/index.html";
-    ASSERT_EQUAL(_mhRequestMatcherMatch(rm, req), YES);
+    CuAssertIntEquals(tc, _mhRequestMatcherMatch(rm, req), YES);
 
     /* Create a fake request and check that it doesn't match */
     req = _mhRequestInit(mh);
     req->method = "get";
     req->url = "/notexisting.html";
-    ASSERT_EQUAL(_mhRequestMatcherMatch(rm, req), NO);
+    CuAssertIntEquals(tc, _mhRequestMatcherMatch(rm, req), NO);
 }
 
-CTEST2(expectations, test_basic_reqmatch_response)
+static void test_basic_reqmatch_response(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
     mhResponse_t *resp;
     mhRequest_t *req;
 
@@ -123,7 +121,7 @@ CTEST2(expectations, test_basic_reqmatch_response)
                             mhMatchURLEqualTo(__mh, "/index.html"),
                             NULL);
         mhPushRequest(__mh, __rm);
-        ASSERT_NOT_NULL(__rm);
+        CuAssertPtrNotNull(tc, __rm);
 
         ;
 
@@ -137,7 +135,7 @@ CTEST2(expectations, test_basic_reqmatch_response)
                             mhRespSetBody(__mh, "blabla"),
                             NULL);
         mhSetRespForReq(__mh, __rm, __resp);
-        ASSERT_NOT_NULL(__resp);
+        CuAssertPtrNotNull(tc, __resp);
 
     /* SubmitGiven */
     }
@@ -146,12 +144,12 @@ CTEST2(expectations, test_basic_reqmatch_response)
     req->method = "get";
     req->url = "/index.html";
     resp = _mhMatchRequest(mh, req);
-    ASSERT_NOT_NULL(resp);
+    CuAssertPtrNotNull(tc, resp);
 }
 
-CTEST2(expectations, test_basic_reqmatch_response_with_macros)
+static void test_basic_reqmatch_response_with_macros(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
     mhResponse_t *resp;
     mhRequest_t *req;
 
@@ -169,12 +167,12 @@ CTEST2(expectations, test_basic_reqmatch_response_with_macros)
     req->method = "get";
     req->url = "/index.html";
     resp = _mhMatchRequest(mh, req);
-    ASSERT_NOT_NULL(resp);
+    CuAssertPtrNotNull(tc, resp);
 }
 
-CTEST2(expectations, test_one_request_received)
+static void test_one_request_received(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
 
     Given(mh)
       GetRequest(
@@ -196,7 +194,7 @@ CTEST2(expectations, test_one_request_received)
 
         /* GetRequestReceivedFor */
         /*     URLEqualTo("/index.html") */
-        ASSERT_TRUE(mhVerifyRequestReceived(__mh,
+        CuAssertTrue(tc, mhVerifyRequestReceived(__mh,
                         mhGetRequestReceivedFor(__mh,
                                 mhMatchURLEqualTo(__mh, "/index.html")
                                                 ))
@@ -206,14 +204,14 @@ CTEST2(expectations, test_one_request_received)
 
     /* Now with the macro's */
     Verify(mh)
-        ASSERT_TRUE(GetRequestReceivedFor(
+        CuAssertTrue(tc, GetRequestReceivedFor(
                         URLEqualTo("/index.html")));
     SubmitVerify
 }
 
-CTEST2(expectations, test_match_method)
+static void test_match_method(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
 
     /* system under test */
     {
@@ -225,16 +223,16 @@ CTEST2(expectations, test_match_method)
     }
 
     Verify(mh)
-        ASSERT_FALSE(GetRequestReceivedFor(
-                         URLEqualTo("/index.html")));
-        ASSERT_TRUE(PostRequestReceivedFor(
+        CuAssertTrue(tc, !GetRequestReceivedFor(
+                          URLEqualTo("/index.html")));
+        CuAssertTrue(tc, PostRequestReceivedFor(
                          URLEqualTo("/index.html")));
     SubmitVerify
 }
 
-CTEST2(expectations, test_verify_all_reqs_received)
+static void test_verify_all_reqs_received(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
 
     Given(mh)
       GetRequest(
@@ -251,13 +249,13 @@ CTEST2(expectations, test_verify_all_reqs_received)
     }
 
     Verify(mh)
-        ASSERT_TRUE(VerifyAllRequestsReceived);
+        CuAssertTrue(tc, VerifyAllRequestsReceived);
     SubmitVerify
 }
 
-CTEST2(expectations, test_verify_all_reqs_received_inverse)
+static void test_verify_all_reqs_received_inverse(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
 
     Given(mh)
       GetRequest(
@@ -277,13 +275,13 @@ CTEST2(expectations, test_verify_all_reqs_received_inverse)
     }
 
     Verify(mh)
-        ASSERT_FALSE(VerifyAllRequestsReceived);
+        CuAssertTrue(tc, !VerifyAllRequestsReceived);
     SubmitVerify
 }
 
-CTEST2(expectations, test_verify_all_reqs_received_in_order)
+static void test_verify_all_reqs_received_in_order(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
 
     Given(mh)
       GetRequest(
@@ -303,13 +301,13 @@ CTEST2(expectations, test_verify_all_reqs_received_in_order)
     }
 
     Verify(mh)
-        ASSERT_TRUE(VerifyAllRequestsReceivedInOrder);
+        CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
     SubmitVerify
 }
 
-CTEST2(expectations, test_verify_all_reqs_received_in_order_more)
+static void test_verify_all_reqs_received_in_order_more(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
 
     Given(mh)
       GetRequest(URLEqualTo("/index1.html"))
@@ -345,13 +343,13 @@ CTEST2(expectations, test_verify_all_reqs_received_in_order_more)
     }
 
     Verify(mh)
-      ASSERT_TRUE(VerifyAllRequestsReceivedInOrder);
+      CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
     SubmitVerify
 }
 
-CTEST2(expectations, test_verify_req_chunked_body)
+static void test_verify_req_chunked_body(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
 
     Given(mh)
       GetRequest(
@@ -376,13 +374,13 @@ CTEST2(expectations, test_verify_req_chunked_body)
     }
 
     Verify(mh)
-      ASSERT_TRUE(VerifyAllRequestsReceived);
+      CuAssertTrue(tc, VerifyAllRequestsReceived);
     SubmitVerify
 }
 
-CTEST2(expectations, test_verify_req_chunked_body_fails)
+static void test_verify_req_chunked_body_fails(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
 
     Given(mh)
       GetRequest(
@@ -401,7 +399,7 @@ CTEST2(expectations, test_verify_req_chunked_body_fails)
     }
 
     Verify(mh)
-      ASSERT_FALSE(VerifyAllRequestsReceived);
+      CuAssertTrue(tc, !VerifyAllRequestsReceived);
     SubmitVerify
 
     Given(mh)
@@ -421,16 +419,16 @@ CTEST2(expectations, test_verify_req_chunked_body_fails)
     }
 
     Verify(mh)
-      ASSERT_FALSE(VerifyAllRequestsReceived);
+      CuAssertTrue(tc, !VerifyAllRequestsReceived);
     SubmitVerify
 
 
 }
 
 /* TW9ja0hUVFA6TW9ja0hUVFBwd2Q= is Base64 encoding of MockHTTP:MockHTTPpwd */
-CTEST2(expectations, test_verify_req_header)
+static void test_verify_req_header(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
 
     Given(mh)
       GetRequest(
@@ -456,13 +454,13 @@ CTEST2(expectations, test_verify_req_header)
     }
 
     Verify(mh)
-      ASSERT_TRUE(VerifyAllRequestsReceivedInOrder);
+      CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
     SubmitVerify
 }
 
-CTEST2(expectations, test_verify_req_header_fails)
+static void test_verify_req_header_fails(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
 
     Given(mh)
       GetRequest(
@@ -485,13 +483,13 @@ CTEST2(expectations, test_verify_req_header_fails)
     }
 
     Verify(mh)
-      ASSERT_FALSE(VerifyAllRequestsReceivedInOrder);
+      CuAssertTrue(tc, !VerifyAllRequestsReceivedInOrder);
     SubmitVerify
 }
 
-CTEST2(expectations, test_verify_error_message)
+static void test_verify_error_message(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
 
     Given(mh)
     GetRequest(
@@ -517,15 +515,15 @@ CTEST2(expectations, test_verify_error_message)
     }
 
     Verify(mh)
-      ASSERT_FALSE(VerifyAllRequestsReceivedInOrder);
-      ASSERT_NOT_NULL((void *)ErrorMessage);
-      ASSERT_NOT_EQUAL('\0', *ErrorMessage);
+      CuAssertTrue(tc, !VerifyAllRequestsReceivedInOrder);
+      CuAssertPtrNotNull(tc, (void *)ErrorMessage);
+      CuAssertTrue(tc, *ErrorMessage != '\0');
     SubmitVerify
 }
 
-CTEST2(expectations, test_one_request_response)
+static void test_one_request_response(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
 
     Given(mh)
       GetRequest(
@@ -554,20 +552,20 @@ CTEST2(expectations, test_one_request_response)
         do {
             int curpos = 0;
             status = receiveResponse(ctx, &buf, &len);
-            ASSERT_TRUE(strncmp(exp_body + curpos, buf, len) == 0);
+            CuAssertStrnEquals(tc, exp_body + curpos, len, buf);
             curpos += len;
         } while (status == APR_EAGAIN);
     }
 
     Verify(mh)
-      ASSERT_TRUE(VerifyAllRequestsReceivedInOrder);
+      CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
     SubmitVerify
 }
 #endif
 
-CTEST2(expectations, test_one_request_response_chunked)
+static void test_one_request_response_chunked(CuTest *tc)
 {
-    MockHTTP *mh = data->mh;
+    MockHTTP *mh = tc->testBaton;
 
     Given(mh)
     GetRequest(
@@ -596,17 +594,54 @@ CTEST2(expectations, test_one_request_response_chunked)
         do {
             int curpos = 0;
             status = receiveResponse(ctx, &buf, &len);
-            ASSERT_TRUE(strncmp(exp_body + curpos, buf, len) == 0);
+            CuAssertStrnEquals(tc, exp_body + curpos, len, buf);
             curpos += len;
         } while (status == APR_EAGAIN);
     }
 
     Verify(mh)
-      ASSERT_TRUE(VerifyAllRequestsReceivedInOrder);
+      CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
     SubmitVerify
+}
+
+CuSuite *test_mockHTTP(void)
+{
+    CuSuite *suite = CuSuiteNew();
+
+    SUITE_ADD_TEST(suite, test_mock_init);
+    SUITE_ADD_TEST(suite, test_urlmatcher);
+    SUITE_ADD_TEST(suite, test_methodmatcher);
+    SUITE_ADD_TEST(suite, test_matchrequest);
+    SUITE_ADD_TEST(suite, test_basic_reqmatch_response);
+    SUITE_ADD_TEST(suite, test_basic_reqmatch_response_with_macros);
+    SUITE_ADD_TEST(suite, test_one_request_received);
+    SUITE_ADD_TEST(suite, test_match_method);
+    SUITE_ADD_TEST(suite, test_verify_all_reqs_received);
+    SUITE_ADD_TEST(suite, test_verify_all_reqs_received_inverse);
+    SUITE_ADD_TEST(suite, test_verify_all_reqs_received_in_order);
+    SUITE_ADD_TEST(suite, test_verify_all_reqs_received_in_order_more);
+    SUITE_ADD_TEST(suite, test_verify_req_chunked_body);
+    SUITE_ADD_TEST(suite, test_verify_req_chunked_body_fails);
+    SUITE_ADD_TEST(suite, test_verify_req_header);
+    SUITE_ADD_TEST(suite, test_verify_req_header_fails);
+    SUITE_ADD_TEST(suite, test_verify_error_message);
+    SUITE_ADD_TEST(suite, test_one_request_response);
+    SUITE_ADD_TEST(suite, test_one_request_response_chunked);
+
+    return suite;
 }
 
 int main(int argc, const char *argv[])
 {
-    return ctest_main(argc, argv);
+    CuString *output = CuStringNew();
+    CuSuite* suite = CuSuiteNew();
+
+    CuSuiteSetSetupTeardownCallbacks(suite, test_setup, test_teardown);
+
+    CuSuiteAddSuite(suite, test_mockHTTP());
+
+    CuSuiteRun(suite);
+    CuSuiteSummary(suite, output);
+    CuSuiteDetails(suite, output);
+    printf("%s\n", output->buffer);
 }
