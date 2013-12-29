@@ -604,10 +604,51 @@ static void test_one_request_response_chunked(CuTest *tc)
     SubmitVerify
 }
 
+static void test_connection_close(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+
+    Given(mh)
+      GetRequest(URLEqualTo("/index1.html"))
+        Respond(WithCode(200),
+                WithHeader("Connection", "Close"),
+                WithChunkedBody("chunk1", "chunk2"))
+      GetRequest(URLEqualTo("/index2.html"))
+        Respond(WithCode(200), WithBody("response_body"))
+    SubmitGiven
+
+
+    /* system under test */
+    {
+        const char *exp_body = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked"
+        "\r\nConnection: Close\r\n\r\n6\r\nchunk1\r\n6\r\nchunk2\r\n0\r\n\r\n";
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        char *buf;
+        apr_size_t len;
+        apr_status_t status;
+
+        sendRequest(ctx, "GET", "/index.html", hdrs, "1");
+        mhRunServerLoop(mh);
+        mhRunServerLoop(mh);
+        mhRunServerLoop(mh);
+        do {
+            int curpos = 0;
+            status = receiveResponse(ctx, &buf, &len);
+            CuAssertStrnEquals(tc, exp_body + curpos, len, buf);
+            curpos += len;
+        } while (status == APR_EAGAIN);
+    }
+
+    Verify(mh)
+      CuAssert(tc, ErrorMessage, VerifyAllRequestsReceivedInOrder);
+    SubmitVerify
+}
+
 CuSuite *test_mockHTTP(void)
 {
     CuSuite *suite = CuSuiteNew();
-
+#if 0
     SUITE_ADD_TEST(suite, test_mock_init);
     SUITE_ADD_TEST(suite, test_urlmatcher);
     SUITE_ADD_TEST(suite, test_methodmatcher);
@@ -627,6 +668,8 @@ CuSuite *test_mockHTTP(void)
     SUITE_ADD_TEST(suite, test_verify_error_message);
     SUITE_ADD_TEST(suite, test_one_request_response);
     SUITE_ADD_TEST(suite, test_one_request_response_chunked);
+#endif
+    SUITE_ADD_TEST(suite, test_connection_close);
 
     return suite;
 }

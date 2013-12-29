@@ -601,7 +601,7 @@ mhRespAddHeader(MockHTTP *mh, const char *header, const char *value)
     return rb;
 }
 
-void mhRespEvaluate(mhResponse_t *resp)
+void mhResponseBuild(mhResponse_t *resp)
 {
     int i;
     for (i = 0 ; i < resp->builders->nelts; i++) {
@@ -664,7 +664,7 @@ int mhVerifyAllRequestsReceivedInOrder(MockHTTP *mh)
     if (mh->reqsReceived->nelts > mh->reqMatchers->nelts) {
         appendErrMessage(mh, "More requests received than expected!\n");
         return NO;
-    } else if (mh->reqsReceived->nelts > mh->reqMatchers->nelts) {
+    } else if (mh->reqsReceived->nelts < mh->reqMatchers->nelts) {
         appendErrMessage(mh, "Less requests received than expected!\n");
         return NO;
     }

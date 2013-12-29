@@ -50,12 +50,9 @@ static apr_status_t connectToTCPServer(clientCtx_t *ctx, const char *url)
                                 SOCK_STREAM,
                                 APR_PROTO_TCP,
                                 ctx->pool));
-#if 0
-    /* Set the socket to be non-blocking */
-    status = apr_socket_timeout_set(ctx->skt, 0);
-    if (status != APR_SUCCESS)
-        return status;
-#endif
+
+/*    STATUSERR(apr_socket_opt_set(ctx->skt, APR_SO_NONBLOCK, 1));*/
+    STATUSERR(apr_socket_timeout_set(ctx->skt, 10));
 
     status = apr_socket_connect(ctx->skt, address);
     if (status != APR_SUCCESS && !APR_STATUS_IS_EINPROGRESS(status))

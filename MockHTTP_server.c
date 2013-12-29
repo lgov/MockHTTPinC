@@ -537,9 +537,15 @@ static apr_status_t writeResponse(clientCtx_t *cctx, mhResponse_t *resp)
     apr_status_t status;
 
     if (!cctx->respRem) {
-        mhRespEvaluate(resp);
+        const char *connHdr;
+
+        mhResponseBuild(resp);
         cctx->respBody = respToString(pool, resp);
         cctx->respRem = strlen(cctx->respBody);
+        connHdr = getHeader(pool, resp->hdrs, "Connection");
+        if (strcmp(connHdr, "close") == 0) {
+            /* close conn when response is streamed completely */
+        }
     }
 
     len = cctx->respRem;

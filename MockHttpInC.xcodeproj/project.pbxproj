@@ -11,23 +11,26 @@
 		F34297AA1865F87E00138981 /* MockHTTP_private.h in Headers */ = {isa = PBXBuildFile; fileRef = F33CD836185C62DD008890DD /* MockHTTP_private.h */; };
 		F34297AB1865F88000138981 /* MockHTTP.c in Sources */ = {isa = PBXBuildFile; fileRef = F33CD834185BBA22008890DD /* MockHTTP.c */; };
 		F34297AC1865F88600138981 /* MockHTTP.h in Headers */ = {isa = PBXBuildFile; fileRef = F31C552F185B9683006958E7 /* MockHTTP.h */; };
-		F34297AD1865F88A00138981 /* ctest.h in Headers */ = {isa = PBXBuildFile; fileRef = F33CD828185BA2C9008890DD /* ctest.h */; };
 		F34297AE1865F88A00138981 /* expectations.c in Sources */ = {isa = PBXBuildFile; fileRef = F33CD829185BA2E0008890DD /* expectations.c */; };
 		F34297AF1865F88A00138981 /* httpClient.c in Sources */ = {isa = PBXBuildFile; fileRef = F33CD83A1860DCC5008890DD /* httpClient.c */; };
-		F34297B01865F88A00138981 /* tests.h in Headers */ = {isa = PBXBuildFile; fileRef = F33CD83B1860DD7D008890DD /* tests.h */; };
+		F3BEC100186EC8C6004073DE /* CuTest.c in Sources */ = {isa = PBXBuildFile; fileRef = F3BEC0FC186EC8C6004073DE /* CuTest.c */; };
+		F3BEC101186EC8C6004073DE /* CuTest.h in Headers */ = {isa = PBXBuildFile; fileRef = F3BEC0FD186EC8C6004073DE /* CuTest.h */; };
+		F3BEC104186EC965004073DE /* tests.h in Headers */ = {isa = PBXBuildFile; fileRef = F3BEC103186EC965004073DE /* tests.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		F31C552F185B9683006958E7 /* MockHTTP.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MockHTTP.h; sourceTree = "<group>"; };
 		F33CD826185B9F6C008890DD /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
-		F33CD828185BA2C9008890DD /* ctest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ctest.h; sourceTree = "<group>"; };
 		F33CD829185BA2E0008890DD /* expectations.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = expectations.c; sourceTree = "<group>"; };
 		F33CD834185BBA22008890DD /* MockHTTP.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = MockHTTP.c; sourceTree = "<group>"; };
 		F33CD836185C62DD008890DD /* MockHTTP_private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MockHTTP_private.h; sourceTree = "<group>"; };
 		F33CD839185F9871008890DD /* MockHTTP_server.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = MockHTTP_server.c; sourceTree = "<group>"; };
 		F33CD83A1860DCC5008890DD /* httpClient.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = httpClient.c; sourceTree = "<group>"; };
-		F33CD83B1860DD7D008890DD /* tests.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tests.h; sourceTree = "<group>"; };
 		F34297A41865F86A00138981 /* libdummylib.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libdummylib.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		F3BEC0FC186EC8C6004073DE /* CuTest.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = CuTest.c; sourceTree = "<group>"; };
+		F3BEC0FD186EC8C6004073DE /* CuTest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CuTest.h; sourceTree = "<group>"; };
+		F3BEC103186EC965004073DE /* tests.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tests.h; path = tests/tests.h; sourceTree = "<group>"; };
+		F3BEC105186ECD44004073DE /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -44,6 +47,7 @@
 		F31C5524185B964C006958E7 = {
 			isa = PBXGroup;
 			children = (
+				F3BEC103186EC965004073DE /* tests.h */,
 				F33CD839185F9871008890DD /* MockHTTP_server.c */,
 				F33CD836185C62DD008890DD /* MockHTTP_private.h */,
 				F33CD834185BBA22008890DD /* MockHTTP.c */,
@@ -57,10 +61,9 @@
 		F33CD827185BA2C9008890DD /* tests */ = {
 			isa = PBXGroup;
 			children = (
-				F33CD828185BA2C9008890DD /* ctest.h */,
+				F3BEC0FB186EC8C6004073DE /* CuTest */,
 				F33CD829185BA2E0008890DD /* expectations.c */,
 				F33CD83A1860DCC5008890DD /* httpClient.c */,
-				F33CD83B1860DD7D008890DD /* tests.h */,
 			);
 			path = tests;
 			sourceTree = "<group>";
@@ -73,6 +76,16 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		F3BEC0FB186EC8C6004073DE /* CuTest */ = {
+			isa = PBXGroup;
+			children = (
+				F3BEC105186ECD44004073DE /* README.md */,
+				F3BEC0FC186EC8C6004073DE /* CuTest.c */,
+				F3BEC0FD186EC8C6004073DE /* CuTest.h */,
+			);
+			path = CuTest;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -80,10 +93,10 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F34297B01865F88A00138981 /* tests.h in Headers */,
-				F34297AD1865F88A00138981 /* ctest.h in Headers */,
+				F3BEC104186EC965004073DE /* tests.h in Headers */,
 				F34297AC1865F88600138981 /* MockHTTP.h in Headers */,
 				F34297AA1865F87E00138981 /* MockHTTP_private.h in Headers */,
+				F3BEC101186EC8C6004073DE /* CuTest.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -160,6 +173,7 @@
 				F34297A91865F87700138981 /* MockHTTP_server.c in Sources */,
 				F34297AB1865F88000138981 /* MockHTTP.c in Sources */,
 				F34297AE1865F88A00138981 /* expectations.c in Sources */,
+				F3BEC100186EC8C6004073DE /* CuTest.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -129,7 +129,7 @@ mhRespBuilder_t *mhRespSetBody(MockHTTP *mh, const char *body);
 mhRespBuilder_t *mhRespSetChunkedBody(MockHTTP *mh, ...);
 mhRespBuilder_t *mhRespAddHeader(MockHTTP *mh, const char *header,
                                  const char *value);
-void mhRespEvaluate(mhResponse_t *resp);
+void mhResponseBuild(mhResponse_t *resp);
 
 /* Define request/response pairs */
 void mhPushRequest(MockHTTP *mh, mhRequestMatcher_t *rm);
