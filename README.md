@@ -36,6 +36,7 @@ Step 1: Include MockHTTPInC's main header file, create a test function and setup
         MockHTTP *mh = mhInit();
 
 Step 2: Instruct the mock HTTP server to expect a GET request to url /index.html. Also, tell it how to respond when that request arrives.
+
         Given(mh)
           GetRequest(
             URLEqualTo("/index.html"))
