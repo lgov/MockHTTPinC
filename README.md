@@ -9,8 +9,26 @@ MockHTTPInC is a library that wants to make in-depth testing of HTTP client code
 Getting started
 ---------------
 
+Include these 4 source files in your project:
+- MockHTTP.c
+- MockHTTP.h
+- MockHTTP_private.h
+- MockHTTP_server.c
 
-The library is based on code originally written to test the serf HTTP client (http://serf.googlecode.com). 
+MockHTTPInC depends on these libraries:
+- Apache's apr and apr-util libraries. (http://apr.apache.org)
+- OpenSSL (http://www.openssl.org)
+
+At this time the code conforms to the C99 standard. The code has been written with C89 in mind, but we use variadic macros (a C99 feature) to facilitate test writing.
+
+Write a first test
+------------------
+
+    #include "MockHTTP.h"
+
+    ...
+
+    MockHTTP *mh = mhInit();
 
     Given(mh)
       GetRequest(
@@ -18,5 +36,12 @@ The library is based on code originally written to test the serf HTTP client (ht
       Respond(
         WithCode(200),
         WithHeader("Connection", "Close"),
-        WithBody("blabla"))
+        WithBody("body"))
     SubmitGiven
+
+
+
+History
+-------
+
+The library is based on code originally written to test the serf HTTP client (http://serf.googlecode.com). 
