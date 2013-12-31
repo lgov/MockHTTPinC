@@ -39,6 +39,8 @@ typedef struct clientCtx_t {
     apr_int16_t reqevents;
     char *respBody;
     apr_size_t respRem;
+    mhResponse_t *currResp;
+    bool closeConn;
 } clientCtx_t;
 
 struct servCtx_t {
@@ -543,8 +545,9 @@ static apr_status_t writeResponse(clientCtx_t *cctx, mhResponse_t *resp)
         cctx->respBody = respToString(pool, resp);
         cctx->respRem = strlen(cctx->respBody);
         connHdr = getHeader(pool, resp->hdrs, "Connection");
-        if (strcmp(connHdr, "close") == 0) {
+        if (connHdr && strcmp(connHdr, "close") == 0) {
             /* close conn when response is streamed completely */
+            cctx->closeConn = YES;
         }
     }
 
@@ -553,6 +556,10 @@ static apr_status_t writeResponse(clientCtx_t *cctx, mhResponse_t *resp)
     if (len < cctx->respRem) {
         memcpy(cctx->respBody, cctx->respBody + len, cctx->respRem - len + 1);
         cctx->respRem -= len;
+        cctx->currResp = resp;
+    } else {
+        cctx->closeConn = NO;
+        apr_socket_close(cctx->skt);
     }
     return APR_SUCCESS;
 }
@@ -608,6 +615,8 @@ apr_status_t _mhRunServerLoop(servCtx_t *ctx)
             cctx->buflen = 0;
             cctx->bufrem = BUFSIZE;
             cctx->reqevents = pfd.reqevents;
+            cctx->closeConn = NO;
+            cctx->currResp = NULL;
             ctx->cctx = cctx;
         } else {
             /* one of the client sockets */

@@ -6,6 +6,10 @@ MockHTTPInC is a library that wants to make in-depth testing of HTTP client code
 - a HTTPS server that supports the full SSL/TLS handshake, client certificates, session renegotiation and session resumption
 - a simple HTTP/HTTPS proxy 
 
+Getting started
+---------------
+
+
 The library is based on code originally written to test the serf HTTP client (http://serf.googlecode.com). 
 
     Given(mh)

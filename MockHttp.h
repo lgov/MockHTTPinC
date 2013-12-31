@@ -65,7 +65,7 @@ extern "C" {
 #define     WithChunkedBody(...)\
                 mhRespSetChunkedBody(__mh, __VA_ARGS__, NULL)
 /* Assign local variables to NULL to avoid 'variable unused' warnings. */
-#define SubmitGiven\
+#define EndGiven\
                 __resp = NULL; __rm = NULL; __mh = NULL;\
             }
 
@@ -84,7 +84,7 @@ extern "C" {
                 mhVerifyAllRequestsReceivedInOrder(__mh)
 #define   ErrorMessage\
                 mhGetLastErrorString(__mh)
-#define SubmitVerify\
+#define EndVerify\
             }
 
 typedef struct MockHTTP MockHTTP;

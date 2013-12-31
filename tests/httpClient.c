@@ -52,7 +52,7 @@ static apr_status_t connectToTCPServer(clientCtx_t *ctx, const char *url)
                                 ctx->pool));
 
 /*    STATUSERR(apr_socket_opt_set(ctx->skt, APR_SO_NONBLOCK, 1));*/
-    STATUSERR(apr_socket_timeout_set(ctx->skt, 10));
+    STATUSERR(apr_socket_timeout_set(ctx->skt, 1000));
 
     status = apr_socket_connect(ctx->skt, address);
     if (status != APR_SUCCESS && !APR_STATUS_IS_EINPROGRESS(status))

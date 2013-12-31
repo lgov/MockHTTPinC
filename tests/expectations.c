@@ -137,7 +137,7 @@ static void test_basic_reqmatch_response(CuTest *tc)
         mhSetRespForReq(__mh, __rm, __resp);
         CuAssertPtrNotNull(tc, __resp);
 
-    /* SubmitGiven */
+    /* EndGiven */
     }
 
     req = _mhRequestInit(mh);
@@ -160,7 +160,7 @@ static void test_basic_reqmatch_response_with_macros(CuTest *tc)
         WithCode(200),
         WithHeader("Connection", "Close"),
         WithBody("blabla"))
-    SubmitGiven
+    EndGiven
 
     /* verify that the request was received */
     req = _mhRequestInit(mh);
@@ -177,7 +177,7 @@ static void test_one_request_received(CuTest *tc)
     Given(mh)
       GetRequest(
         URLEqualTo("/index.html"))
-    SubmitGiven
+    EndGiven
 
     /* system under test */
     {
@@ -199,14 +199,14 @@ static void test_one_request_received(CuTest *tc)
                                 mhMatchURLEqualTo(__mh, "/index.html")
                                                 ))
                     );
-        /* SubmitVerify */
+        /* EndVerify */
     }
 
     /* Now with the macro's */
     Verify(mh)
         CuAssertTrue(tc, GetRequestReceivedFor(
                         URLEqualTo("/index.html")));
-    SubmitVerify
+    EndVerify
 }
 
 static void test_match_method(CuTest *tc)
@@ -227,7 +227,7 @@ static void test_match_method(CuTest *tc)
                           URLEqualTo("/index.html")));
         CuAssertTrue(tc, PostRequestReceivedFor(
                          URLEqualTo("/index.html")));
-    SubmitVerify
+    EndVerify
 }
 
 static void test_verify_all_reqs_received(CuTest *tc)
@@ -237,7 +237,7 @@ static void test_verify_all_reqs_received(CuTest *tc)
     Given(mh)
       GetRequest(
         URLEqualTo("/index.html"))
-    SubmitGiven
+    EndGiven
 
     /* system under test */
     {
@@ -250,7 +250,7 @@ static void test_verify_all_reqs_received(CuTest *tc)
 
     Verify(mh)
         CuAssertTrue(tc, VerifyAllRequestsReceived);
-    SubmitVerify
+    EndVerify
 }
 
 static void test_verify_all_reqs_received_inverse(CuTest *tc)
@@ -262,7 +262,7 @@ static void test_verify_all_reqs_received_inverse(CuTest *tc)
         URLEqualTo("/index.html"))
       PostRequest(
         URLEqualTo("/index2.html"))
-    SubmitGiven
+    EndGiven
 
     /* system under test */
     {
@@ -276,7 +276,7 @@ static void test_verify_all_reqs_received_inverse(CuTest *tc)
 
     Verify(mh)
         CuAssertTrue(tc, !VerifyAllRequestsReceived);
-    SubmitVerify
+    EndVerify
 }
 
 static void test_verify_all_reqs_received_in_order(CuTest *tc)
@@ -288,7 +288,7 @@ static void test_verify_all_reqs_received_in_order(CuTest *tc)
         URLEqualTo("/index.html"))
       PostRequest(
         URLEqualTo("/index2.html"))
-    SubmitGiven
+    EndGiven
 
     /* system under test */
     {
@@ -302,7 +302,7 @@ static void test_verify_all_reqs_received_in_order(CuTest *tc)
 
     Verify(mh)
         CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
-    SubmitVerify
+    EndVerify
 }
 
 static void test_verify_all_reqs_received_in_order_more(CuTest *tc)
@@ -318,7 +318,7 @@ static void test_verify_all_reqs_received_in_order_more(CuTest *tc)
       PostRequest(URLEqualTo("/index6.html"))
       GetRequest(URLEqualTo("/index7.html"))
       PostRequest(URLEqualTo("/index8.html"))
-    SubmitGiven
+    EndGiven
 
     /* system under test */
     {
@@ -344,7 +344,7 @@ static void test_verify_all_reqs_received_in_order_more(CuTest *tc)
 
     Verify(mh)
       CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
-    SubmitVerify
+    EndVerify
 }
 
 static void test_verify_req_chunked_body(CuTest *tc)
@@ -358,7 +358,7 @@ static void test_verify_req_chunked_body(CuTest *tc)
       GetRequest(
         URLEqualTo("/index2.html"),
         ChunkedBodyChunksEqualTo("chunk1", "chunk2"))
-    SubmitGiven
+    EndGiven
 
     /* system under test */
     {
@@ -375,7 +375,7 @@ static void test_verify_req_chunked_body(CuTest *tc)
 
     Verify(mh)
       CuAssertTrue(tc, VerifyAllRequestsReceived);
-    SubmitVerify
+    EndVerify
 }
 
 static void test_verify_req_chunked_body_fails(CuTest *tc)
@@ -386,7 +386,7 @@ static void test_verify_req_chunked_body_fails(CuTest *tc)
       GetRequest(
         URLEqualTo("/index.html"),
           ChunkedBodyChunksEqualTo("chunk1", "chunk2"))
-    SubmitGiven
+    EndGiven
 
     /* system under test */
     {
@@ -400,13 +400,13 @@ static void test_verify_req_chunked_body_fails(CuTest *tc)
 
     Verify(mh)
       CuAssertTrue(tc, !VerifyAllRequestsReceived);
-    SubmitVerify
+    EndVerify
 
     Given(mh)
       GetRequest(
         URLEqualTo("/index2.html"),
           ChunkedBodyChunksEqualTo("chunk1", "chunk2"))
-    SubmitGiven
+    EndGiven
 
     /* system under test */
     {
@@ -420,7 +420,7 @@ static void test_verify_req_chunked_body_fails(CuTest *tc)
 
     Verify(mh)
       CuAssertTrue(tc, !VerifyAllRequestsReceived);
-    SubmitVerify
+    EndVerify
 
 
 }
@@ -437,7 +437,7 @@ static void test_verify_req_header(CuTest *tc)
     GetRequest( /* header names are case insensitive */
         URLEqualTo("/index2.html"),
         HeaderEqualTo("autHORIZation", "TW9ja0hUVFA6TW9ja0hUVFBwd2Q="))
-    SubmitGiven
+    EndGiven
 
     /* system under test */
     {
@@ -455,7 +455,7 @@ static void test_verify_req_header(CuTest *tc)
 
     Verify(mh)
       CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
-    SubmitVerify
+    EndVerify
 }
 
 static void test_verify_req_header_fails(CuTest *tc)
@@ -466,7 +466,7 @@ static void test_verify_req_header_fails(CuTest *tc)
       GetRequest(
         URLEqualTo("/index1.html"),
         HeaderEqualTo("Authorization", "TW9ja0hUVFA6TW9ja0hUVFBwd2Q="))
-    SubmitGiven
+    EndGiven
 
     /* system under test */
     {
@@ -484,7 +484,7 @@ static void test_verify_req_header_fails(CuTest *tc)
 
     Verify(mh)
       CuAssertTrue(tc, !VerifyAllRequestsReceivedInOrder);
-    SubmitVerify
+    EndVerify
 }
 
 static void test_verify_error_message(CuTest *tc)
@@ -498,7 +498,7 @@ static void test_verify_error_message(CuTest *tc)
     GetRequest( /* header names are case insensitive */
       URLEqualTo("/index2.html"),
       HeaderEqualTo("autHORIZation", "TW9ja0hUVFA6TW9ja0hUVFBwd2Q="))
-    SubmitGiven
+    EndGiven
 
     /* system under test */
     {
@@ -518,7 +518,7 @@ static void test_verify_error_message(CuTest *tc)
       CuAssertTrue(tc, !VerifyAllRequestsReceivedInOrder);
       CuAssertPtrNotNull(tc, (void *)ErrorMessage);
       CuAssertTrue(tc, *ErrorMessage != '\0');
-    SubmitVerify
+    EndVerify
 }
 
 static void test_one_request_response(CuTest *tc)
@@ -532,7 +532,7 @@ static void test_one_request_response(CuTest *tc)
         WithCode(200),
         WithHeader("Connection", "Close"),
         WithBody("blabla"))
-    SubmitGiven
+    EndGiven
 
 
     /* system under test */
@@ -559,7 +559,7 @@ static void test_one_request_response(CuTest *tc)
 
     Verify(mh)
       CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
-    SubmitVerify
+    EndVerify
 }
 #endif
 
@@ -574,7 +574,7 @@ static void test_one_request_response_chunked(CuTest *tc)
             WithCode(200),
             WithHeader("Connection", "Close"),
             WithChunkedBody("chunk1", "chunk2"))
-    SubmitGiven
+    EndGiven
 
 
     /* system under test */
@@ -601,7 +601,7 @@ static void test_one_request_response_chunked(CuTest *tc)
 
     Verify(mh)
       CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
-    SubmitVerify
+    EndVerify
 }
 
 static void test_connection_close(CuTest *tc)
@@ -611,24 +611,23 @@ static void test_connection_close(CuTest *tc)
     Given(mh)
       GetRequest(URLEqualTo("/index1.html"))
         Respond(WithCode(200),
-                WithHeader("Connection", "Close"),
+                WithHeader("Connection", "close"),
                 WithChunkedBody("chunk1", "chunk2"))
-      GetRequest(URLEqualTo("/index2.html"))
-        Respond(WithCode(200), WithBody("response_body"))
-    SubmitGiven
+    EndGiven
 
 
     /* system under test */
     {
         const char *exp_body = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked"
-        "\r\nConnection: Close\r\n\r\n6\r\nchunk1\r\n6\r\nchunk2\r\n0\r\n\r\n";
+        "\r\nConnection: close\r\n\r\n6\r\nchunk1\r\n6\r\nchunk2\r\n0\r\n\r\n";
         clientCtx_t *ctx = initClient(mh);
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         char *buf;
         apr_size_t len;
         apr_status_t status;
 
-        sendRequest(ctx, "GET", "/index.html", hdrs, "1");
+        sendChunkedRequest(ctx, "GET", "/index1.html", hdrs, "chunk1", "chunk2",
+                           NULL);
         mhRunServerLoop(mh);
         mhRunServerLoop(mh);
         mhRunServerLoop(mh);
@@ -637,18 +636,20 @@ static void test_connection_close(CuTest *tc)
             status = receiveResponse(ctx, &buf, &len);
             CuAssertStrnEquals(tc, exp_body + curpos, len, buf);
             curpos += len;
-        } while (status == APR_EAGAIN);
+        } while (status == APR_EAGAIN || status == APR_SUCCESS);
+        /* The server should have closed the connection. */
+        CuAssertIntEquals(tc, APR_EOF, status);
     }
 
     Verify(mh)
       CuAssert(tc, ErrorMessage, VerifyAllRequestsReceivedInOrder);
-    SubmitVerify
+    EndVerify
 }
 
 CuSuite *test_mockHTTP(void)
 {
     CuSuite *suite = CuSuiteNew();
-#if 0
+
     SUITE_ADD_TEST(suite, test_mock_init);
     SUITE_ADD_TEST(suite, test_urlmatcher);
     SUITE_ADD_TEST(suite, test_methodmatcher);
@@ -668,7 +669,6 @@ CuSuite *test_mockHTTP(void)
     SUITE_ADD_TEST(suite, test_verify_error_message);
     SUITE_ADD_TEST(suite, test_one_request_response);
     SUITE_ADD_TEST(suite, test_one_request_response_chunked);
-#endif
     SUITE_ADD_TEST(suite, test_connection_close);
 
     return suite;

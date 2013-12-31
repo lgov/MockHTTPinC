@@ -46,19 +46,34 @@ static const char *toLower(apr_pool_t *pool, const char *str)
     return lstr;
 }
 
+/* header should be stored with their original case to use them in responses.
+   Search on header name is case-insensitive per RFC2616. */
 const char *
 getHeader(apr_pool_t *pool, apr_hash_t *hdrs, const char *hdr)
 {
     const char *lhdr = toLower(pool, hdr);
-    return apr_hash_get(hdrs, lhdr, APR_HASH_KEY_STRING);
+    apr_hash_index_t *hi;
+    void *val;
+    const void *key;
+    apr_ssize_t klen;
+
+    for (hi = apr_hash_first(pool, hdrs); hi; hi = apr_hash_next(hi)) {
+        const char *tmp;
+
+        apr_hash_this(hi, &key, &klen, &val);
+
+        tmp = toLower(pool, key);
+        if (strcmp(tmp, lhdr) == 0)
+            return val;
+    }
+
+    return NULL;
 }
 
 void setHeader(apr_pool_t *pool, apr_hash_t *hdrs,
                const char *hdr, const char *val)
 {
-    const char *lhdr = toLower(pool, hdr);
-
-    apr_hash_set(hdrs, lhdr, APR_HASH_KEY_STRING, val);
+    apr_hash_set(hdrs, hdr, APR_HASH_KEY_STRING, val);
 }
 
 /* To enable calls like Assert(expected, Verify...(), ErrorMessage()), with the
@@ -582,7 +597,7 @@ mhRespBuilder_t * mhRespSetChunkedBody(MockHTTP *mh, ...)
 static void respHeaderSetter(mhResponse_t *resp, const void *baton)
 {
     const RespBuilderHelper_t *rbh = baton;
-    apr_hash_set(resp->hdrs, rbh->header, APR_HASH_KEY_STRING, rbh->value);
+    setHeader(resp->pool, resp->hdrs, rbh->header, rbh->value);
 }
 
 mhRespBuilder_t *
