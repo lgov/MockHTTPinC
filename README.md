@@ -24,21 +24,32 @@ At this time the code conforms to the C99 standard. The code has been written wi
 Write a first test
 ------------------
 
+MockHTTPInC does not come with or mandate the use of a specific unit test framework. Instead it should integrate fine with the unit test framework your project is currently using. In these examples we will use the CuTest framework (https://github.com/asimjalis/cutest), you'll recognize its functions by the *Cu* prefix.
+
+
+Step 1: Include MockHTTPInC's main header file, create a test function and setup the mock HTTP server.
+
     #include "MockHTTP.h"
 
-    ...
-
+    static void test_simple_request_response(CuTest *tc)
     {
         MockHTTP *mh = mhInit();
 
+Step 2: Instruct the mock HTTP server to expect a GET request to url /index.html. Also, tell it how to respond when that request arrives.
         Given(mh)
           GetRequest(
             URLEqualTo("/index.html"))
           Respond(
             WithCode(200), WithHeader("Connection", "Close"), WithBody("body"))
         EndGiven
-    }
 
+Step 3: 
+
+
+
+Step 4:
+
+    }
 
 History
 -------
