@@ -28,17 +28,16 @@ Write a first test
 
     ...
 
-    MockHTTP *mh = mhInit();
+    {
+        MockHTTP *mh = mhInit();
 
-    Given(mh)
-      GetRequest(
-        URLEqualTo("/index.html"))
-      Respond(
-        WithCode(200),
-        WithHeader("Connection", "Close"),
-        WithBody("body"))
-    SubmitGiven
-
+        Given(mh)
+          GetRequest(
+            URLEqualTo("/index.html"))
+          Respond(
+            WithCode(200), WithHeader("Connection", "Close"), WithBody("body"))
+        EndGiven
+    }
 
 
 History
