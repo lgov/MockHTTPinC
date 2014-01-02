@@ -41,7 +41,6 @@ void *test_teardown(void *baton)
     return NULL;
 }
 
-#if 1
 static void test_mock_init(CuTest *tc)
 {
     MockHTTP *mh = tc->testBaton;
@@ -561,7 +560,6 @@ static void test_one_request_response(CuTest *tc)
       CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
     EndVerify
 }
-#endif
 
 static void test_one_request_response_chunked(CuTest *tc)
 {
@@ -649,7 +647,7 @@ static void test_connection_close(CuTest *tc)
 CuSuite *test_mockHTTP(void)
 {
     CuSuite *suite = CuSuiteNew();
-
+#if 0
     SUITE_ADD_TEST(suite, test_mock_init);
     SUITE_ADD_TEST(suite, test_urlmatcher);
     SUITE_ADD_TEST(suite, test_methodmatcher);
@@ -667,6 +665,7 @@ CuSuite *test_mockHTTP(void)
     SUITE_ADD_TEST(suite, test_verify_req_header);
     SUITE_ADD_TEST(suite, test_verify_req_header_fails);
     SUITE_ADD_TEST(suite, test_verify_error_message);
+#endif
     SUITE_ADD_TEST(suite, test_one_request_response);
     SUITE_ADD_TEST(suite, test_one_request_response_chunked);
     SUITE_ADD_TEST(suite, test_connection_close);

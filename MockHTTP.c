@@ -25,7 +25,6 @@
 
 static const int DefaultSrvPort =   30080;
 static const int DefaultProxyPort = 38080;
-static const int MaxReqRespQueueSize = 50;
 
 typedef struct ReqMatcherRespPair_t {
     mhRequestMatcher_t *rm;
@@ -115,13 +114,11 @@ MockHTTP *mhInit()
     mh->pool = pool;
     mh->reqMatchers = apr_array_make(pool, 5, sizeof(ReqMatcherRespPair_t *));;
     apr_queue_create(&mh->reqQueue, MaxReqRespQueueSize, pool);
-    apr_queue_create(&mh->respQueue, MaxReqRespQueueSize, pool);
     mh->reqsReceived = apr_array_make(pool, 5, sizeof(mhRequest_t *));
     mh->errmsg = apr_palloc(pool, ERRMSG_MAXSIZE);
     *mh->errmsg = '\0';
 
-    mh->servCtx = _mhInitTestServer(mh, "localhost", DefaultSrvPort,
-                                    mh->reqQueue, mh->respQueue);
+    mh->servCtx = _mhInitTestServer(mh, "localhost", DefaultSrvPort);
 
     return mh;
 }
@@ -149,22 +146,17 @@ void mhRunServerLoop(MockHTTP *mh)
 
         while (apr_queue_trypop(mh->reqQueue, &data) == APR_SUCCESS) {
             mhRequest_t *req;
-            mhResponse_t *resp;
 
             req = data;
             *((mhRequest_t **)apr_array_push(mh->reqsReceived)) = req;
 
-            resp = _mhMatchRequest(mh, req);
-            if (resp)
-                apr_queue_trypush(mh->respQueue, resp);
-
             printf("request added to incoming queue: %s\n", req->method);
         }
 
-    } while (apr_queue_size(mh->respQueue) > 0 && status == APR_SUCCESS);
+    } while (status == APR_SUCCESS);
 }
 
-mhResponse_t *_mhMatchRequest(MockHTTP *mh, mhRequest_t *req)
+mhResponse_t *_mhMatchRequest(const MockHTTP *mh, mhRequest_t *req)
 {
     int i;
 

@@ -39,18 +39,19 @@ typedef struct clientCtx_t {
     apr_int16_t reqevents;
     char *respBody;
     apr_size_t respRem;
-    mhResponse_t *currResp;
+    apr_array_header_t *respQueue;  /*  test will queue a response */
+    mhResponse_t *currResp; /* response in progress */
     bool closeConn;
 } clientCtx_t;
 
 struct servCtx_t {
     apr_pool_t *pool;
+    const MockHTTP *mh; /* keep const to avoid thread race problems */
     const char *hostname;
     apr_port_t port;
     apr_pollset_t *pollset;
     apr_socket_t *skt;
     apr_queue_t *reqQueue;   /* thread safe, pass received reqs back to test, */
-    apr_queue_t *respQueue;  /*  test will queue a response */
     /* TODO: allow more connections */
     clientCtx_t *cctx;
 };
@@ -134,18 +135,17 @@ static apr_status_t setupTCPServer(servCtx_t *ctx, bool blocking)
 }
 
 servCtx_t *
-_mhInitTestServer(MockHTTP *mh, const char *hostname,apr_port_t port,
-                  apr_queue_t *reqQueue, apr_queue_t *respQueue)
+_mhInitTestServer(const MockHTTP *mh, const char *hostname, apr_port_t port)
 {
     apr_thread_t *thread;
     apr_pool_t *pool = mh->pool;
 
     servCtx_t *ctx = apr_pcalloc(pool, sizeof(servCtx_t));
     ctx->pool = pool;
+    ctx->mh = mh;
     ctx->hostname = apr_pstrdup(pool, hostname);
     ctx->port = port;
-    ctx->reqQueue = reqQueue;
-    ctx->respQueue = respQueue;
+    ctx->reqQueue = mh->reqQueue;
 
     apr_pool_cleanup_register(pool, ctx,
                               cleanupServer,
@@ -349,49 +349,50 @@ static apr_status_t readChunked(clientCtx_t *cctx, mhRequest_t *req, bool *done)
 }
 
 /* New request data was made available, read status line/hdrs/body (chunks) */
-static apr_status_t processData(clientCtx_t *cctx)
+static apr_status_t processData(clientCtx_t *cctx, mhRequest_t **preq)
 {
     bool done;
+    mhRequest_t *req = *preq;
     apr_status_t status = APR_SUCCESS;
 
     if (cctx->buflen == 0)
         return APR_EAGAIN; /* more data needed */
 
-    if (cctx->req == NULL) {
-        cctx->req = apr_pcalloc(cctx->pool, sizeof(mhRequest_t));
-        cctx->req->hdrs = apr_hash_make(cctx->pool);
+    if (req == NULL) {
+        req = *preq = apr_pcalloc(cctx->pool, sizeof(mhRequest_t));
+        req->hdrs = apr_hash_make(cctx->pool);
     }
 
     done = NO;
     switch(cctx->req->readState) {
         case 0: /* status line */
-            STATUSREADERR(readReqLine(cctx, cctx->req, &done));
+            STATUSREADERR(readReqLine(cctx, req, &done));
             break;
         case 1: /* headers */
-            STATUSREADERR(readHeader(cctx, cctx->req, &done));
+            STATUSREADERR(readHeader(cctx, req, &done));
             break;
         case 2: /* body */
         {
             const char *clstr, *chstr;
-            clstr = getHeader(cctx->pool, cctx->req->hdrs,
+            clstr = getHeader(cctx->pool, req->hdrs,
                               "Content-Length");
             if (clstr) {
-                STATUSREADERR(readBody(cctx, cctx->req, &done));
+                STATUSREADERR(readBody(cctx, req, &done));
             } else {
-                chstr = getHeader(cctx->pool, cctx->req->hdrs,
+                chstr = getHeader(cctx->pool, req->hdrs,
                                   "Transfer-Encoding");
                 /* TODO: chunked can be one or more encodings */
                 if (apr_strnatcasecmp(chstr, "chunked") == 0)
-                    STATUSREADERR(readChunked(cctx, cctx->req, &done));
+                    STATUSREADERR(readChunked(cctx, req, &done));
             }
             break;
         }
         case 3: /* finished */
-            printf("server received request: %s\n", cctx->req->method);
+            printf("server received request: %s\n", req->method);
             status = APR_EOF;
             break;
     }
-    if (done) cctx->req->readState++;
+    if (done) req->readState++;
 
 /*    printf("buflen: %ld\n", cctx->buflen);*/
 
@@ -401,7 +402,7 @@ static apr_status_t processData(clientCtx_t *cctx)
     return status;
 }
 
-static apr_status_t readRequest(clientCtx_t *cctx, apr_queue_t *reqQueue)
+static apr_status_t readRequest(clientCtx_t *cctx, mhRequest_t **preq)
 {
     apr_status_t status;
     apr_size_t len;
@@ -417,17 +418,7 @@ static apr_status_t readRequest(clientCtx_t *cctx, apr_queue_t *reqQueue)
         cctx->bufrem -= len;
 
         while (1) {
-            status = processData(cctx);
-            STATUSREADERR(status);
-            if (status == APR_EOF) {
-                if (cctx->req) {
-                    apr_queue_push(reqQueue, cctx->req);
-                    cctx->req = NULL;
-                } else
-                    break; /* no more data */
-            }
-            if (status == APR_EAGAIN)
-                break;
+            STATUSERR(processData(cctx, preq));
         };
     }
 
@@ -539,16 +530,9 @@ static apr_status_t writeResponse(clientCtx_t *cctx, mhResponse_t *resp)
     apr_status_t status;
 
     if (!cctx->respRem) {
-        const char *connHdr;
-
         mhResponseBuild(resp);
         cctx->respBody = respToString(pool, resp);
         cctx->respRem = strlen(cctx->respBody);
-        connHdr = getHeader(pool, resp->hdrs, "Connection");
-        if (connHdr && strcmp(connHdr, "close") == 0) {
-            /* close conn when response is streamed completely */
-            cctx->closeConn = YES;
-        }
     }
 
     len = cctx->respRem;
@@ -558,9 +542,56 @@ static apr_status_t writeResponse(clientCtx_t *cctx, mhResponse_t *resp)
         cctx->respRem -= len;
         cctx->currResp = resp;
     } else {
-        cctx->closeConn = NO;
-        apr_socket_close(cctx->skt);
+        return APR_EOF;
     }
+    return status;
+}
+
+static bool closeConnection(apr_pool_t *pool, mhResponse_t *resp) {
+    const char *connHdr;
+    connHdr = getHeader(pool, resp->hdrs, "Connection");
+    if (connHdr && strcmp(connHdr, "close") == 0) {
+        /* close conn when response is streamed completely */
+        return YES;
+    }
+    return NO;
+}
+
+static apr_status_t process(servCtx_t *ctx, clientCtx_t *cctx,
+                            const apr_pollfd_t *desc)
+{
+    apr_status_t status;
+
+    if (desc->rtnevents & APR_POLLIN) {
+        printf("/");
+        STATUSREADERR(readRequest(cctx, &cctx->req));
+        if (status == APR_EOF && cctx->req) {
+            mhResponse_t *resp;
+            apr_queue_push(ctx->reqQueue, cctx->req);
+            resp = _mhMatchRequest(ctx->mh, cctx->req);
+            if (resp)
+                *((mhResponse_t **)apr_array_push(cctx->respQueue)) = resp;
+
+            cctx->req = NULL;
+        }
+    } else if (desc->rtnevents & APR_POLLOUT) {
+        mhResponse_t **presp, *resp;
+
+        /* TODO: response in progress */
+        presp = apr_array_pop(cctx->respQueue);
+        resp = *presp;
+        if (resp) {
+            status = writeResponse(cctx, resp);
+            if (status == APR_EOF) {
+                if (closeConnection(cctx->pool, resp)) {
+                    apr_socket_close(cctx->skt);
+                }
+            } else {
+                cctx->currResp = resp;
+            }
+        }
+    }
+
     return APR_SUCCESS;
 }
 
@@ -571,20 +602,24 @@ apr_status_t _mhRunServerLoop(servCtx_t *ctx)
 {
     apr_int32_t num;
     const apr_pollfd_t *desc;
+    clientCtx_t *cctx;
+    apr_pollfd_t pfd = { 0 };
     apr_status_t status;
 
     printf(".\n");
-    if (apr_queue_size(ctx->respQueue) > 0) {
-        /* something to write */
-        apr_pollfd_t pfd = { 0 };
-        /* TODO: which connection do we want to write the response? */
+    cctx = ctx->cctx;
+
+    /* something to write */
+    if (cctx) {
         pfd.desc_type = APR_POLL_SOCKET;
-        pfd.desc.s = ctx->cctx->skt;
-        pfd.reqevents = ctx->cctx->reqevents;
-        pfd.client_data = ctx->cctx;
+        pfd.desc.s = cctx->skt;
+        pfd.reqevents = cctx->reqevents;
+        pfd.client_data = cctx;
         apr_pollset_remove(ctx->pollset, &pfd);
 
-        ctx->cctx->reqevents |= APR_POLLOUT;
+        cctx->reqevents = APR_POLLIN;
+        if (cctx->respQueue->nelts > 0)
+            cctx->reqevents |= APR_POLLOUT;
         pfd.reqevents = ctx->cctx->reqevents;
         apr_pollset_add(ctx->pollset, &pfd);
     }
@@ -616,29 +651,19 @@ apr_status_t _mhRunServerLoop(servCtx_t *ctx)
             cctx->bufrem = BUFSIZE;
             cctx->reqevents = pfd.reqevents;
             cctx->closeConn = NO;
+            cctx->respQueue = apr_array_make(ctx->pool, 5,
+                                             sizeof(mhResponse_t *));
             cctx->currResp = NULL;
             ctx->cctx = cctx;
         } else {
             /* one of the client sockets */
             clientCtx_t *cctx = desc->client_data;
-            
-            if (desc->rtnevents & APR_POLLIN) {
-                printf("/");
-                readRequest(cctx, ctx->reqQueue);
-            } else if (desc->rtnevents & APR_POLLOUT) {
-                void *data;
-                mhResponse_t *resp;
 
-                printf("|");
-                STATUSERR(apr_queue_trypop(ctx->respQueue, &data));
-                resp = data;
-
-                writeResponse(cctx, resp);
-            }
+            STATUSREADERR(process(ctx, cctx, desc));
         }
     }
 
-    return APR_SUCCESS;
+    return status;
 }
 
 int mhServerPortNr(MockHTTP *mh)

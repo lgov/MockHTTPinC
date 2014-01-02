@@ -41,6 +41,8 @@ typedef short int bool;
 static const bool YES = 1;
 static const bool NO = 0;
 
+static const int MaxReqRespQueueSize = 50;
+
 typedef bool (*matchfunc_t)(apr_pool_t *pool, const mhMatchingPattern_t *mp,
                             const mhRequest_t *req);
 typedef struct servCtx_t servCtx_t;
@@ -51,7 +53,6 @@ struct MockHTTP {
     apr_array_header_t *reqsReceived;
     servCtx_t *servCtx;
     apr_queue_t *reqQueue; /* Thread safe FIFO queue. */
-    apr_queue_t *respQueue; /* Thread safe FIFO queue. */
     char *errmsg;
 };
 
@@ -104,14 +105,14 @@ void setHeader(apr_pool_t *pool, apr_hash_t *hdrs,
 
 /* Initialize a mhRequest_t object. */
 mhRequest_t *_mhRequestInit(MockHTTP *mh);
-mhResponse_t *_mhMatchRequest(MockHTTP *mh, mhRequest_t *req);
+mhResponse_t *_mhMatchRequest(const MockHTTP *mh, mhRequest_t *req);
 
 bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm,
                             const mhRequest_t *req);
 
 /* Test servers */
-servCtx_t *_mhInitTestServer(MockHTTP *mh, const char *host, apr_port_t port,
-                             apr_queue_t *reqQueue, apr_queue_t *respQueue);
+servCtx_t *_mhInitTestServer(const MockHTTP *mh, const char *host,
+apr_port_t port);
 apr_status_t _mhRunServerLoop(servCtx_t *ctx);
 
 #ifdef __cplusplus
