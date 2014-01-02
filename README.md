@@ -27,7 +27,7 @@ Write a first test
 MockHTTPInC does not come with or mandate the use of a specific unit test framework. Instead it should integrate fine with the unit test framework your project is currently using. In these examples we will use the CuTest framework (https://github.com/asimjalis/cutest), you'll recognize its functions by the *Cu* prefix.
 
 
-Step 1: Include MockHTTPInC's main header file, create a test function and setup the mock HTTP server.
+Step 1: Include MockHTTPInC's main header file, create a test function and setup the mock HTTP server on default port 30080.
 
     #include "MockHTTP.h"
 

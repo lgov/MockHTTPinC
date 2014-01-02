@@ -1,4 +1,4 @@
-/* Copyright 2013 Lieven Govaerts
+/* Copyright 2014 Lieven Govaerts
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,14 @@
 #ifndef MockHTTP_H
 #define MockHTTP_H
 
-#include <apr.h>
-#include <apr_poll.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
 /* TODO: define defaults, eg HTTP/1.1 in req/resp */
-/* TODO: replace Submit* with some better word. */
 /* TODO: use requests only once, use them in order, use best matching first */
+/* TODO: any method, raw requests + responses */
+/* TODO: add delay time for accept skt, response */
 #define Given(mh)\
             {\
                 MockHTTP *__mh = mh;\
@@ -140,6 +138,8 @@ int mhVerifyRequestReceived(MockHTTP *mh, mhRequestMatcher_t *rm);
 int mhVerifyAllRequestsReceived(MockHTTP *mh);
 int mhVerifyAllRequestsReceivedInOrder(MockHTTP *mh);
 const char *mhGetLastErrorString(MockHTTP *mh);
+
+#define MOCKHTTP_VERSION 0.1
 
 #ifdef __cplusplus
 }

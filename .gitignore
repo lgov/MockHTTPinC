@@ -10,6 +10,7 @@ xcuserdata
 *.mode1v3
 *.mode2v3
 *.o
+*.xcworkspace
 
 .svn
 # osx noise

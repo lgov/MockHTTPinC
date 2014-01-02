@@ -1,4 +1,4 @@
-/* Copyright 2013 Lieven Govaerts
+/* Copyright 2014 Lieven Govaerts
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 #include <apr_hash.h>
 #include <apr_queue.h>
 #include <apr_tables.h>
+#include <apr_poll.h>
 
 #ifdef __cplusplus
 extern "C" {
