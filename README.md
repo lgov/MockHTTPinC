@@ -14,8 +14,7 @@ The library will provide (but does not at this time):
 - Basic and Digest authentication
 - Deflate/GZip content encoding support
 
-This is not a unit testing library! You'll want to use this code together with a library like CuTest or one of the many other available.
-
+MockHTTPInC does not come with or mandate the use of a specific unit test framework. Instead it should integrate fine with the unit test framework your project is currently using.
 
 Getting started
 ---------------
@@ -35,7 +34,7 @@ At this time the code conforms to the C99 standard. The code has been written wi
 Write a first test
 ------------------
 
-MockHTTPInC does not come with or mandate the use of a specific unit test framework. Instead it should integrate fine with the unit test framework your project is currently using. In these examples we will use the CuTest framework (https://github.com/asimjalis/cutest), you'll recognize its functions by the *Cu* prefix.
+In these examples we will use the CuTest framework (https://github.com/asimjalis/cutest) as unit testing library, you'll recognize its functions by the *Cu* prefix.
 
 
 Step 1: Include MockHTTPInC's main header file, create a test function and setup the mock HTTP server on default port 30080.
