@@ -55,6 +55,7 @@ In these examples we will use the CuTest framework (https://github.com/asimjalis
         EndGiven
 
 **Step 3**: Run the code that's expected to eventually send a GET request to the server.
+
         ctx = connectToTCPServer("http://localhost:30080");
         sendRequest(ctx, "GET", "/index.html", headers, "body of the request");
         response = readResponse(ctx);
