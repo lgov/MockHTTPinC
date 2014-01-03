@@ -37,7 +37,7 @@ Write a first test
 In these examples we will use the CuTest framework (https://github.com/asimjalis/cutest) as unit testing library, you'll recognize its functions by the *Cu* prefix.
 
 
-Step 1: Include MockHTTPInC's main header file, create a test function and setup the mock HTTP server on default port 30080.
+**Step 1**: Include MockHTTPInC's main header file, create a test function and setup the mock HTTP server on default port 30080.
 
     #include "MockHTTP.h"
 
@@ -45,7 +45,7 @@ Step 1: Include MockHTTPInC's main header file, create a test function and setup
     {
         MockHTTP *mh = mhInit();
 
-Step 2: Instruct the mock HTTP server to expect a GET request to url /index.html. Also, tell it how to respond when that request arrives.
+**Step 2**: Use the macro's to instruct the mock HTTP server to expect a GET request to url /index.html. Also, tell the server how to respond when that request arrives.
 
         Given(mh)
           GetRequest(
@@ -54,12 +54,18 @@ Step 2: Instruct the mock HTTP server to expect a GET request to url /index.html
             WithCode(200), WithHeader("Connection", "Close"), WithBody("body"))
         EndGiven
 
-Step 3: 
+**Step 3**: Run the code that's expected to eventually send a GET request to the server.
+        ctx = connectToTCPServer("http://localhost:30080");
+        sendRequest(ctx, "GET", "/index.html", headers, "body of the request");
+        response = readResponse(ctx);
 
+        // ... test that the response was received correctly
 
+**Step 4**: Use the macro's to verify that all requests were received in the correct order, at least the one request in this simple example.
 
-Step 4:
-
+        Verify(mh)
+          CuAssert(tc, ErrorMessage, VerifyAllRequestsReceivedInOrder);
+        EndVerify
     }
 
 History
