@@ -1,10 +1,21 @@
 MockHTTPInC
 ===========
 
-MockHTTPInC is a library that wants to make in-depth testing of HTTP client code possible. The library provides:
-- a HTTP server that can be instructed to handle requests in certain ways (e.g. returning a prebaked response, request a SSL client certificate etc.).
-- a HTTPS server that supports the full SSL/TLS handshake, client certificates, session renegotiation and session resumption
-- a simple HTTP/HTTPS proxy 
+MockHTTPInC is a C library that helps testing HTTP client code.
+
+The library provides:
+- a HTTP server that can be instructed to handle requests in certain ways: returning a prebaked response, abort the connection etc.
+- support for both HTTP/1.0 and HTTP/1.1 including pipelining and chunked encoding
+- macro's to make writing expectations and verifying the results straigthforward
+
+The library will provide (but does not at this time):
+- strong HTTPS support: full SSL/TLS handshake, client certificates, session renegotiation and session resumption
+- a simple HTTP/HTTPS proxy
+- Basic and Digest authentication
+- Deflate/GZip content encoding support
+
+This is not a unit testing library! You'll want to use this code together with a library like CuTest or one of the many other available.
+
 
 Getting started
 ---------------
