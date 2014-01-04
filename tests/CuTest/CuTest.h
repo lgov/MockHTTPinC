@@ -1,3 +1,26 @@
+/*
+ * Copyright (c) 2003 Asim Jalis
+ *
+ *  This software is provided 'as-is', without any express or implied
+ *  warranty. In no event will the authors be held liable for any
+ *  damages arising from the use of this software.
+ *
+ *  Permission is granted to anyone to use this software for any
+ *  purpose, including commercial applications, and to alter it and
+ *  redistribute it freely, subject to the following restrictions:
+ *
+ *  1. The origin of this software must not be misrepresented; you
+ *  must not claim that you wrote the original software. If you use
+ *  this software in a product, an acknowledgment in the product
+ *  documentation would be appreciated but is not required.
+ *
+ *  2. Altered source versions must be plainly marked as such, and
+ *  must not be misrepresented as being the original software.
+ *
+ *  3. This notice may not be removed or altered from any source
+ *  distribution.
+ */
+
 #ifndef CU_TEST_H
 #define CU_TEST_H
 
@@ -9,7 +32,10 @@
 /* Customizations in this version of CuTest:
  * 1. added CuAssertStrnEquals(), CuAssertStrnEquals_Msg() and
  *    CuAssertStrnEquals_LineMsg()
+ * 2. Add CuSuiteSetSetupTeardownCallbacks
+ * 3. Make CuAssertPtrEquals_LineMsg take const pointers.
  */
+
 char* CuStrAlloc(int size);
 char* CuStrCopy(const char* old);
 
@@ -78,7 +104,7 @@ void CuAssertDblEquals_LineMsg(CuTest* tc,
 	double expected, double actual, double delta);
 void CuAssertPtrEquals_LineMsg(CuTest* tc, 
 	const char* file, int line, const char* message, 
-	void* expected, void* actual);
+	const void* expected, const void* actual);
 
 /* public assert functions */
 
