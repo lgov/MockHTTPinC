@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+/* This file includes code originally submitted to the Serf project, covered by
+ * the Apache License, Version 2.0, copyright Justin Erenkrantz & Greg Stein.
+ */
 #include <apr_thread_proc.h>
 #include <apr_strings.h>
 
