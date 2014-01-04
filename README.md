@@ -68,8 +68,3 @@ In these examples we will use the CuTest framework (https://github.com/asimjalis
           CuAssert(tc, ErrorMessage, VerifyAllRequestsReceivedInOrder);
         EndVerify
     }
-
-History
--------
-
-The library is based on code originally written to test the serf HTTP client (http://serf.googlecode.com). 
