@@ -542,6 +542,9 @@ static apr_status_t writeResponse(clientCtx_t *cctx, mhResponse_t *resp)
         cctx->respRem -= len;
         cctx->currResp = resp;
     } else {
+        cctx->respBody = NULL;
+        cctx->respRem = 0;
+        cctx->currResp = 0;
         return APR_EOF;
     }
     return status;
