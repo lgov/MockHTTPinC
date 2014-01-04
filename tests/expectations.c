@@ -644,10 +644,63 @@ static void test_connection_close(CuTest *tc)
     EndVerify
 }
 
+static void test_expectation_all_reqs_received(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+
+    Given(mh)
+      GetRequest(URLEqualTo("/index.html"))
+      PostRequest(URLEqualTo("/index2.html"))
+    Expect
+      AllRequestsReceivedOnce
+    EndGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendRequest(ctx, "POST", "/index2.html", hdrs, "1");
+        sendRequest(ctx, "GET", "/index.html", hdrs, "1");
+        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+      CuAssertTrue(tc, VerifyAllExpectationsOk);
+      CuAssertTrue(tc, !VerifyAllRequestsReceivedInOrder);
+    EndVerify
+}
+
+static void test_expectation_all_reqs_received_in_order(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+
+    Given(mh)
+      GetRequest(URLEqualTo("/index.html"))
+      PostRequest(URLEqualTo("/index2.html"))
+    Expect
+      AllRequestsReceivedInOrder
+    EndGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendRequest(ctx, "GET", "/index.html", hdrs, "1");
+        sendRequest(ctx, "POST", "/index2.html", hdrs, "1");
+        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+      CuAssertTrue(tc, VerifyAllExpectationsOk);
+    EndVerify
+}
+
 CuSuite *test_mockHTTP(void)
 {
     CuSuite *suite = CuSuiteNew();
-#if 0
+#if 1
     SUITE_ADD_TEST(suite, test_mock_init);
     SUITE_ADD_TEST(suite, test_urlmatcher);
     SUITE_ADD_TEST(suite, test_methodmatcher);
@@ -665,10 +718,12 @@ CuSuite *test_mockHTTP(void)
     SUITE_ADD_TEST(suite, test_verify_req_header);
     SUITE_ADD_TEST(suite, test_verify_req_header_fails);
     SUITE_ADD_TEST(suite, test_verify_error_message);
-#endif
     SUITE_ADD_TEST(suite, test_one_request_response);
     SUITE_ADD_TEST(suite, test_one_request_response_chunked);
     SUITE_ADD_TEST(suite, test_connection_close);
+#endif
+    SUITE_ADD_TEST(suite, test_expectation_all_reqs_received);
+    SUITE_ADD_TEST(suite, test_expectation_all_reqs_received_in_order);
 
     return suite;
 }

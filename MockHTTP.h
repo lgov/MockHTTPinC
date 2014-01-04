@@ -67,6 +67,14 @@ extern "C" {
                 __resp = NULL; __rm = NULL; __mh = NULL;\
             }
 
+/*        Expectations */
+#define   Expect
+
+#define     AllRequestsReceivedOnce\
+                mhExpectAllRequestsReceivedOnce(__mh);
+#define     AllRequestsReceivedInOrder\
+                mhExpectAllRequestsReceivedInOrder(__mh);
+
 #define Verify(mh)\
             {\
                 MockHTTP *__mh = mh;
@@ -80,6 +88,8 @@ extern "C" {
                 mhVerifyAllRequestsReceived(__mh)
 #define   VerifyAllRequestsReceivedInOrder\
                 mhVerifyAllRequestsReceivedInOrder(__mh)
+#define   VerifyAllExpectationsOk\
+               mhVerifyAllExpectationsOk(__mh)
 #define   ErrorMessage\
                 mhGetLastErrorString(__mh)
 #define EndVerify\
@@ -99,9 +109,7 @@ void mhCleanup(MockHTTP *mh);
 void mhRunServerLoop(MockHTTP *mh);
 int mhServerPortNr(MockHTTP *mh);
 
-/* Define expectations*/
-
-/* Request functions */
+/* Define request stubs */
 mhRequestMatcher_t *mhGetRequest(MockHTTP *mh, ...);
 mhRequestMatcher_t *mhPostRequest(MockHTTP *mh, ...);
 #define mhGetRequestReceivedFor mhGetRequest
@@ -133,10 +141,15 @@ void mhResponseBuild(mhResponse_t *resp);
 void mhPushRequest(MockHTTP *mh, mhRequestMatcher_t *rm);
 void mhSetRespForReq(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp);
 
+/* Define expectations */
+void mhExpectAllRequestsReceivedOnce(MockHTTP *mh);
+void mhExpectAllRequestsReceivedInOrder(MockHTTP *mh);
+
 /* Verify */
 int mhVerifyRequestReceived(MockHTTP *mh, mhRequestMatcher_t *rm);
 int mhVerifyAllRequestsReceived(MockHTTP *mh);
 int mhVerifyAllRequestsReceivedInOrder(MockHTTP *mh);
+int mhVerifyAllExpectationsOk(MockHTTP *mh);
 const char *mhGetLastErrorString(MockHTTP *mh);
 
 #define MOCKHTTP_VERSION 0.1

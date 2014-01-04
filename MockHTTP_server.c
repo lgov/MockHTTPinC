@@ -416,10 +416,10 @@ static apr_status_t readRequest(clientCtx_t *cctx, mhRequest_t **preq)
 
         cctx->buflen += len;
         cctx->bufrem -= len;
+    }
 
-        while (1) {
-            STATUSERR(processData(cctx, preq));
-        };
+    while (cctx->buflen) {
+        STATUSERR(processData(cctx, preq));
     }
 
     return status;
@@ -564,16 +564,18 @@ static apr_status_t process(servCtx_t *ctx, clientCtx_t *cctx,
 
     if (desc->rtnevents & APR_POLLIN) {
         printf("/");
-        STATUSREADERR(readRequest(cctx, &cctx->req));
-        if (status == APR_EOF && cctx->req) {
-            mhResponse_t *resp;
-            apr_queue_push(ctx->reqQueue, cctx->req);
-            resp = _mhMatchRequest(ctx->mh, cctx->req);
-            if (resp)
-                *((mhResponse_t **)apr_array_push(cctx->respQueue)) = resp;
+        do {
+            STATUSREADERR(readRequest(cctx, &cctx->req));
+            if (status == APR_EOF && cctx->req) {
+                mhResponse_t *resp;
+                apr_queue_push(ctx->reqQueue, cctx->req);
+                resp = _mhMatchRequest(ctx->mh, cctx->req);
+                if (resp)
+                    *((mhResponse_t **)apr_array_push(cctx->respQueue)) = resp;
 
-            cctx->req = NULL;
-        }
+                cctx->req = NULL;
+            }
+        } while (cctx->buflen > 0);
     } else if (desc->rtnevents & APR_POLLOUT) {
         mhResponse_t **presp, *resp;
 

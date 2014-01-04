@@ -47,6 +47,11 @@ typedef bool (*matchfunc_t)(apr_pool_t *pool, const mhMatchingPattern_t *mp,
                             const mhRequest_t *req);
 typedef struct servCtx_t servCtx_t;
 
+typedef enum expectation_t {
+    RequestsReceivedOnce    = 0x00000001,
+    RequestsReceivedInOrder = 0x00000002,
+} expectation_t;
+
 struct MockHTTP {
     apr_pool_t *pool;
     apr_array_header_t *reqMatchers;
@@ -54,6 +59,7 @@ struct MockHTTP {
     servCtx_t *servCtx;
     apr_queue_t *reqQueue; /* Thread safe FIFO queue. */
     char *errmsg;
+    unsigned long expectations;
 };
 
 struct mhRequest_t {

@@ -110,13 +110,14 @@ MockHTTP *mhInit()
     atexit(apr_terminate);
 
     apr_pool_create(&pool, NULL);
-    mh = apr_palloc(pool, sizeof(struct MockHTTP));
+    mh = apr_pcalloc(pool, sizeof(struct MockHTTP));
     mh->pool = pool;
     mh->reqMatchers = apr_array_make(pool, 5, sizeof(ReqMatcherRespPair_t *));;
     apr_queue_create(&mh->reqQueue, MaxReqRespQueueSize, pool);
     mh->reqsReceived = apr_array_make(pool, 5, sizeof(mhRequest_t *));
     mh->errmsg = apr_palloc(pool, ERRMSG_MAXSIZE);
     *mh->errmsg = '\0';
+    mh->expectations = 0;
 
     mh->servCtx = _mhInitTestServer(mh, "localhost", DefaultSrvPort);
 
@@ -620,6 +621,19 @@ void mhResponseBuild(mhResponse_t *resp)
 }
 
 /******************************************************************************/
+/* Expectations                                                               */
+/******************************************************************************/
+void mhExpectAllRequestsReceivedOnce(MockHTTP *mh)
+{
+    mh->expectations |= RequestsReceivedOnce;
+}
+
+void mhExpectAllRequestsReceivedInOrder(MockHTTP *mh)
+{
+    mh->expectations |= RequestsReceivedInOrder;
+}
+
+/******************************************************************************/
 /* Verify results                                                             */
 /******************************************************************************/
 int mhVerifyRequestReceived(MockHTTP *mh, mhRequestMatcher_t *rm)
@@ -634,33 +648,6 @@ int mhVerifyRequestReceived(MockHTTP *mh, mhRequestMatcher_t *rm)
     }
 
     return NO;
-}
-
-int mhVerifyAllRequestsReceived(MockHTTP *mh)
-{
-    int i;
-
-    for (i = 0; i < mh->reqsReceived->nelts; i++)
-    {
-        mhRequest_t *req = APR_ARRAY_IDX(mh->reqsReceived, i, mhRequest_t *);
-        int j;
-        bool matched = NO;
-
-        for (j = 0 ; j < mh->reqMatchers->nelts; j++) {
-            const ReqMatcherRespPair_t *pair;
-
-            pair = APR_ARRAY_IDX(mh->reqMatchers, i, ReqMatcherRespPair_t *);
-
-            if (_mhRequestMatcherMatch(pair->rm, req) == YES) {
-                matched = YES;
-                break;
-            }
-        }
-
-        if (matched == NO)
-            return NO;
-    }
-    return YES;
 }
 
 int mhVerifyAllRequestsReceivedInOrder(MockHTTP *mh)
@@ -692,7 +679,93 @@ int mhVerifyAllRequestsReceivedInOrder(MockHTTP *mh)
     return YES;
 }
 
+static bool
+isArrayElement(apr_array_header_t *ary, const ReqMatcherRespPair_t *element)
+{
+    int i;
+    for (i = 0; i < ary->nelts; i++) {
+        const ReqMatcherRespPair_t *pair;
+        pair = APR_ARRAY_IDX(ary, i, ReqMatcherRespPair_t *);
+        if (pair == element)
+            return YES;
+    }
+    return NO;
+}
+
+static int verifyAllRequestsReceived(MockHTTP *mh, bool breakOnNotOnce)
+{
+    int i;
+    apr_array_header_t *used;
+    apr_pool_t *pool;
+    bool result = YES;
+
+    /* TODO: improve error message */
+    if (mh->reqsReceived->nelts > mh->reqMatchers->nelts) {
+        appendErrMessage(mh, "More requests received than expected!\n");
+        return NO;
+    } else if (mh->reqsReceived->nelts < mh->reqMatchers->nelts) {
+        appendErrMessage(mh, "Less requests received than expected!\n");
+        return NO;
+    }
+
+    apr_pool_create(&pool, mh->pool);
+    used = apr_array_make(mh->pool, mh->reqsReceived->nelts,
+                          sizeof(ReqMatcherRespPair_t *));;
+
+    for (i = 0; i < mh->reqsReceived->nelts; i++)
+    {
+        mhRequest_t *req = APR_ARRAY_IDX(mh->reqsReceived, i, mhRequest_t *);
+        int j;
+        bool matched = NO;
+
+        for (j = 0 ; j < mh->reqMatchers->nelts; j++) {
+            const ReqMatcherRespPair_t *pair;
+
+            pair = APR_ARRAY_IDX(mh->reqMatchers, j, ReqMatcherRespPair_t *);
+
+            if (breakOnNotOnce && isArrayElement(used, pair))
+                continue; /* skip this match if request matched before */
+
+            if (_mhRequestMatcherMatch(pair->rm, req) == YES) {
+                *((const ReqMatcherRespPair_t **)apr_array_push(used)) = pair;
+                matched = YES;
+                break;
+            }
+        }
+
+        if (matched == NO) {
+            result = NO;
+            break;
+        }
+    }
+
+    apr_pool_destroy(pool);
+
+    return result;
+}
+
+int mhVerifyAllRequestsReceived(MockHTTP *mh)
+{
+    return verifyAllRequestsReceived(mh, NO);
+}
+
+int mhVerifyAllRequestsReceivedOnce(MockHTTP *mh)
+{
+    return verifyAllRequestsReceived(mh, YES);
+}
+
 const char *mhGetLastErrorString(MockHTTP *mh)
 {
     return mh->errmsg;
+}
+
+int mhVerifyAllExpectationsOk(MockHTTP *mh)
+{
+    if (mh->expectations & RequestsReceivedInOrder)
+        return mhVerifyAllRequestsReceivedInOrder(mh);
+    if (mh->expectations & RequestsReceivedOnce)
+        return mhVerifyAllRequestsReceivedOnce(mh);
+
+    /* No expectations set. Consider this an error to avoid false positives */
+    return NO;
 }
