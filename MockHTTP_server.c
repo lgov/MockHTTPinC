@@ -509,16 +509,17 @@ static char *respToString(apr_pool_t *pool, mhResponse_t *resp)
         str = apr_psprintf(pool, "%s%s", str, resp->body);
     } else {
         int i;
+        apr_size_t len;
         for (i = 0 ; i < resp->chunks->nelts; i++) {
             const char *chunk;
-            apr_size_t len;
 
             chunk = APR_ARRAY_IDX(resp->chunks, i, const char *);
             len = strlen(chunk);
             str = apr_psprintf(pool, "%s%" APR_UINT64_T_HEX_FMT "\r\n%s\r\n",
                                str, (apr_uint64_t)len, chunk);
         }
-        str = apr_psprintf(pool, "%s0\r\n\r\n", str);
+        if (len != 0) /* Add 0 chunk only if last chunk wasn't empty already */
+            str = apr_psprintf(pool, "%s0\r\n\r\n", str);
     }
     return str;
 }
