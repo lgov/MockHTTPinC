@@ -42,6 +42,8 @@ extern "C" {
                 mhMatchBodyEqualTo(__mh, (x))
 #define     HeaderEqualTo(h, v)\
                 mhMatchHeaderEqualTo(__mh, (h), (v))
+#define     HeaderNotSet(h)\
+                mhMatchHeaderEqualTo(__mh, (h), NULL)
 /*          Network-level tests */
 #define     NotChunkedBodyEqualTo(x)\
                 mhMatchNotChunkedBodyEqualTo(__mh, (x))

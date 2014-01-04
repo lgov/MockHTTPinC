@@ -457,6 +457,50 @@ static void test_verify_req_header(CuTest *tc)
     EndVerify
 }
 
+static void test_verify_req_header_not_set(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+    clientCtx_t *ctx = initClient(mh);
+    apr_hash_t *hdrs = apr_hash_make(mh->pool);
+
+    Given(mh)
+      GetRequest(
+        URLEqualTo("/index1.html"),
+        HeaderNotSet("Authorization"))
+    Expect
+      AllRequestsReceivedOnce
+    EndGiven
+
+    sendChunkedRequest(ctx, "GET", "/index1.html", hdrs, "1", NULL);
+    mhRunServerLoop(mh);
+
+    Verify(mh)
+      CuAssertTrue(tc, VerifyAllExpectationsOk);
+    EndVerify
+}
+
+static void test_verify_req_header_not_set_fails_if_set(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+    clientCtx_t *ctx = initClient(mh);
+    apr_hash_t *hdrs = apr_hash_make(mh->pool);
+
+    Given(mh)
+      GetRequest(URLEqualTo("/index1.html"), HeaderNotSet("Authorization"))
+    Expect
+      AllRequestsReceivedOnce
+    EndGiven
+
+    apr_hash_set(hdrs, "Authorization", APR_HASH_KEY_STRING,
+                 "TW9ja0hUVFA6TW9ja0hUVFBwd2Q=");
+    sendChunkedRequest(ctx, "GET", "/index1.html", hdrs, "1", NULL);
+    mhRunServerLoop(mh);
+
+    Verify(mh)
+      CuAssertTrue(tc, !VerifyAllExpectationsOk);
+    EndVerify
+}
+
 static void test_verify_req_header_fails(CuTest *tc)
 {
     MockHTTP *mh = tc->testBaton;
@@ -717,13 +761,17 @@ CuSuite *test_mockHTTP(void)
     SUITE_ADD_TEST(suite, test_verify_req_chunked_body_fails);
     SUITE_ADD_TEST(suite, test_verify_req_header);
     SUITE_ADD_TEST(suite, test_verify_req_header_fails);
+#endif
+    SUITE_ADD_TEST(suite, test_verify_req_header_not_set);
+    SUITE_ADD_TEST(suite, test_verify_req_header_not_set_fails_if_set);
+#if 1
     SUITE_ADD_TEST(suite, test_verify_error_message);
     SUITE_ADD_TEST(suite, test_one_request_response);
     SUITE_ADD_TEST(suite, test_one_request_response_chunked);
     SUITE_ADD_TEST(suite, test_connection_close);
-#endif
     SUITE_ADD_TEST(suite, test_expectation_all_reqs_received);
     SUITE_ADD_TEST(suite, test_expectation_all_reqs_received_in_order);
+#endif
 
     return suite;
 }

@@ -214,6 +214,9 @@ static bool str_matcher(const mhMatchingPattern_t *mp, const char *actual)
 {
     const char *expected = mp->baton;
 
+    if (expected == actual)
+        return YES; /* case where both are NULL, e.g. test for header not set */
+
     if (expected && actual && strcmp(expected, actual) == 0)
         return YES;
 
