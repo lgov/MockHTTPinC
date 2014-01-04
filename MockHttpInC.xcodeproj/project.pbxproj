@@ -260,7 +260,7 @@
 				GCC_OPTIMIZATION_LEVEL = 0;
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = "";
-				PRODUCT_NAME = MockHTTPInC.temp_caseinsensitive_rename;
+				PRODUCT_NAME = MockHTTPinC;
 			};
 			name = Debug;
 		};
@@ -269,7 +269,7 @@
 			buildSettings = {
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = "";
-				PRODUCT_NAME = MockHTTPInC.temp_caseinsensitive_rename;
+				PRODUCT_NAME = MockHTTPinC;
 			};
 			name = Release;
 		};

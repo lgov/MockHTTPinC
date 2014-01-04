@@ -1,4 +1,4 @@
-# Makefile for MockHTTPInC
+# Makefile for MockHTTPinC
 
 CC=clang
 CFLAGS=-g -std=c99 -Wdeclaration-after-statement -Wall 

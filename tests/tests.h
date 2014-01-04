@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef MockHTTPInC_tests_h
-#define MockHTTPInC_tests_h
+#ifndef MockHTTPinC_tests_h
+#define MockHTTPinC_tests_h
 
 #include <apr_hash.h>
 
@@ -33,4 +33,4 @@ void sendChunkedRequest(clientCtx_t *ctx, const char *method, const char *url,
 
 apr_status_t receiveResponse(clientCtx_t *ctx, char **buf, apr_size_t *len);
 
-#endif /* MockHTTPInC_tests.h */
+#endif /* MockHTTPinC_tests.h */
