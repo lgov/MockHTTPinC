@@ -29,13 +29,13 @@ extern "C" {
    least one argument, otherwise compilation will fail. */
 #define InitMockHTTP(mh)\
             {\
-                mh = mhInit();
+                MockHTTP *__mh = (mh) = mhInit();
 #define   WithHTTPserver(...)\
-                mhInitHTTPserver(mh, __VA_ARGS__, NULL);
+                mhInitHTTPserver(__mh, __VA_ARGS__, NULL);
 #define   WithHTTPSserver(...)
 #define   WithHTTPproxy(...)
 #define     WithPort(port)\
-                mhConstructServerPortSetter(mh, port)
+                mhConstructServerPortSetter(__mh, port)
 #define EndInit\
             }
 
