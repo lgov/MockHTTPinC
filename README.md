@@ -43,7 +43,11 @@ In these examples we will use the CuTest framework (https://github.com/asimjalis
 
     static void test_simple_request_response(CuTest *tc)
     {
-        MockHTTP *mh = mhInit();
+      MockHTTP *mh;
+
+      InitMockHTTP(mh)
+        WithHTTPserver(WithPort(30080))
+      EndInit
 
 **Step 2**: Use the macro's to instruct the mock HTTP server to expect a GET request to url /index.html. Also, tell the server how to respond when that request arrives.
 
