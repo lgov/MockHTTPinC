@@ -152,7 +152,7 @@ mhError_t mhInitHTTPserver(MockHTTP *mh, ...)
     return MOCKHTTP_SETUP_FAILED;
 }
 
-void srv_port_setter(mhServCtx_t *ctx, const void *baton, long baton2) {
+static void srv_port_setter(mhServCtx_t *ctx, const void *baton, long baton2) {
     ctx->port = (unsigned int)baton2;
 }
 

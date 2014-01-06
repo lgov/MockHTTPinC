@@ -49,7 +49,7 @@ struct _mhClientCtx_t {
 
 static apr_status_t setupTCPServer(mhServCtx_t *ctx, bool blocking);
 
-void * APR_THREAD_FUNC start_thread(apr_thread_t *tid, void *baton)
+static void * APR_THREAD_FUNC start_thread(apr_thread_t *tid, void *baton)
 {
     mhServCtx_t *ctx = baton;
 

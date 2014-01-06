@@ -175,6 +175,7 @@ void mhExpectAllRequestsReceivedInOrder(MockHTTP *mh);
 int mhVerifyRequestReceived(MockHTTP *mh, mhRequestMatcher_t *rm);
 int mhVerifyAllRequestsReceived(MockHTTP *mh);
 int mhVerifyAllRequestsReceivedInOrder(MockHTTP *mh);
+int mhVerifyAllRequestsReceivedInOnce(MockHTTP *mh);
 int mhVerifyAllExpectationsOk(MockHTTP *mh);
 const char *mhGetLastErrorString(MockHTTP *mh);
 
