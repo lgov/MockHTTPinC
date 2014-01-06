@@ -26,6 +26,8 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#define MH_VERBOSE 0
+
 /* Simple macro to return from function when status != 0
    expects 'apr_status_t status;' declaration. */
 #define STATUSERR(x) if ((status = (x))) return status;
@@ -134,6 +136,8 @@ mhServCtx_t *_mhInitTestServer(const MockHTTP *mh, const char *host,
 apr_port_t port);
 mhError_t _mhStartServer(mhServCtx_t *ctx);
 apr_status_t _mhRunServerLoop(mhServCtx_t *ctx);
+
+void _mhLog(int verbose_flag, const char *filename, const char *fmt, ...);
 
 #ifdef __cplusplus
 }

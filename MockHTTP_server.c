@@ -388,7 +388,8 @@ static apr_status_t processData(_mhClientCtx_t *cctx, mhRequest_t **preq)
             break;
         }
         case 3: /* finished */
-            printf("server received request: %s\n", req->method);
+            _mhLog(MH_VERBOSE, __FILE__, "Server received request: %s %s\n",
+                   req->method, req->url);
             status = APR_EOF;
             break;
     }
@@ -412,7 +413,8 @@ static apr_status_t readRequest(_mhClientCtx_t *cctx, mhRequest_t **preq)
 
     STATUSREADERR(apr_socket_recv(cctx->skt, cctx->buf + cctx->buflen, &len));
     if (len) {
-        printf("recvd: %.*s\n", (unsigned int)len, cctx->buf + cctx->buflen);
+        _mhLog(MH_VERBOSE, __FILE__, "recvd: %.*s\n", (unsigned int)len,
+               cctx->buf + cctx->buflen);
 
         cctx->buflen += len;
         cctx->bufrem -= len;
@@ -567,7 +569,6 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
     apr_status_t status;
 
     if (desc->rtnevents & APR_POLLIN) {
-        printf("/");
         do {
             STATUSREADERR(readRequest(cctx, &cctx->req));
             if (status == APR_EOF && cctx->req) {
@@ -612,7 +613,6 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
     apr_pollfd_t pfd = { 0 };
     apr_status_t status;
 
-    printf(".\n");
     cctx = ctx->cctx;
 
     /* something to write */

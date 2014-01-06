@@ -195,7 +195,9 @@ mhError_t mhRunServerLoop(MockHTTP *mh)
                 req = data;
                 *((mhRequest_t **)apr_array_push(mh->reqsReceived)) = req;
 
-                printf("request added to incoming queue: %s\n", req->method);
+                _mhLog(MH_VERBOSE, __FILE__,
+                       "Request added to incoming queue: %s %s\n", req->method,
+                       req->url);
             }
         }
     } while (status == APR_SUCCESS);
@@ -815,4 +817,18 @@ int mhVerifyAllExpectationsOk(MockHTTP *mh)
 
     /* No expectations set. Consider this an error to avoid false positives */
     return NO;
+}
+
+void _mhLog(int verbose_flag, const char *filename, const char *fmt, ...)
+{
+    va_list argp;
+
+    if (verbose_flag) {
+        if (filename)
+            fprintf(stderr, "[%s]: ", filename);
+
+        va_start(argp, fmt);
+        vfprintf(stderr, fmt, argp);
+        va_end(argp);
+    }
 }
