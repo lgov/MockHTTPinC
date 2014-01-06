@@ -25,14 +25,23 @@
 #include "CuTest/CuTest.h"
 
 
-void *test_setup(void *dummy)
+void *testSetupNoServer(void *dummy)
 {
-    MockHTTP *mh = mhInit();
+    return NULL;
+}
+
+void *testSetupWithHTTPServer(void *dummy)
+{
+    MockHTTP *mh;
+
+    InitMockHTTP(mh)
+      WithHTTPserver(WithPort(30080))
+    EndInit
 
     return mh;
 }
 
-void *test_teardown(void *baton)
+void *testTeardown(void *baton)
 {
     MockHTTP *mh = baton;
 
@@ -741,9 +750,41 @@ static void test_expectation_all_reqs_received_in_order(CuTest *tc)
     EndVerify
 }
 
-CuSuite *test_mockHTTP(void)
+static void test_init_httpserver(CuTest *tc)
+{
+    MockHTTP *mh;
+
+    InitMockHTTP(mh)
+      WithHTTPserver(WithPort(30080))
+    EndInit
+
+    Given(mh)
+      GetRequest(URLEqualTo("/index.html"))
+      PostRequest(URLEqualTo("/index2.html"))
+    Expect
+      AllRequestsReceivedInOrder
+    EndGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendRequest(ctx, "GET", "/index.html", hdrs, "1");
+        sendRequest(ctx, "POST", "/index2.html", hdrs, "1");
+        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+      CuAssertTrue(tc, VerifyAllExpectationsOk);
+    EndVerify
+}
+
+CuSuite *testMockWithHTTPserver(void)
 {
     CuSuite *suite = CuSuiteNew();
+    CuSuiteSetSetupTeardownCallbacks(suite, testSetupWithHTTPServer,
+                                     testTeardown);
 #if 1
     SUITE_ADD_TEST(suite, test_mock_init);
     SUITE_ADD_TEST(suite, test_urlmatcher);
@@ -761,10 +802,8 @@ CuSuite *test_mockHTTP(void)
     SUITE_ADD_TEST(suite, test_verify_req_chunked_body_fails);
     SUITE_ADD_TEST(suite, test_verify_req_header);
     SUITE_ADD_TEST(suite, test_verify_req_header_fails);
-#endif
     SUITE_ADD_TEST(suite, test_verify_req_header_not_set);
     SUITE_ADD_TEST(suite, test_verify_req_header_not_set_fails_if_set);
-#if 1
     SUITE_ADD_TEST(suite, test_verify_error_message);
     SUITE_ADD_TEST(suite, test_one_request_response);
     SUITE_ADD_TEST(suite, test_one_request_response_chunked);
@@ -776,14 +815,23 @@ CuSuite *test_mockHTTP(void)
     return suite;
 }
 
+CuSuite *testMockNoServer(void)
+{
+    CuSuite *suite = CuSuiteNew();
+    CuSuiteSetSetupTeardownCallbacks(suite, testSetupNoServer, testTeardown);
+
+    SUITE_ADD_TEST(suite, test_init_httpserver);
+
+    return suite;
+}
+
 int main(int argc, const char *argv[])
 {
     CuString *output = CuStringNew();
     CuSuite* suite = CuSuiteNew();
 
-    CuSuiteSetSetupTeardownCallbacks(suite, test_setup, test_teardown);
-
-    CuSuiteAddSuite(suite, test_mockHTTP());
+    CuSuiteAddSuite(suite, testMockWithHTTPserver());
+    CuSuiteAddSuite(suite, testMockNoServer());
 
     CuSuiteRun(suite);
     CuSuiteSummary(suite, output);

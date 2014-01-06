@@ -32,7 +32,7 @@
 #endif
 
 #define BUFSIZE 32768
-typedef struct clientCtx_t {
+struct _mhClientCtx_t {
     apr_pool_t *pool;
     apr_socket_t *skt;
     char buf[BUFSIZE];
@@ -45,25 +45,13 @@ typedef struct clientCtx_t {
     apr_array_header_t *respQueue;  /*  test will queue a response */
     mhResponse_t *currResp; /* response in progress */
     bool closeConn;
-} clientCtx_t;
-
-struct servCtx_t {
-    apr_pool_t *pool;
-    const MockHTTP *mh; /* keep const to avoid thread race problems */
-    const char *hostname;
-    apr_port_t port;
-    apr_pollset_t *pollset;
-    apr_socket_t *skt;
-    apr_queue_t *reqQueue;   /* thread safe, pass received reqs back to test, */
-    /* TODO: allow more connections */
-    clientCtx_t *cctx;
 };
 
-static apr_status_t setupTCPServer(servCtx_t *ctx, bool blocking);
+static apr_status_t setupTCPServer(mhServCtx_t *ctx, bool blocking);
 
 void * APR_THREAD_FUNC start_thread(apr_thread_t *tid, void *baton)
 {
-    servCtx_t *ctx = baton;
+    mhServCtx_t *ctx = baton;
 
     setupTCPServer(ctx, YES);
 
@@ -76,7 +64,7 @@ void * APR_THREAD_FUNC start_thread(apr_thread_t *tid, void *baton)
 
 static apr_status_t cleanupServer(void *baton)
 {
-    servCtx_t *ctx = baton;
+    mhServCtx_t *ctx = baton;
     apr_status_t status;
 
     /*    apr_thread_exit(tid, APR_SUCCESS);*/
@@ -91,7 +79,7 @@ static apr_status_t cleanupServer(void *baton)
     return APR_SUCCESS;
 }
 
-static apr_status_t setupTCPServer(servCtx_t *ctx, bool blocking)
+static apr_status_t setupTCPServer(mhServCtx_t *ctx, bool blocking)
 {
     apr_sockaddr_t *serv_addr;
     apr_pool_t *pool = ctx->pool;
@@ -137,13 +125,12 @@ static apr_status_t setupTCPServer(servCtx_t *ctx, bool blocking)
     return APR_SUCCESS;
 }
 
-servCtx_t *
+mhServCtx_t *
 _mhInitTestServer(const MockHTTP *mh, const char *hostname, apr_port_t port)
 {
-    apr_thread_t *thread;
     apr_pool_t *pool = mh->pool;
 
-    servCtx_t *ctx = apr_pcalloc(pool, sizeof(servCtx_t));
+    mhServCtx_t *ctx = apr_pcalloc(pool, sizeof(mhServCtx_t));
     ctx->pool = pool;
     ctx->mh = mh;
     ctx->hostname = apr_pstrdup(pool, hostname);
@@ -154,16 +141,26 @@ _mhInitTestServer(const MockHTTP *mh, const char *hostname, apr_port_t port)
                               cleanupServer,
                               apr_pool_cleanup_null);
 
+    return ctx;
+}
+
+mhError_t _mhStartServer(mhServCtx_t *ctx)
+{
+    apr_thread_t *thread;
+
     /* TODO: second thread doesn't work. */
     if (0) { /* second thread */
         /* Setup a non-blocking TCP server in a separate thread */
-        apr_thread_create(&thread, NULL, start_thread, ctx, mh->pool);
+        apr_thread_create(&thread, NULL, start_thread, ctx, ctx->pool);
     } else {
+        apr_status_t status;
         /* Setup a non-blocking TCP server */
-        setupTCPServer(ctx, NO);
+        status = setupTCPServer(ctx, NO);
+        if (status)
+            return MOCKHTTP_SETUP_FAILED;
     }
 
-    return ctx;
+    return MOCKHTTP_NO_ERROR;
 }
 
 /******************************************************************************/
@@ -172,7 +169,7 @@ _mhInitTestServer(const MockHTTP *mh, const char *hostname, apr_port_t port)
 
 /* *len will be non-0 if a line ending with CRLF was found. buf will be copied 
    in mem allocatod from cctx->pool, cctx->buf ptrs will be moved. */
-static void readLine(clientCtx_t *cctx, const char **buf, apr_size_t *len)
+static void readLine(_mhClientCtx_t *cctx, const char **buf, apr_size_t *len)
 {
     const char *ptr = cctx->buf;
 
@@ -193,7 +190,7 @@ static void readLine(clientCtx_t *cctx, const char **buf, apr_size_t *len)
 }
 
 /* APR_EAGAIN if no line ready, APR_SUCCESS + done = YES if request line parsed */
-static apr_status_t readReqLine(clientCtx_t *cctx, mhRequest_t *req, bool *done)
+static apr_status_t readReqLine(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
 {
     const char *start, *ptr, *version;
     const char *buf;
@@ -226,7 +223,7 @@ static apr_status_t readReqLine(clientCtx_t *cctx, mhRequest_t *req, bool *done)
 
 /* APR_EAGAIN if no line ready, APR_SUCCESS + done = YES when LAST header was
    parsed */
-static apr_status_t readHeader(clientCtx_t *cctx, mhRequest_t *req, bool *done)
+static apr_status_t readHeader(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
 {
     const char *buf;
     apr_size_t len;
@@ -256,7 +253,7 @@ static apr_status_t readHeader(clientCtx_t *cctx, mhRequest_t *req, bool *done)
 
 /* APR_EAGAIN if not all data is ready, APR_SUCCESS + done = YES if body
    completely received. */
-static apr_status_t readBody(clientCtx_t *cctx, mhRequest_t *req, bool *done)
+static apr_status_t readBody(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
 {
     const char *clstr;
     long cl;
@@ -287,7 +284,7 @@ static apr_status_t readBody(clientCtx_t *cctx, mhRequest_t *req, bool *done)
     return APR_SUCCESS;
 }
 
-static apr_status_t readChunk(clientCtx_t *cctx, mhRequest_t *req, bool *done)
+static apr_status_t readChunk(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
 {
     const char *buf;
     apr_size_t len, chlen;
@@ -338,7 +335,7 @@ static apr_status_t readChunk(clientCtx_t *cctx, mhRequest_t *req, bool *done)
     return APR_SUCCESS;
 }
 
-static apr_status_t readChunked(clientCtx_t *cctx, mhRequest_t *req, bool *done)
+static apr_status_t readChunked(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
 {
     apr_status_t status;
 
@@ -352,7 +349,7 @@ static apr_status_t readChunked(clientCtx_t *cctx, mhRequest_t *req, bool *done)
 }
 
 /* New request data was made available, read status line/hdrs/body (chunks) */
-static apr_status_t processData(clientCtx_t *cctx, mhRequest_t **preq)
+static apr_status_t processData(_mhClientCtx_t *cctx, mhRequest_t **preq)
 {
     bool done;
     mhRequest_t *req = *preq;
@@ -405,7 +402,7 @@ static apr_status_t processData(clientCtx_t *cctx, mhRequest_t **preq)
     return status;
 }
 
-static apr_status_t readRequest(clientCtx_t *cctx, mhRequest_t **preq)
+static apr_status_t readRequest(_mhClientCtx_t *cctx, mhRequest_t **preq)
 {
     apr_status_t status;
     apr_size_t len;
@@ -527,7 +524,7 @@ static char *respToString(apr_pool_t *pool, mhResponse_t *resp)
     return str;
 }
 
-static apr_status_t writeResponse(clientCtx_t *cctx, mhResponse_t *resp)
+static apr_status_t writeResponse(_mhClientCtx_t *cctx, mhResponse_t *resp)
 {
     apr_pool_t *pool = cctx->pool;
     apr_size_t len;
@@ -564,7 +561,7 @@ static bool closeConnection(apr_pool_t *pool, mhResponse_t *resp) {
     return NO;
 }
 
-static apr_status_t process(servCtx_t *ctx, clientCtx_t *cctx,
+static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                             const apr_pollfd_t *desc)
 {
     apr_status_t status;
@@ -607,11 +604,11 @@ static apr_status_t process(servCtx_t *ctx, clientCtx_t *cctx,
 /******************************************************************************/
 /* Process socket events                                                      */
 /******************************************************************************/
-apr_status_t _mhRunServerLoop(servCtx_t *ctx)
+apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
 {
     apr_int32_t num;
     const apr_pollfd_t *desc;
-    clientCtx_t *cctx;
+    _mhClientCtx_t *cctx;
     apr_pollfd_t pfd = { 0 };
     apr_status_t status;
 
@@ -640,7 +637,7 @@ apr_status_t _mhRunServerLoop(servCtx_t *ctx)
             apr_socket_t *cskt;
             apr_pollfd_t pfd = { 0 };
 
-            clientCtx_t *cctx = apr_pcalloc(ctx->pool, sizeof(clientCtx_t));
+            _mhClientCtx_t *cctx = apr_pcalloc(ctx->pool, sizeof(_mhClientCtx_t));
 
             STATUSERR(apr_socket_accept(&cskt, ctx->skt, ctx->pool));
 
@@ -666,7 +663,7 @@ apr_status_t _mhRunServerLoop(servCtx_t *ctx)
             ctx->cctx = cctx;
         } else {
             /* one of the client sockets */
-            clientCtx_t *cctx = desc->client_data;
+            _mhClientCtx_t *cctx = desc->client_data;
 
             STATUSREADERR(process(ctx, cctx, desc));
         }

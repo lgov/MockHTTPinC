@@ -119,9 +119,52 @@ MockHTTP *mhInit()
     *mh->errmsg = '\0';
     mh->expectations = 0;
 
+    return mh;
+}
+
+/******************************************************************************/
+/* Init server                                                                */
+/******************************************************************************/
+typedef void (* srvbuilderfunc_t)(mhServCtx_t *ctx, const void *baton,
+                                  long baton2);
+struct mhServerBuilder_t {
+    const void *baton;
+    long baton2;
+    srvbuilderfunc_t builder;
+};
+
+mhError_t mhInitHTTPserver(MockHTTP *mh, ...)
+{
+    va_list argp;
+
     mh->servCtx = _mhInitTestServer(mh, "localhost", DefaultSrvPort);
 
-    return mh;
+    va_start(argp, mh);
+    while (1) {
+        mhServerBuilder_t *bldr = va_arg(argp, mhServerBuilder_t *);
+        if (bldr == NULL) break;
+        bldr->builder(mh->servCtx, bldr->baton, bldr->baton2);
+    }
+    va_end(argp);
+
+    _mhStartServer(mh->servCtx);
+
+    return MOCKHTTP_SETUP_FAILED;
+}
+
+void srv_port_setter(mhServCtx_t *ctx, const void *baton, long baton2) {
+    ctx->port = (unsigned int)baton2;
+}
+
+mhServerBuilder_t *mhConstructServerPortSetter(MockHTTP *mh, unsigned int port)
+{
+    apr_pool_t *pool = mh->pool;
+
+    mhServerBuilder_t *bldr = apr_palloc(pool, sizeof(mhServerBuilder_t));
+    bldr->baton2 = (unsigned int)port;
+    bldr->builder = srv_port_setter;
+
+    return bldr;
 }
 
 void mhCleanup(MockHTTP *mh)
@@ -136,24 +179,25 @@ void mhCleanup(MockHTTP *mh)
     /* mh ptr is now invalid */
 }
 
-void mhRunServerLoop(MockHTTP *mh)
+mhError_t mhRunServerLoop(MockHTTP *mh)
 {
-    apr_status_t status;
+    apr_status_t status = APR_EGENERAL;
 
     do {
         void *data;
 
-        status = _mhRunServerLoop(mh->servCtx);
+        if (mh->servCtx) {
+            status = _mhRunServerLoop(mh->servCtx);
 
-        while (apr_queue_trypop(mh->reqQueue, &data) == APR_SUCCESS) {
-            mhRequest_t *req;
+            while (apr_queue_trypop(mh->reqQueue, &data) == APR_SUCCESS) {
+                mhRequest_t *req;
 
-            req = data;
-            *((mhRequest_t **)apr_array_push(mh->reqsReceived)) = req;
+                req = data;
+                *((mhRequest_t **)apr_array_push(mh->reqsReceived)) = req;
 
-            printf("request added to incoming queue: %s\n", req->method);
+                printf("request added to incoming queue: %s\n", req->method);
+            }
         }
-
     } while (status == APR_SUCCESS);
 }
 

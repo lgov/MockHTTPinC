@@ -24,6 +24,21 @@ extern "C" {
 /* TODO: use requests only once, use them in order, use best matching first */
 /* TODO: any method, raw requests + responses */
 /* TODO: add delay time for accept skt, response */
+
+/* Note: the variadic macro's used here require C99. Such macro's require at
+   least one argument, otherwise compilation will fail. */
+#define InitMockHTTP(mh)\
+            {\
+                mh = mhInit();
+#define   WithHTTPserver(...)\
+                mhInitHTTPserver(mh, __VA_ARGS__, NULL);
+#define   WithHTTPSserver(...)
+#define   WithHTTPproxy(...)
+#define     WithPort(port)\
+                mhConstructServerPortSetter(mh, port)
+#define EndInit\
+            }
+
 #define Given(mh)\
             {\
                 MockHTTP *__mh = mh;\
@@ -104,12 +119,21 @@ typedef struct mhRequest_t mhRequest_t;
 typedef struct mhRequestMatcher_t mhRequestMatcher_t;
 typedef struct mhResponse_t mhResponse_t;
 typedef struct mhRespBuilder_t mhRespBuilder_t;
+typedef struct mhServCtx_t mhServCtx_t;
+typedef struct mhServerBuilder_t mhServerBuilder_t;
+
+typedef unsigned long mhError_t;
+#define MOCKHTTP_NO_ERROR 0
+#define MOCKHTTP_SETUP_FAILED 1
+#define MOCKHTTP_TEST_FAILED 2
 
 /* Setup a mock HTTP server */
 MockHTTP *mhInit(void);
 void mhCleanup(MockHTTP *mh);
-void mhRunServerLoop(MockHTTP *mh);
+mhError_t mhInitHTTPserver(MockHTTP *mh, ...);
+mhError_t mhRunServerLoop(MockHTTP *mh);
 int mhServerPortNr(MockHTTP *mh);
+mhServerBuilder_t *mhConstructServerPortSetter(MockHTTP *mh, unsigned int port);
 
 /* Define request stubs */
 mhRequestMatcher_t *mhGetRequest(MockHTTP *mh, ...);

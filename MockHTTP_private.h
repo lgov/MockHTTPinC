@@ -45,7 +45,6 @@ static const int MaxReqRespQueueSize = 50;
 
 typedef bool (*matchfunc_t)(apr_pool_t *pool, const mhMatchingPattern_t *mp,
                             const mhRequest_t *req);
-typedef struct servCtx_t servCtx_t;
 
 typedef enum expectation_t {
     RequestsReceivedOnce    = 0x00000001,
@@ -56,10 +55,24 @@ struct MockHTTP {
     apr_pool_t *pool;
     apr_array_header_t *reqMatchers;
     apr_array_header_t *reqsReceived;
-    servCtx_t *servCtx;
+    mhServCtx_t *servCtx;
     apr_queue_t *reqQueue; /* Thread safe FIFO queue. */
     char *errmsg;
     unsigned long expectations;
+};
+
+typedef struct _mhClientCtx_t _mhClientCtx_t;
+
+struct mhServCtx_t {
+    apr_pool_t *pool;
+    const MockHTTP *mh; /* keep const to avoid thread race problems */
+    const char *hostname;
+    apr_port_t port;
+    apr_pollset_t *pollset;
+    apr_socket_t *skt;
+    apr_queue_t *reqQueue;   /* thread safe, pass received reqs back to test, */
+    /* TODO: allow more connections */
+    _mhClientCtx_t *cctx;
 };
 
 struct mhRequest_t {
@@ -117,9 +130,10 @@ bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm,
                             const mhRequest_t *req);
 
 /* Test servers */
-servCtx_t *_mhInitTestServer(const MockHTTP *mh, const char *host,
+mhServCtx_t *_mhInitTestServer(const MockHTTP *mh, const char *host,
 apr_port_t port);
-apr_status_t _mhRunServerLoop(servCtx_t *ctx);
+mhError_t _mhStartServer(mhServCtx_t *ctx);
+apr_status_t _mhRunServerLoop(mhServCtx_t *ctx);
 
 #ifdef __cplusplus
 }
