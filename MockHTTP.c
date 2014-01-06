@@ -201,6 +201,8 @@ mhError_t mhRunServerLoop(MockHTTP *mh)
             }
         }
     } while (status == APR_SUCCESS);
+
+    return MOCKHTTP_NO_ERROR;
 }
 
 mhResponse_t *_mhMatchRequest(const MockHTTP *mh, mhRequest_t *req)
