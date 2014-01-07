@@ -381,7 +381,7 @@ static apr_status_t processData(_mhClientCtx_t *cctx, mhRequest_t **preq)
             } else {
                 chstr = getHeader(cctx->pool, req->hdrs,
                                   "Transfer-Encoding");
-                /* TODO: chunked can be one or more encodings */
+                /* TODO: chunked can be one of more encodings */
                 if (apr_strnatcasecmp(chstr, "chunked") == 0)
                     STATUSREADERR(readChunked(cctx, req, &done));
             }
