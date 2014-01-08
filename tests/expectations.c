@@ -63,7 +63,7 @@ static void test_urlmatcher(CuTest *tc)
     mhMatchingPattern_t *mp;
     mhRequest_t *req;
 
-    rm = mhGetRequest(mh);
+    rm = mhGivenRequest(mh, "GET");
     mp = mhMatchURLEqualTo(mh, "/index.html");
     CuAssertPtrNotNull(tc, mp);
 
@@ -81,7 +81,7 @@ static void test_methodmatcher(CuTest *tc)
     mhRequest_t *req;
 
     mp = mhMatchMethodEqualTo(mh, "get");
-    rm = mhGetRequest(mh, mp, NULL);
+    rm = mhGivenRequest(mh, "GET", mp, NULL);
     CuAssertPtrNotNull(tc, rm);
 
     /* Create a fake request and check that the matcher works */
@@ -96,7 +96,7 @@ static void test_matchrequest(CuTest *tc)
     mhRequestMatcher_t *rm;
     mhRequest_t *req;
 
-    rm = mhGetRequest(mh, mhMatchURLEqualTo(mh, "/index.html"), NULL);
+    rm = mhGivenRequest(mh, "GET", mhMatchURLEqualTo(mh, "/index.html"), NULL);
 
     /* Create a fake request and check that the matcher works */
     req = _mhRequestInit(mh);
@@ -124,10 +124,10 @@ static void test_basic_reqmatch_response(CuTest *tc)
         mhResponse_t *__resp;
 
         /* GetRequest */
-        __rm = mhGetRequest(__mh,
-                            /*     URLEqualTo("/index.html") */
-                            mhMatchURLEqualTo(__mh, "/index.html"),
-                            NULL);
+        __rm = mhGivenRequest(__mh, "GET",
+                             /*     URLEqualTo("/index.html") */
+                             mhMatchURLEqualTo(__mh, "/index.html"),
+                             NULL);
         mhPushRequest(__mh, __rm);
         CuAssertPtrNotNull(tc, __rm);
 
@@ -202,11 +202,11 @@ static void test_one_request_received(CuTest *tc)
 
         /* GetRequestReceivedFor */
         /*     URLEqualTo("/index.html") */
-        CuAssertTrue(tc, mhVerifyRequestReceived(__mh,
-                        mhGetRequestReceivedFor(__mh,
-                                mhMatchURLEqualTo(__mh, "/index.html")
-                                                ))
-                    );
+        CuAssertTrue(tc,
+                     mhVerifyRequestReceived(__mh,
+                        mhGivenRequest(__mh, "GET",
+                                       mhMatchURLEqualTo(__mh, "/index.html"),
+                                       NULL)));
         /* EndVerify */
     }
 

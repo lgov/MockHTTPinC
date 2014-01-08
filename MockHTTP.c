@@ -479,25 +479,13 @@ constructRequestMatcher(MockHTTP *mh, const char *method, va_list argp)
     return rm;
 }
 
-mhRequestMatcher_t *mhGetRequest(MockHTTP *mh, ...)
+mhRequestMatcher_t *mhGivenRequest(MockHTTP *mh, const char *method, ...)
 {
     va_list argp;
     mhRequestMatcher_t *rm;
 
-    va_start(argp, mh);
-    rm = constructRequestMatcher(mh, "GET", argp);
-    va_end(argp);
-
-    return rm;
-}
-
-mhRequestMatcher_t *mhPostRequest(MockHTTP *mh, ...)
-{
-    va_list argp;
-    mhRequestMatcher_t *rm;
-
-    va_start(argp, mh);
-    rm = constructRequestMatcher(mh, "POST", argp);
+    va_start(argp, method);
+    rm = constructRequestMatcher(mh, method, argp);
     va_end(argp);
 
     return rm;
