@@ -585,7 +585,7 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
 
                     *((mhResponse_t **)apr_array_push(cctx->respQueue)) = resp;
                 } else {
-                    _mhLog(MH_VERBOSE, __FILE__, "Couldn't match request!\n");
+                    _mhLog(MH_VERBOSE, __FILE__, "No response to send back!\n");
                 }
 
                 cctx->req = NULL;
