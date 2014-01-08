@@ -173,8 +173,5 @@ apr_status_t receiveResponse(clientCtx_t *ctx, char **buf,
 
     status = receiveData(ctx, *buf, len);
 
-    printf("response: %.*s", (int)*len, *buf);
-
     return status;
 }
-
