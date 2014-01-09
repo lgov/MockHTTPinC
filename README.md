@@ -52,7 +52,7 @@ In these examples we will use the CuTest framework (https://github.com/asimjalis
 **Step 2**: Use the macro's to instruct the mock HTTP server to expect a GET request to url /index.html. Also, tell the server how to respond when that request arrives.
 
         Given(mh)
-          GetRequest(
+          GETRequest(
             URLEqualTo("/index.html"))
           Respond(
             WithCode(200), WithHeader("Connection", "Close"), WithBody("body"))

@@ -69,7 +69,7 @@ extern "C" {
  * when expectations can't be matched. These macro's should be used like this:
  *
  *   Given(mh)
- *     GetRequest(URLEqualTo("/index.html"))
+ *     GETRequest(URLEqualTo("/index.html"))
  *       Respond(WithCode(200), WithBody("body"))
  *   Expect
  *     AllRequestsReceivedOnce
@@ -180,7 +180,7 @@ extern "C" {
  * To be used like this:
  *   Verify(mh)
  *     ASSERT(VerifyAllExpectationsOk);
- *     ASSERT(GetRequestReceivedFor(URLEqualTo("/index.html"));
+ *     ASSERT(GETRequestReceivedFor(URLEqualTo("/index.html"));
  *   EndVerify
  *
  * Note: the ASSERT macro is not included in this library, but should be
@@ -225,12 +225,6 @@ extern "C" {
 /* End of test result verification section */
 #define EndVerify\
             }
-
-/* TODO: remove these when the test suite is updated */
-#define GetRequest GETRequest
-#define PostRequest POSTRequest
-#define GetRequestReceivedFor GETRequestReceivedFor
-#define PostRequestReceivedFor POSTRequestReceivedFor
 
 typedef struct MockHTTP MockHTTP;
 typedef struct mhMatchingPattern_t mhMatchingPattern_t;

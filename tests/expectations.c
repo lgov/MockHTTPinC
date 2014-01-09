@@ -123,7 +123,7 @@ static void test_basic_reqmatch_response(CuTest *tc)
         mhRequestMatcher_t *__rm;
         mhResponse_t *__resp;
 
-        /* GetRequest */
+        /* GETRequest */
         __rm = mhGivenRequest(__mh, "GET",
                              /*     URLEqualTo("/index.html") */
                              mhMatchURLEqualTo(__mh, "/index.html"),
@@ -162,7 +162,7 @@ static void test_basic_reqmatch_response_with_macros(CuTest *tc)
     mhRequest_t *req;
 
     Given(mh)
-      GetRequest(
+      GETRequest(
         URLEqualTo("/index.html"))
       Respond(
         WithCode(200),
@@ -183,7 +183,7 @@ static void test_one_request_received(CuTest *tc)
     MockHTTP *mh = tc->testBaton;
 
     Given(mh)
-      GetRequest(
+      GETRequest(
         URLEqualTo("/index.html"))
     EndGiven
 
@@ -200,7 +200,7 @@ static void test_one_request_received(CuTest *tc)
     {
         MockHTTP *__mh = mh;
 
-        /* GetRequestReceivedFor */
+        /* GETRequestReceivedFor */
         /*     URLEqualTo("/index.html") */
         CuAssertTrue(tc,
                      mhVerifyRequestReceived(__mh,
@@ -212,7 +212,7 @@ static void test_one_request_received(CuTest *tc)
 
     /* Now with the macro's */
     Verify(mh)
-        CuAssertTrue(tc, GetRequestReceivedFor(
+        CuAssertTrue(tc, GETRequestReceivedFor(
                         URLEqualTo("/index.html")));
     EndVerify
 }
@@ -231,9 +231,9 @@ static void test_match_method(CuTest *tc)
     }
 
     Verify(mh)
-        CuAssertTrue(tc, !GetRequestReceivedFor(
+        CuAssertTrue(tc, !GETRequestReceivedFor(
                           URLEqualTo("/index.html")));
-        CuAssertTrue(tc, PostRequestReceivedFor(
+        CuAssertTrue(tc, POSTRequestReceivedFor(
                          URLEqualTo("/index.html")));
     EndVerify
 }
@@ -243,7 +243,7 @@ static void test_verify_all_reqs_received(CuTest *tc)
     MockHTTP *mh = tc->testBaton;
 
     Given(mh)
-      GetRequest(
+      GETRequest(
         URLEqualTo("/index.html"))
     EndGiven
 
@@ -266,9 +266,9 @@ static void test_verify_all_reqs_received_inverse(CuTest *tc)
     MockHTTP *mh = tc->testBaton;
 
     Given(mh)
-      GetRequest(
+      GETRequest(
         URLEqualTo("/index.html"))
-      PostRequest(
+      POSTRequest(
         URLEqualTo("/index2.html"))
     EndGiven
 
@@ -292,9 +292,9 @@ static void test_verify_all_reqs_received_in_order(CuTest *tc)
     MockHTTP *mh = tc->testBaton;
 
     Given(mh)
-      GetRequest(
+      GETRequest(
         URLEqualTo("/index.html"))
-      PostRequest(
+      POSTRequest(
         URLEqualTo("/index2.html"))
     EndGiven
 
@@ -318,14 +318,14 @@ static void test_verify_all_reqs_received_in_order_more(CuTest *tc)
     MockHTTP *mh = tc->testBaton;
 
     Given(mh)
-      GetRequest(URLEqualTo("/index1.html"))
-      PostRequest(URLEqualTo("/index2.html"))
-      GetRequest(URLEqualTo("/index3.html"))
-      PostRequest(URLEqualTo("/index4.html"))
-      GetRequest(URLEqualTo("/index5.html"))
-      PostRequest(URLEqualTo("/index6.html"))
-      GetRequest(URLEqualTo("/index7.html"))
-      PostRequest(URLEqualTo("/index8.html"))
+      GETRequest(URLEqualTo("/index1.html"))
+      POSTRequest(URLEqualTo("/index2.html"))
+      GETRequest(URLEqualTo("/index3.html"))
+      POSTRequest(URLEqualTo("/index4.html"))
+      GETRequest(URLEqualTo("/index5.html"))
+      POSTRequest(URLEqualTo("/index6.html"))
+      GETRequest(URLEqualTo("/index7.html"))
+      POSTRequest(URLEqualTo("/index8.html"))
     EndGiven
 
     /* system under test */
@@ -360,10 +360,10 @@ static void test_verify_req_chunked_body(CuTest *tc)
     MockHTTP *mh = tc->testBaton;
 
     Given(mh)
-      GetRequest(
+      GETRequest(
         URLEqualTo("/index1.html"),
         ChunkedBodyEqualTo("1"))
-      GetRequest(
+      GETRequest(
         URLEqualTo("/index2.html"),
         ChunkedBodyChunksEqualTo("chunk1", "chunk2"))
     EndGiven
@@ -391,7 +391,7 @@ static void test_verify_req_chunked_body_fails(CuTest *tc)
     MockHTTP *mh = tc->testBaton;
 
     Given(mh)
-      GetRequest(
+      GETRequest(
         URLEqualTo("/index.html"),
           ChunkedBodyChunksEqualTo("chunk1", "chunk2"))
     EndGiven
@@ -411,7 +411,7 @@ static void test_verify_req_chunked_body_fails(CuTest *tc)
     EndVerify
 
     Given(mh)
-      GetRequest(
+      GETRequest(
         URLEqualTo("/index2.html"),
           ChunkedBodyChunksEqualTo("chunk1", "chunk2"))
     EndGiven
@@ -439,10 +439,10 @@ static void test_verify_req_header(CuTest *tc)
     MockHTTP *mh = tc->testBaton;
 
     Given(mh)
-      GetRequest(
+      GETRequest(
         URLEqualTo("/index1.html"),
         HeaderEqualTo("Authorization", "TW9ja0hUVFA6TW9ja0hUVFBwd2Q="))
-    GetRequest( /* header names are case insensitive */
+    GETRequest( /* header names are case insensitive */
         URLEqualTo("/index2.html"),
         HeaderEqualTo("autHORIZation", "TW9ja0hUVFA6TW9ja0hUVFBwd2Q="))
     EndGiven
@@ -473,7 +473,7 @@ static void test_verify_req_header_not_set(CuTest *tc)
     apr_hash_t *hdrs = apr_hash_make(mh->pool);
 
     Given(mh)
-      GetRequest(
+      GETRequest(
         URLEqualTo("/index1.html"),
         HeaderNotSet("Authorization"))
     Expect
@@ -495,7 +495,7 @@ static void test_verify_req_header_not_set_fails_if_set(CuTest *tc)
     apr_hash_t *hdrs = apr_hash_make(mh->pool);
 
     Given(mh)
-      GetRequest(URLEqualTo("/index1.html"), HeaderNotSet("Authorization"))
+      GETRequest(URLEqualTo("/index1.html"), HeaderNotSet("Authorization"))
     Expect
       AllRequestsReceivedOnce
     EndGiven
@@ -515,7 +515,7 @@ static void test_verify_req_header_fails(CuTest *tc)
     MockHTTP *mh = tc->testBaton;
 
     Given(mh)
-      GetRequest(
+      GETRequest(
         URLEqualTo("/index1.html"),
         HeaderEqualTo("Authorization", "TW9ja0hUVFA6TW9ja0hUVFBwd2Q="))
     EndGiven
@@ -544,10 +544,10 @@ static void test_verify_error_message(CuTest *tc)
     MockHTTP *mh = tc->testBaton;
 
     Given(mh)
-    GetRequest(
+    GETRequest(
       URLEqualTo("/index1.html"),
       HeaderEqualTo("Authorization", "incorrect_value"))
-    GetRequest( /* header names are case insensitive */
+    GETRequest( /* header names are case insensitive */
       URLEqualTo("/index2.html"),
       HeaderEqualTo("autHORIZation", "TW9ja0hUVFA6TW9ja0hUVFBwd2Q="))
     EndGiven
@@ -578,7 +578,7 @@ static void test_one_request_response(CuTest *tc)
     MockHTTP *mh = tc->testBaton;
 
     Given(mh)
-      GetRequest(
+      GETRequest(
         URLEqualTo("/index.html"))
       Respond(
         WithCode(200),
@@ -619,7 +619,7 @@ static void test_one_request_response_chunked(CuTest *tc)
     MockHTTP *mh = tc->testBaton;
 
     Given(mh)
-    GetRequest(
+    GETRequest(
                URLEqualTo("/index.html"))
     Respond(
             WithCode(200),
@@ -660,7 +660,7 @@ static void test_connection_close(CuTest *tc)
     MockHTTP *mh = tc->testBaton;
 
     Given(mh)
-      GetRequest(URLEqualTo("/index1.html"))
+      GETRequest(URLEqualTo("/index1.html"))
         Respond(WithCode(200),
                 WithHeader("Connection", "close"),
                 WithChunkedBody("chunk1", "chunk2"))
@@ -702,8 +702,8 @@ static void test_expectation_all_reqs_received(CuTest *tc)
     MockHTTP *mh = tc->testBaton;
 
     Given(mh)
-      GetRequest(URLEqualTo("/index.html"))
-      PostRequest(URLEqualTo("/index2.html"))
+      GETRequest(URLEqualTo("/index.html"))
+      POSTRequest(URLEqualTo("/index2.html"))
     Expect
       AllRequestsReceivedOnce
     EndGiven
@@ -729,8 +729,8 @@ static void test_expectation_all_reqs_received_in_order(CuTest *tc)
     MockHTTP *mh = tc->testBaton;
 
     Given(mh)
-      GetRequest(URLEqualTo("/index.html"))
-      PostRequest(URLEqualTo("/index2.html"))
+      GETRequest(URLEqualTo("/index.html"))
+      POSTRequest(URLEqualTo("/index2.html"))
     Expect
       AllRequestsReceivedInOrder
     EndGiven
@@ -759,8 +759,8 @@ static void test_init_httpserver(CuTest *tc)
     EndInit
 
     Given(mh)
-      GetRequest(URLEqualTo("/index.html"))
-      PostRequest(URLEqualTo("/index2.html"))
+      GETRequest(URLEqualTo("/index.html"))
+      POSTRequest(URLEqualTo("/index2.html"))
     Expect
       AllRequestsReceivedInOrder
     EndGiven
