@@ -21,6 +21,7 @@
 #include <apr_queue.h>
 #include <apr_tables.h>
 #include <apr_poll.h>
+#include <apr_time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,6 +39,12 @@ extern "C" {
 
 #define STATUSREADERR(x) if (((status = (x)) && READ_ERROR(status)))\
                             return status;
+
+#define MH_STATUS_START (APR_OS_START_USERERR + 1500)
+
+/* This code indicates that the server is waiting for a timed event */
+#define MH_STATUS_WAITING (MH_STATUS_START + 1)
+
 
 typedef short int bool;
 static const bool YES = 1;

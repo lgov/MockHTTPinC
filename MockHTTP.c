@@ -82,7 +82,7 @@ void setHeader(apr_pool_t *pool, apr_hash_t *hdrs,
    front and use it when needed */
 #define ERRMSG_MAXSIZE 65000
 
-static void appendErrMessage(MockHTTP *mh, const char *fmt, ...)
+static void appendErrMessage(const MockHTTP *mh, const char *fmt, ...)
 {
     apr_pool_t *scratchpool;
     apr_size_t startpos = strlen(mh->errmsg);
@@ -136,6 +136,7 @@ struct mhServerBuilder_t {
 mhError_t mhInitHTTPserver(MockHTTP *mh, ...)
 {
     va_list argp;
+    apr_status_t status;
 
     mh->servCtx = _mhInitTestServer(mh, "localhost", DefaultSrvPort);
 
@@ -147,8 +148,11 @@ mhError_t mhInitHTTPserver(MockHTTP *mh, ...)
     }
     va_end(argp);
 
-    _mhStartServer(mh->servCtx);
+    status = _mhStartServer(mh->servCtx);
+    if (status == MH_STATUS_WAITING)
+        return MOCKHTTP_WAITING;
 
+    /* TODO: store error message */
     return MOCKHTTP_SETUP_FAILED;
 }
 
@@ -156,7 +160,8 @@ static void srv_port_setter(mhServCtx_t *ctx, const void *baton, long baton2) {
     ctx->port = (unsigned int)baton2;
 }
 
-mhServerBuilder_t *mhConstructServerPortSetter(MockHTTP *mh, unsigned int port)
+mhServerBuilder_t *mhConstructServerPortSetter(const MockHTTP *mh,
+                                               unsigned int port)
 {
     apr_pool_t *pool = mh->pool;
 
@@ -201,6 +206,9 @@ mhError_t mhRunServerLoop(MockHTTP *mh)
             }
         }
     } while (status == APR_SUCCESS);
+
+    if (status == MH_STATUS_WAITING)
+        return MOCKHTTP_WAITING;
 
     return MOCKHTTP_NO_ERROR;
 }
@@ -284,7 +292,7 @@ static bool url_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
 }
 
 mhMatchingPattern_t *
-mhMatchURLEqualTo(MockHTTP *mh, const char *expected)
+mhMatchURLEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
@@ -306,7 +314,7 @@ static bool body_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
 }
 
 mhMatchingPattern_t *
-mhMatchBodyEqualTo(MockHTTP *mh, const char *expected)
+mhMatchBodyEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
@@ -327,7 +335,7 @@ body_notchunked_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
 }
 
 mhMatchingPattern_t *
-mhMatchBodyNotChunkedEqualTo(MockHTTP *mh, const char *expected)
+mhMatchBodyNotChunkedEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
@@ -363,7 +371,7 @@ chunked_body_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
 }
 
 mhMatchingPattern_t *
-mhMatchChunkedBodyEqualTo(MockHTTP *mh, const char *expected)
+mhMatchChunkedBodyEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
@@ -400,7 +408,7 @@ static bool chunked_body_chunks_matcher(apr_pool_t *pool,
 }
 
 mhMatchingPattern_t *
-mhMatchChunkedBodyChunksEqualTo(MockHTTP *mh, ...)
+mhMatchChunkedBodyChunksEqualTo(const MockHTTP *mh, ...)
 {
     apr_pool_t *pool = mh->pool;
     apr_array_header_t *chunks;
@@ -431,7 +439,7 @@ header_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
 }
 
 mhMatchingPattern_t *
-mhMatchHeaderEqualTo(MockHTTP *mh, const char *hdr, const char *value)
+mhMatchHeaderEqualTo(const MockHTTP *mh, const char *hdr, const char *value)
 {
     apr_pool_t *pool = mh->pool;
 
@@ -455,7 +463,7 @@ static bool method_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
 }
 
 mhMatchingPattern_t *
-mhMatchMethodEqualTo(MockHTTP *mh, const char *expected)
+mhMatchMethodEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
@@ -467,7 +475,7 @@ mhMatchMethodEqualTo(MockHTTP *mh, const char *expected)
 }
 
 static mhRequestMatcher_t *
-constructRequestMatcher(MockHTTP *mh, const char *method, va_list argp)
+constructRequestMatcher(const MockHTTP *mh, const char *method, va_list argp)
 {
     apr_pool_t *pool = mh->pool;
 
@@ -563,7 +571,7 @@ static void respCodeSetter(mhResponse_t *resp, const void *baton)
     resp->code = rbh->code;
 }
 
-mhRespBuilder_t *mhRespSetCode(MockHTTP *mh, unsigned int code)
+mhRespBuilder_t *mhRespSetCode(const MockHTTP *mh, unsigned int code)
 {
     apr_pool_t *pool = mh->pool;
     mhRespBuilder_t *rb;
@@ -584,7 +592,7 @@ static void respBodySetter(mhResponse_t *resp, const void *baton)
     resp->chunked = NO;
 }
 
-mhRespBuilder_t * mhRespSetBody(MockHTTP *mh, const char *body)
+mhRespBuilder_t * mhRespSetBody(const MockHTTP *mh, const char *body)
 {
     apr_pool_t *pool = mh->pool;
     mhRespBuilder_t *rb;
@@ -606,7 +614,7 @@ static void respChunksSetter(mhResponse_t *resp, const void *baton)
     resp->chunked = YES;
 }
 
-mhRespBuilder_t * mhRespSetChunkedBody(MockHTTP *mh, ...)
+mhRespBuilder_t * mhRespSetChunkedBody(const MockHTTP *mh, ...)
 {
     apr_pool_t *pool = mh->pool;
     mhRespBuilder_t *rb;
@@ -639,7 +647,7 @@ static void respHeaderSetter(mhResponse_t *resp, const void *baton)
 }
 
 mhRespBuilder_t *
-mhRespAddHeader(MockHTTP *mh, const char *header, const char *value)
+mhRespAddHeader(const MockHTTP *mh, const char *header, const char *value)
 {
     apr_pool_t *pool = mh->pool;
     mhRespBuilder_t *rb;
@@ -681,7 +689,7 @@ void mhExpectAllRequestsReceivedInOrder(MockHTTP *mh)
 /******************************************************************************/
 /* Verify results                                                             */
 /******************************************************************************/
-int mhVerifyRequestReceived(MockHTTP *mh, mhRequestMatcher_t *rm)
+int mhVerifyRequestReceived(const MockHTTP *mh, const mhRequestMatcher_t *rm)
 {
     int i;
 
@@ -695,7 +703,7 @@ int mhVerifyRequestReceived(MockHTTP *mh, mhRequestMatcher_t *rm)
     return NO;
 }
 
-int mhVerifyAllRequestsReceivedInOrder(MockHTTP *mh)
+int mhVerifyAllRequestsReceivedInOrder(const MockHTTP *mh)
 {
     int i;
 
@@ -737,7 +745,7 @@ isArrayElement(apr_array_header_t *ary, const ReqMatcherRespPair_t *element)
     return NO;
 }
 
-static int verifyAllRequestsReceived(MockHTTP *mh, bool breakOnNotOnce)
+static int verifyAllRequestsReceived(const MockHTTP *mh, bool breakOnNotOnce)
 {
     int i;
     apr_array_header_t *used;
@@ -789,22 +797,22 @@ static int verifyAllRequestsReceived(MockHTTP *mh, bool breakOnNotOnce)
     return result;
 }
 
-int mhVerifyAllRequestsReceived(MockHTTP *mh)
+int mhVerifyAllRequestsReceived(const MockHTTP *mh)
 {
     return verifyAllRequestsReceived(mh, NO);
 }
 
-int mhVerifyAllRequestsReceivedOnce(MockHTTP *mh)
+int mhVerifyAllRequestsReceivedOnce(const MockHTTP *mh)
 {
     return verifyAllRequestsReceived(mh, YES);
 }
 
-const char *mhGetLastErrorString(MockHTTP *mh)
+const char *mhGetLastErrorString(const MockHTTP *mh)
 {
     return mh->errmsg;
 }
 
-int mhVerifyAllExpectationsOk(MockHTTP *mh)
+int mhVerifyAllExpectationsOk(const MockHTTP *mh)
 {
     if (mh->expectations & RequestsReceivedInOrder)
         return mhVerifyAllRequestsReceivedInOrder(mh);
@@ -815,11 +823,24 @@ int mhVerifyAllExpectationsOk(MockHTTP *mh)
     return NO;
 }
 
+static void log_time()
+{
+    apr_time_exp_t tm;
+
+    apr_time_exp_lt(&tm, apr_time_now());
+    fprintf(stderr, "%d-%02d-%02dT%02d:%02d:%02d.%06d%+03d ",
+            1900 + tm.tm_year, 1 + tm.tm_mon, tm.tm_mday,
+            tm.tm_hour, tm.tm_min, tm.tm_sec, tm.tm_usec,
+            tm.tm_gmtoff/3600);
+}
+
 void _mhLog(int verbose_flag, const char *filename, const char *fmt, ...)
 {
     va_list argp;
 
     if (verbose_flag) {
+        log_time();
+
         if (filename)
             fprintf(stderr, "[%s]: ", filename);
 

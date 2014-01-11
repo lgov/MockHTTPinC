@@ -586,7 +586,6 @@ static void test_one_request_response(CuTest *tc)
         WithBody("blabla"))
     EndGiven
 
-
     /* system under test */
     {
         const char *exp_body = "HTTP/1.1 200 OK\r\nContent-Length: 6\r\n"
@@ -626,7 +625,6 @@ static void test_one_request_response_chunked(CuTest *tc)
             WithHeader("Connection", "Close"),
             WithChunkedBody("chunk1", "chunk2"))
     EndGiven
-
 
     /* system under test */
     {
@@ -757,6 +755,7 @@ static void test_init_httpserver(CuTest *tc)
     InitMockHTTP(mh)
       WithHTTPserver(WithPort(30080))
     EndInit
+    tc->testBaton = mh; /* Ensure server gets cleaned up in testTeardown. */
 
     Given(mh)
       GETRequest(URLEqualTo("/index.html"))
