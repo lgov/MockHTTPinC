@@ -571,6 +571,7 @@ typedef struct RespBuilderHelper_t {
     const char *value;
     bool chunked;
     apr_array_header_t *chunks;
+    bool closeConn;
 } RespBuilderHelper_t;
 
 static void respCodeSetter(mhResponse_t *resp, const void *baton)
@@ -667,6 +668,22 @@ mhRespAddHeader(const MockHTTP *mh, const char *header, const char *value)
     rb = apr_palloc(pool, sizeof(mhRespBuilder_t));
     rb->baton = rbh;
     rb->builder = respHeaderSetter;
+    return rb;
+}
+
+static void respConnCloseSetter(mhResponse_t *resp, const void *baton)
+{
+    const RespBuilderHelper_t *rbh = baton;
+    setHeader(resp->pool, resp->hdrs, rbh->header, rbh->value);
+    resp->closeConn = rbh->closeConn;
+}
+
+mhRespBuilder_t *mhRespSetConnCloseHdr(const MockHTTP *mh)
+{
+    mhRespBuilder_t *rb = mhRespAddHeader(mh, "Connection", "close");
+    RespBuilderHelper_t *rbh = rb->baton;
+    rbh->closeConn = YES;
+    rb->builder = respConnCloseSetter;
     return rb;
 }
 

@@ -557,16 +557,6 @@ static apr_status_t writeResponse(_mhClientCtx_t *cctx, mhResponse_t *resp)
     return status;
 }
 
-static bool closeConnection(apr_pool_t *pool, mhResponse_t *resp) {
-    const char *connHdr;
-    connHdr = getHeader(pool, resp->hdrs, "Connection");
-    if (connHdr && strcmp(connHdr, "close") == 0) {
-        /* close conn when response is streamed completely */
-        return YES;
-    }
-    return NO;
-}
-
 static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                             const apr_pollfd_t *desc)
 {
@@ -585,7 +575,7 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
             status = writeResponse(cctx, resp);
             if (status == APR_EOF) {
                 ctx->mh->verifyStats->requestsResponded++;
-                if (closeConnection(cctx->pool, resp)) {
+                if (resp->closeConn) {
                     _mhLog(MH_VERBOSE, __FILE__,
                            "Actively closing connection.\n");
                     apr_socket_close(cctx->skt);

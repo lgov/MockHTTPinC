@@ -108,6 +108,7 @@ struct mhResponse_t {
     apr_array_header_t *chunks;
     apr_hash_t *hdrs;
     apr_array_header_t *builders;
+    bool closeConn;
 };
 
 struct mhRequestMatcher_t {

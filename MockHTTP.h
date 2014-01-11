@@ -155,6 +155,9 @@ extern "C" {
 #define     WithChunkedBody(...)\
                 mhRespSetChunkedBody(__mh, __VA_ARGS__, NULL)
 
+#define     WithConnectionCloseHeader\
+                mhRespSetConnCloseHdr(__mh)
+
 #define EndGiven\
                 /* Assign local variables to NULL to avoid 'variable unused' 
                    warnings. */\
@@ -321,6 +324,8 @@ mhRespBuilder_t *mhRespSetBody(const MockHTTP *mh, const char *body);
 mhRespBuilder_t *mhRespSetChunkedBody(const MockHTTP *mh, ...);
 mhRespBuilder_t *mhRespAddHeader(const MockHTTP *mh, const char *header,
                                  const char *value);
+mhRespBuilder_t *mhRespSetConnCloseHdr(const MockHTTP *mh);
+
 void mhResponseBuild(mhResponse_t *resp);
 
 /* Define request/response pairs */

@@ -660,7 +660,7 @@ static void test_connection_close(CuTest *tc)
     Given(mh)
       GETRequest(URLEqualTo("/index1.html"))
         Respond(WithCode(200),
-                WithHeader("Connection", "close"),
+                WithConnectionCloseHeader,
                 WithChunkedBody("chunk1", "chunk2"))
     EndGiven
 
@@ -792,7 +792,7 @@ static void test_conn_close_handle_reqs_one_by_one(CuTest *tc)
         Respond(WithCode(200), WithChunkedBody(""))
       GETRequest(URLEqualTo("/"), BodyEqualTo("4"))
         Respond(WithCode(200), WithChunkedBody(""),
-                WithHeader("Connection", "close"))
+                WithConnectionCloseHeader)
       /* These requests will be sent by the client, but shouldn't be handled by
          the server because it has to close the connection first. */
 /*      GETRequest(URLEqualTo("/"), BodyEqualTo("5"))
