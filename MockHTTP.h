@@ -217,6 +217,9 @@ extern "C" {
 #define   VerifyAllExpectationsOk\
                mhVerifyAllExpectationsOk(__mh)
 
+#define   VerifyStats\
+              mhVerifyStatistics(__mh)
+
 /* Return the last error message, if any.
    e.g. ASSERT_MSG(ErrorMessage, VerifyAllExpectationsOk); */
 #define   ErrorMessage\
@@ -237,6 +240,11 @@ typedef struct mhServCtx_t mhServCtx_t;
 typedef struct mhServerBuilder_t mhServerBuilder_t;
 
 typedef unsigned long mhError_t;
+
+typedef struct mhStats_t {
+    unsigned int requestsReceived;
+    unsigned int requestsResponded;
+} mhStats_t;
 
 /* Everything ok */
 #define MOCKHTTP_NO_ERROR 0
@@ -329,6 +337,7 @@ int mhVerifyAllRequestsReceived(const MockHTTP *mh);
 int mhVerifyAllRequestsReceivedInOrder(const MockHTTP *mh);
 int mhVerifyAllRequestsReceivedOnce(const MockHTTP *mh);
 int mhVerifyAllExpectationsOk(const MockHTTP *mh);
+mhStats_t *mhVerifyStatistics(const MockHTTP *mh);
 const char *mhGetLastErrorString(const MockHTTP *mh);
 
 #define MOCKHTTP_VERSION 0.1

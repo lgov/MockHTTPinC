@@ -27,7 +27,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#define MH_VERBOSE 0
+#define MH_VERBOSE 1
 
 /* Simple macro to return from function when status != 0
    expects 'apr_status_t status;' declaration. */
@@ -68,6 +68,9 @@ struct MockHTTP {
     apr_queue_t *reqQueue; /* Thread safe FIFO queue. */
     char *errmsg;
     unsigned long expectations;
+    mhStats_t *verifyStats;
+    mhResponse_t *defResponse;
+    mhResponse_t *defErrorResponse;
 };
 
 typedef struct _mhClientCtx_t _mhClientCtx_t;
@@ -133,7 +136,7 @@ void setHeader(apr_pool_t *pool, apr_hash_t *hdrs,
 
 /* Initialize a mhRequest_t object. */
 mhRequest_t *_mhRequestInit(MockHTTP *mh);
-mhResponse_t *_mhMatchRequest(const MockHTTP *mh, mhRequest_t *req);
+bool _mhMatchRequest(const MockHTTP *mh, mhRequest_t *req, mhResponse_t **resp);
 
 bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm,
                             const mhRequest_t *req);

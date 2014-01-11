@@ -572,26 +572,8 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
 {
     apr_status_t status;
 
-    if (desc->rtnevents & APR_POLLIN) {
-        do {
-            STATUSREADERR(readRequest(cctx, &cctx->req));
-            if (status == APR_EOF && cctx->req) {
-                mhResponse_t *resp;
-                apr_queue_push(ctx->reqQueue, cctx->req);
-                resp = _mhMatchRequest(ctx->mh, cctx->req);
-                if (resp) {
-                    _mhLog(MH_VERBOSE, __FILE__,
-                           "Requested matched, queueing response.\n");
-
-                    *((mhResponse_t **)apr_array_push(cctx->respQueue)) = resp;
-                } else {
-                    _mhLog(MH_VERBOSE, __FILE__, "No response to send back!\n");
-                }
-
-                cctx->req = NULL;
-            }
-        } while (cctx->buflen > 0);
-    } else if (desc->rtnevents & APR_POLLOUT) {
+    /* First sent any pending responses before reading the next request. */
+    if (desc->rtnevents & APR_POLLOUT) {
         mhResponse_t **presp, *resp;
 
         /* TODO: response in progress */
@@ -602,6 +584,7 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
 
             status = writeResponse(cctx, resp);
             if (status == APR_EOF) {
+                ctx->mh->verifyStats->requestsResponded++;
                 if (closeConnection(cctx->pool, resp)) {
                     _mhLog(MH_VERBOSE, __FILE__,
                            "Actively closing connection.\n");
@@ -610,6 +593,31 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
             } else {
                 cctx->currResp = resp;
             }
+        }
+    }
+    if (desc->rtnevents & APR_POLLIN || cctx->buflen) {
+        STATUSREADERR(readRequest(cctx, &cctx->req));
+        if (status == APR_EOF && cctx->req) {
+            mhResponse_t *resp;
+            ctx->mh->verifyStats->requestsReceived++;
+            apr_queue_push(ctx->reqQueue, cctx->req);
+            if (_mhMatchRequest(ctx->mh, cctx->req, &resp) == YES) {
+                if (resp) {
+                    _mhLog(MH_VERBOSE, __FILE__,
+                           "Requested matched, queueing response.\n");
+                } else {
+                    _mhLog(MH_VERBOSE, __FILE__,
+                           "Requested matched, queueing default response.\n");
+                    resp = ctx->mh->defResponse;
+                }
+            } else {
+                _mhLog(MH_VERBOSE, __FILE__,
+                       "Request found no match, queueing error response.\n");
+                resp = ctx->mh->defErrorResponse;
+            }
+
+            *((mhResponse_t **)apr_array_push(cctx->respQueue)) = resp;
+            cctx->req = NULL;
         }
     }
 

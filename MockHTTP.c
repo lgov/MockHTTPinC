@@ -104,7 +104,7 @@ static void appendErrMessage(const MockHTTP *mh, const char *fmt, ...)
 MockHTTP *mhInit()
 {
     apr_pool_t *pool;
-    MockHTTP *mh;
+    MockHTTP *__mh, *mh;
 
     apr_initialize();
     atexit(apr_terminate);
@@ -118,7 +118,12 @@ MockHTTP *mhInit()
     mh->errmsg = apr_palloc(pool, ERRMSG_MAXSIZE);
     *mh->errmsg = '\0';
     mh->expectations = 0;
-
+    mh->verifyStats = apr_pcalloc(pool, sizeof(mhStats_t));
+    __mh = mh;
+    mh->defResponse = mhResponse(__mh, WithCode(200),
+                                 WithBody("Default Response"), NULL);
+    mh->defErrorResponse = mhResponse(__mh, WithCode(500),
+                                      WithBody("Mock server error."), NULL);
     return mh;
 }
 
@@ -213,7 +218,7 @@ mhError_t mhRunServerLoop(MockHTTP *mh)
     return MOCKHTTP_NO_ERROR;
 }
 
-mhResponse_t *_mhMatchRequest(const MockHTTP *mh, mhRequest_t *req)
+bool _mhMatchRequest(const MockHTTP *mh, mhRequest_t *req, mhResponse_t **resp)
 {
     int i;
 
@@ -222,12 +227,15 @@ mhResponse_t *_mhMatchRequest(const MockHTTP *mh, mhRequest_t *req)
 
         pair = APR_ARRAY_IDX(mh->reqMatchers, i, ReqMatcherRespPair_t *);
 
-        if (_mhRequestMatcherMatch(pair->rm, req) == YES)
-            return pair->resp;
+        if (_mhRequestMatcherMatch(pair->rm, req) == YES) {
+            *resp = pair->resp;
+            return YES;
+        }
     }
     _mhLog(MH_VERBOSE, __FILE__, "Couldn't match request!\n");
 
-    return NULL;
+    *resp = NULL;
+    return NO;
 }
 
 /* Define expectations*/
@@ -811,6 +819,13 @@ const char *mhGetLastErrorString(const MockHTTP *mh)
 {
     return mh->errmsg;
 }
+
+mhStats_t *mhVerifyStatistics(const MockHTTP *mh)
+{
+    return mh->verifyStats;
+}
+
+
 
 int mhVerifyAllExpectationsOk(const MockHTTP *mh)
 {

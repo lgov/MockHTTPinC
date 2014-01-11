@@ -151,7 +151,7 @@ static void test_basic_reqmatch_response(CuTest *tc)
     req = _mhRequestInit(mh);
     req->method = "get";
     req->url = "/index.html";
-    resp = _mhMatchRequest(mh, req);
+    CuAssertIntEquals(tc, YES, _mhMatchRequest(mh, req, &resp));
     CuAssertPtrNotNull(tc, resp);
 }
 
@@ -174,7 +174,7 @@ static void test_basic_reqmatch_response_with_macros(CuTest *tc)
     req = _mhRequestInit(mh);
     req->method = "get";
     req->url = "/index.html";
-    resp = _mhMatchRequest(mh, req);
+    CuAssertIntEquals(tc, YES, _mhMatchRequest(mh, req, &resp));
     CuAssertPtrNotNull(tc, resp);
 }
 
@@ -309,7 +309,7 @@ static void test_verify_all_reqs_received_in_order(CuTest *tc)
     }
 
     Verify(mh)
-        CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
+        CuAssert(tc, ErrorMessage, VerifyAllRequestsReceivedInOrder);
     EndVerify
 }
 
@@ -775,7 +775,49 @@ static void test_init_httpserver(CuTest *tc)
     }
 
     Verify(mh)
-      CuAssertTrue(tc, VerifyAllExpectationsOk);
+      CuAssert(tc, ErrorMessage, VerifyAllExpectationsOk);
+    EndVerify
+}
+
+static void test_conn_close_handle_reqs_one_by_one(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+
+    Given(mh)
+      GETRequest(URLEqualTo("/"), BodyEqualTo("1"))
+        Respond(WithCode(200), WithChunkedBody(""))
+      GETRequest(URLEqualTo("/"), BodyEqualTo("2"))
+        Respond(WithCode(200), WithChunkedBody(""))
+      GETRequest(URLEqualTo("/"), BodyEqualTo("3"))
+        Respond(WithCode(200), WithChunkedBody(""))
+      GETRequest(URLEqualTo("/"), BodyEqualTo("4"))
+        Respond(WithCode(200), WithChunkedBody(""),
+                WithHeader("Connection", "close"))
+      /* These requests will be sent by the client, but shouldn't be handled by
+         the server because it has to close the connection first. */
+/*      GETRequest(URLEqualTo("/"), BodyEqualTo("5"))
+          Respond(WithCode(200), WithChunkedBody(""))
+        GETRequest(URLEqualTo("/"), BodyEqualTo("6"))
+          Respond(WithCode(200), WithChunkedBody(""))*/
+    EndGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendRequest(ctx, "GET", "/", hdrs, "1");
+        sendRequest(ctx, "GET", "/", hdrs, "2");
+        sendRequest(ctx, "GET", "/", hdrs, "3");
+        sendRequest(ctx, "GET", "/", hdrs, "4");
+        sendRequest(ctx, "GET", "/", hdrs, "5");
+        sendRequest(ctx, "GET", "/", hdrs, "6");
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+      CuAssert(tc, ErrorMessage, VerifyAllRequestsReceivedInOrder);
+      CuAssertIntEquals(tc, 4, VerifyStats->requestsReceived);
+      CuAssertIntEquals(tc, 4, VerifyStats->requestsResponded);
     EndVerify
 }
 
@@ -809,6 +851,7 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_connection_close);
     SUITE_ADD_TEST(suite, test_expectation_all_reqs_received);
     SUITE_ADD_TEST(suite, test_expectation_all_reqs_received_in_order);
+    SUITE_ADD_TEST(suite, test_conn_close_handle_reqs_one_by_one);
 #endif
 
     return suite;
@@ -818,9 +861,9 @@ CuSuite *testMockNoServer(void)
 {
     CuSuite *suite = CuSuiteNew();
     CuSuiteSetSetupTeardownCallbacks(suite, testSetupNoServer, testTeardown);
-
+#if 1
     SUITE_ADD_TEST(suite, test_init_httpserver);
-
+#endif
     return suite;
 }
 
