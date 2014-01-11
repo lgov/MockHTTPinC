@@ -18,18 +18,13 @@
 
 #include <apr_hash.h>
 
-#include "MockHTTP.h"
-
-
-#define STATUSERR(x) if ((status = (x))) return status;
-
 typedef struct clientCtx_t clientCtx_t ;
 
-clientCtx_t *initClient(MockHTTP *mh);
-void sendRequest(clientCtx_t *ctx, const char *method, const char *url,
-                 apr_hash_t *hdrs, const char *body);
-void sendChunkedRequest(clientCtx_t *ctx, const char *method, const char *url,
-                        apr_hash_t *hdrs, ...);
+clientCtx_t *initClient();
+apr_status_t sendRequest(clientCtx_t *ctx, const char *method, const char *url,
+                         apr_hash_t *hdrs, const char *body);
+apr_status_t sendChunkedRequest(clientCtx_t *ctx, const char *method,
+                                const char *url, apr_hash_t *hdrs, ...);
 
 apr_status_t receiveResponse(clientCtx_t *ctx, char **buf, apr_size_t *len);
 

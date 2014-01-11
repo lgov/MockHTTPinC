@@ -20,7 +20,15 @@
 #include <apr_strings.h>
 
 #include "tests.h"
-#include "MockHTTP_private.h"
+//#include "MockHTTP_private.h"
+
+#define STATUSERR(x) if ((status = (x))) return status;
+#define READ_ERROR(status) ((status) \
+                                && !APR_STATUS_IS_EOF(status) \
+                                && !APR_STATUS_IS_EAGAIN(status))
+
+#define STATUSREADERR(x) if (((status = (x)) && READ_ERROR(status)))\
+                            return status;
 
 struct clientCtx_t {
     apr_pool_t *pool;
@@ -51,8 +59,8 @@ static apr_status_t connectToTCPServer(clientCtx_t *ctx, const char *url)
                                 APR_PROTO_TCP,
                                 ctx->pool));
 
-/*    STATUSERR(apr_socket_opt_set(ctx->skt, APR_SO_NONBLOCK, 1));*/
-    STATUSERR(apr_socket_timeout_set(ctx->skt, 1000));
+    STATUSERR(apr_socket_opt_set(ctx->skt, APR_SO_NONBLOCK, 1));
+    STATUSERR(apr_socket_timeout_set(ctx->skt, APR_USEC_PER_SEC >> 1));
 
     status = apr_socket_connect(ctx->skt, address);
     if (status != APR_SUCCESS && !APR_STATUS_IS_EINPROGRESS(status))
@@ -61,17 +69,21 @@ static apr_status_t connectToTCPServer(clientCtx_t *ctx, const char *url)
     return APR_SUCCESS;
 }
 
-clientCtx_t *initClient(MockHTTP *mh)
+clientCtx_t *initClient()
 {
-    clientCtx_t *ctx = apr_palloc(mh->pool, sizeof(clientCtx_t));
-    ctx->pool = mh->pool;
+    apr_pool_t *pool;
+    apr_pool_create(&pool, NULL);
+
+    clientCtx_t *ctx = apr_palloc(pool, sizeof(clientCtx_t));
+    ctx->pool = pool;
     ctx->skt = NULL;
 
     return ctx;
 }
 
-static void _sendRequest(clientCtx_t *ctx, const char *method, const char *url,
-                         apr_hash_t *hdrs, const char *body)
+static apr_status_t
+_sendRequest(clientCtx_t *ctx, const char *method, const char *url,
+             apr_hash_t *hdrs, const char *body)
 {
     const char *line;
     const char *hdrstr;
@@ -80,9 +92,7 @@ static void _sendRequest(clientCtx_t *ctx, const char *method, const char *url,
     apr_status_t status;
 
     if (!ctx->skt) {
-        status = connectToTCPServer(ctx, url);
-        if (status)
-            return;
+        STATUSERR(connectToTCPServer(ctx, url));
     }
 
     apr_uri_parse(ctx->pool, url, &uri);
@@ -110,12 +120,12 @@ static void _sendRequest(clientCtx_t *ctx, const char *method, const char *url,
                         line, hdrstr, body);
     len = strlen(line);
 
-    status = apr_socket_send(ctx->skt, line, &len);
+    return apr_socket_send(ctx->skt, line, &len);
 }
 
 
-void sendChunkedRequest(clientCtx_t *ctx, const char *method, const char *url,
-                        apr_hash_t *hdrs, ...)
+apr_status_t sendChunkedRequest(clientCtx_t *ctx, const char *method,
+                                const char *url, apr_hash_t *hdrs, ...)
 {
     va_list argp;
     const char *body = "";
@@ -137,11 +147,11 @@ void sendChunkedRequest(clientCtx_t *ctx, const char *method, const char *url,
     body = apr_psprintf(ctx->pool, "%s0\r\n\r\n", body);
     va_end(argp);
 
-    _sendRequest(ctx, method, url, hdrs, body);
+    return _sendRequest(ctx, method, url, hdrs, body);
 }
 
-void sendRequest(clientCtx_t *ctx, const char *method, const char *url,
-                 apr_hash_t *hdrs, const char *body)
+apr_status_t sendRequest(clientCtx_t *ctx, const char *method, const char *url,
+                         apr_hash_t *hdrs, const char *body)
 {
     apr_size_t len;
 
@@ -149,7 +159,7 @@ void sendRequest(clientCtx_t *ctx, const char *method, const char *url,
     apr_hash_set(hdrs, "Content-Length", APR_HASH_KEY_STRING,
                  apr_itoa(ctx->pool, len));
 
-    _sendRequest(ctx, method, url, hdrs, body);
+    return _sendRequest(ctx, method, url, hdrs, body);
 }
 
 static apr_status_t receiveData(clientCtx_t *ctx, char *buf,
