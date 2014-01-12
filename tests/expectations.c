@@ -692,6 +692,56 @@ static void test_one_request_response_chunked(CuTest *tc)
     EndVerify
 }
 
+static void test_default_response(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+
+    Given(mh)
+      DefaultResponse(WithCode(200), WithRequestBody)
+
+      GETRequest(URLEqualTo("/index1.html"), BodyEqualTo("body1"))
+      GETRequest(URLEqualTo("/index2.html"), ChunkedBodyEqualTo("chunk1chunk2"))
+    EndGiven
+
+    /* system under test */
+    {
+        const char *exp_body1 = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n"
+                                "\r\nbody1";
+        const char *exp_body2 = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n"
+                                "\r\n6\r\nchunk1\r\n6\r\nchunk2\r\n0\r\n\r\n";
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        char *buf;
+        apr_size_t len;
+        apr_status_t status;
+
+        sendRequest(ctx, "GET", "/index1.html", hdrs, "body1");
+        mhRunServerLoop(mh);
+        do {
+            int curpos = 0;
+            status = receiveResponse(ctx, &buf, &len);
+            CuAssertStrnEquals(tc, exp_body1 + curpos, len, buf);
+            curpos += len;
+        } while (status == APR_EAGAIN);
+
+        sendChunkedRequest(ctx, "GET", "/index2.html", hdrs, "chunk1", "chunk2",
+                           NULL);
+        mhRunServerLoop(mh);
+        do {
+            int curpos = 0;
+            status = receiveResponse(ctx, &buf, &len);
+            CuAssertStrnEquals(tc, exp_body2 + curpos, len, buf);
+            curpos += len;
+        } while (status == APR_EAGAIN);
+    }
+
+    Verify(mh)
+      CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
+      CuAssertIntEquals(tc, 2, VerifyStats->requestsMatched);
+      CuAssertIntEquals(tc, 0, VerifyStats->requestsNotMatched);
+    EndVerify
+}
+
 static void test_connection_close(CuTest *tc)
 {
     MockHTTP *mh = tc->testBaton;
@@ -975,6 +1025,7 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_verify_req_header_not_set_fails_if_set);
     SUITE_ADD_TEST(suite, test_verify_error_message);
     SUITE_ADD_TEST(suite, test_one_request_response);
+    SUITE_ADD_TEST(suite, test_default_response);
     SUITE_ADD_TEST(suite, test_one_request_response_chunked);
     SUITE_ADD_TEST(suite, test_connection_close);
     SUITE_ADD_TEST(suite, test_expectation_all_reqs_received);
