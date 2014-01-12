@@ -582,6 +582,8 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                     _mhLog(MH_VERBOSE, __FILE__,
                            "Actively closing connection.\n");
                     apr_socket_close(cctx->skt);
+                    ctx->cctx = NULL;
+                    return APR_EOF;
                 }
                 status = APR_SUCCESS;
             } else {
@@ -644,7 +646,7 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
         pfd.desc.s = cctx->skt;
         pfd.reqevents = cctx->reqevents;
         pfd.client_data = cctx;
-        STATUSERR(apr_pollset_remove(ctx->pollset, &pfd));
+        apr_pollset_remove(ctx->pollset, &pfd);
 
         cctx->reqevents = APR_POLLIN;
         if (cctx->respQueue->nelts > 0)
