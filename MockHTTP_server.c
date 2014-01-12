@@ -420,6 +420,8 @@ static apr_status_t readRequest(_mhClientCtx_t *cctx, mhRequest_t **preq)
 
         cctx->buflen += len;
         cctx->bufrem -= len;
+    } else {
+        status = APR_EAGAIN;
     }
 
     while (cctx->buflen) {
@@ -561,7 +563,7 @@ static apr_status_t writeResponse(_mhClientCtx_t *cctx, mhResponse_t *resp)
 static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                             const apr_pollfd_t *desc)
 {
-    apr_status_t status;
+    apr_status_t status = APR_SUCCESS;
 
     /* First sent any pending responses before reading the next request. */
     if (desc->rtnevents & APR_POLLOUT) {
@@ -613,7 +615,7 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
         }
     }
 
-    return APR_SUCCESS;
+    return status;
 }
 
 /******************************************************************************/
