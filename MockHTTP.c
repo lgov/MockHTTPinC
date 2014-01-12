@@ -545,7 +545,7 @@ mhResponse_t *mhResponse(MockHTTP *mh, ...)
     apr_pool_t *pool = mh->pool;
     va_list argp;
 
-    mhResponse_t *resp = apr_palloc(pool, sizeof(mhResponse_t));
+    mhResponse_t *resp = apr_pcalloc(pool, sizeof(mhResponse_t));
     resp->pool = pool;
     resp->code = 200;
     resp->body = "";
