@@ -125,14 +125,15 @@ _sendRequest(clientCtx_t *ctx, const char *method, const char *url,
 
 
 apr_status_t sendChunkedRequest(clientCtx_t *ctx, const char *method,
-                                const char *url, apr_hash_t *hdrs, ...)
+                                const char *url, const apr_hash_t *test_hdrs, ...)
 {
     va_list argp;
     const char *body = "";
 
+    apr_hash_t *hdrs = apr_hash_copy(ctx->pool, test_hdrs);
     apr_hash_set(hdrs, "Transfer-Encoding", APR_HASH_KEY_STRING, "chunked");
 
-    va_start(argp, hdrs);
+    va_start(argp, test_hdrs);
     while (1) {
         const char *chunk;
         apr_size_t len;
@@ -151,11 +152,11 @@ apr_status_t sendChunkedRequest(clientCtx_t *ctx, const char *method,
 }
 
 apr_status_t sendRequest(clientCtx_t *ctx, const char *method, const char *url,
-                         apr_hash_t *hdrs, const char *body)
+                         const apr_hash_t *test_hdrs, const char *body)
 {
-    apr_size_t len;
+    apr_size_t len = strlen(body);
 
-    len = strlen(body);
+    apr_hash_t *hdrs = apr_hash_copy(ctx->pool, test_hdrs);
     apr_hash_set(hdrs, "Content-Length", APR_HASH_KEY_STRING,
                  apr_itoa(ctx->pool, len));
 
