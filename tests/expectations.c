@@ -821,6 +821,94 @@ static void test_conn_close_handle_reqs_one_by_one(CuTest *tc)
     EndVerify
 }
 
+/* If a request contains both Transfer-Encoding and Content-Length, 
+   RFC 2616, 4.4 specified that Content-Length should be ignored. */
+static void test_ignore_content_length_when_chunked(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+
+    Given(mh)
+      GETRequest(URLEqualTo("/index.html"), ChunkedBodyEqualTo("chunk1chunk2"))
+        Respond(WithCode(200), WithRequestBody)
+    EndGiven
+
+    /* system under test */
+    {
+        const char *exp_body = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n"
+                               "\r\n6\r\nchunk1\r\n6\r\nchunk2\r\n0\r\n\r\n";
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        char *buf;
+        apr_size_t len;
+        apr_status_t status;
+
+        apr_hash_set(hdrs, "Content-Length", APR_HASH_KEY_STRING, "999999");
+        /* chunked header is already set by sendChunkedRequest */
+
+        sendChunkedRequest(ctx, "GET", "/index.html", hdrs, "chunk1", "chunk2",
+                           NULL);
+        mhRunServerLoop(mh);
+        do {
+            int curpos = 0;
+            status = receiveResponse(ctx, &buf, &len);
+            CuAssertStrnEquals(tc, exp_body + curpos, len, buf);
+            curpos += len;
+        } while (status == APR_EAGAIN);
+    }
+
+    Verify(mh)
+      CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
+    EndVerify
+}
+
+static void test_use_request_body(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+
+    Given(mh)
+      GETRequest(URLEqualTo("/index1.html"), BodyEqualTo("body1"))
+        Respond(WithCode(200), WithRequestBody)
+      GETRequest(URLEqualTo("/index2.html"), ChunkedBodyEqualTo("chunk1chunk2"))
+        Respond(WithCode(200), WithRequestBody)
+    EndGiven
+
+    /* system under test */
+    {
+        const char *exp_body1 = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n"
+                                "\r\nbody1";
+        const char *exp_body2 = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n"
+                                "\r\n6\r\nchunk1\r\n6\r\nchunk2\r\n0\r\n\r\n";
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        char *buf;
+        apr_size_t len;
+        apr_status_t status;
+
+        sendRequest(ctx, "GET", "/index1.html", hdrs, "body1");
+        mhRunServerLoop(mh);
+        do {
+            int curpos = 0;
+            status = receiveResponse(ctx, &buf, &len);
+            CuAssertStrnEquals(tc, exp_body1 + curpos, len, buf);
+            curpos += len;
+        } while (status == APR_EAGAIN);
+
+        sendChunkedRequest(ctx, "GET", "/index2.html", hdrs, "chunk1", "chunk2",
+                           NULL);
+        mhRunServerLoop(mh);
+        do {
+            int curpos = 0;
+            status = receiveResponse(ctx, &buf, &len);
+            CuAssertStrnEquals(tc, exp_body2 + curpos, len, buf);
+            curpos += len;
+        } while (status == APR_EAGAIN);
+    }
+
+    Verify(mh)
+    CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
+    EndVerify
+}
+
 CuSuite *testMockWithHTTPserver(void)
 {
     CuSuite *suite = CuSuiteNew();
@@ -852,7 +940,9 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_expectation_all_reqs_received);
     SUITE_ADD_TEST(suite, test_expectation_all_reqs_received_in_order);
     SUITE_ADD_TEST(suite, test_conn_close_handle_reqs_one_by_one);
+    SUITE_ADD_TEST(suite, test_ignore_content_length_when_chunked);
 #endif
+    SUITE_ADD_TEST(suite, test_use_request_body);
 
     return suite;
 }

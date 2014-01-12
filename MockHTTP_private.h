@@ -101,7 +101,7 @@ struct mhRequest_t {
 
 struct mhResponse_t {
     apr_pool_t *pool;
-
+    bool built;
     unsigned int code;
     const char *body;
     bool chunked;
@@ -109,6 +109,7 @@ struct mhResponse_t {
     apr_hash_t *hdrs;
     apr_array_header_t *builders;
     bool closeConn;
+    mhRequest_t *req;  /* mhResponse_t instance is reply to req */
 };
 
 struct mhRequestMatcher_t {
@@ -141,6 +142,8 @@ bool _mhMatchRequest(const MockHTTP *mh, mhRequest_t *req, mhResponse_t **resp);
 
 bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm,
                             const mhRequest_t *req);
+/* Build a response */
+void _mhResponseBuild(mhResponse_t *resp);
 
 /* Test servers */
 mhServCtx_t *_mhInitTestServer(const MockHTTP *mh, const char *host,

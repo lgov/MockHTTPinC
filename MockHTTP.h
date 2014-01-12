@@ -155,6 +155,12 @@ extern "C" {
 #define     WithChunkedBody(...)\
                 mhRespSetChunkedBody(__mh, __VA_ARGS__, NULL)
 
+/* Use the body of the request as the body of the response. */
+#define     WithRequestBody\
+                mhRespSetUseRequestBody(__mh)
+
+/* Adds a "Connection: close" header to the response, makes the mock server
+   close the connection after sending the response. */
 #define     WithConnectionCloseHeader\
                 mhRespSetConnCloseHdr(__mh)
 
@@ -325,8 +331,7 @@ mhRespBuilder_t *mhRespSetChunkedBody(const MockHTTP *mh, ...);
 mhRespBuilder_t *mhRespAddHeader(const MockHTTP *mh, const char *header,
                                  const char *value);
 mhRespBuilder_t *mhRespSetConnCloseHdr(const MockHTTP *mh);
-
-void mhResponseBuild(mhResponse_t *resp);
+mhRespBuilder_t *mhRespSetUseRequestBody(const MockHTTP *mh);
 
 /* Define request/response pairs */
 void mhPushRequest(MockHTTP *mh, mhRequestMatcher_t *rm);

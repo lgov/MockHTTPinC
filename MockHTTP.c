@@ -673,23 +673,47 @@ mhRespAddHeader(const MockHTTP *mh, const char *header, const char *value)
 
 static void respConnCloseSetter(mhResponse_t *resp, const void *baton)
 {
-    const RespBuilderHelper_t *rbh = baton;
-    setHeader(resp->pool, resp->hdrs, rbh->header, rbh->value);
-    resp->closeConn = rbh->closeConn;
+    setHeader(resp->pool, resp->hdrs, "Connection", "close");
+    resp->closeConn = YES;
 }
 
 mhRespBuilder_t *mhRespSetConnCloseHdr(const MockHTTP *mh)
 {
-    mhRespBuilder_t *rb = mhRespAddHeader(mh, "Connection", "close");
-    RespBuilderHelper_t *rbh = rb->baton;
-    rbh->closeConn = YES;
+    apr_pool_t *pool = mh->pool;
+    mhRespBuilder_t *rb;
+
+    rb = apr_palloc(pool, sizeof(mhRespBuilder_t));
     rb->builder = respConnCloseSetter;
     return rb;
 }
 
-void mhResponseBuild(mhResponse_t *resp)
+static void respUseRequestBodySetter(mhResponse_t *resp, const void *baton)
+{
+    mhRequest_t *req = resp->req;
+    if (req->chunked) {
+        resp->chunks = req->chunks;
+        resp->chunked = YES;
+    } else {
+        resp->body  = req->body;
+    }
+}
+
+mhRespBuilder_t *mhRespSetUseRequestBody(const MockHTTP *mh)
+{
+    apr_pool_t *pool = mh->pool;
+    mhRespBuilder_t *rb;
+
+    rb = apr_palloc(pool, sizeof(mhRespBuilder_t));
+    rb->builder = respUseRequestBodySetter;
+    return rb;
+}
+
+void _mhResponseBuild(mhResponse_t *resp)
 {
     int i;
+    if (resp->built == YES)
+        return;
+    resp->built = YES;
     for (i = 0 ; i < resp->builders->nelts; i++) {
         const mhRespBuilder_t *rb;
 

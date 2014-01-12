@@ -264,7 +264,7 @@ static apr_status_t readBody(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
     clstr = getHeader(cctx->pool, cctx->req->hdrs, "Content-Length");
     cl = atol(clstr);
     if (cctx->req->body == NULL) {
-        cctx->req->body = apr_palloc(cctx->pool, cl);
+        cctx->req->body = apr_palloc(cctx->pool, cl + 1);
     }
 
     len = (cctx->buflen < (cl - cctx->req->bodyLen)) ?
@@ -272,11 +272,11 @@ static apr_status_t readBody(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
                     cl;            /* full body */
     memcpy(cctx->req->body + cctx->req->bodyLen, cctx->buf, len);
     cctx->req->bodyLen += len;
+    *(cctx->req->body + cctx->req->bodyLen) = '\0';
 
     cctx->buflen -= len; /* eat body */
     cctx->bufrem += len;
     memcpy(cctx->buf, cctx->buf + len, cctx->buflen);
-
     if (cctx->req->bodyLen < cl)
         return APR_EAGAIN;
 
@@ -374,16 +374,17 @@ static apr_status_t processData(_mhClientCtx_t *cctx, mhRequest_t **preq)
         case 2: /* body */
         {
             const char *clstr, *chstr;
-            clstr = getHeader(cctx->pool, req->hdrs,
-                              "Content-Length");
-            if (clstr) {
-                STATUSREADERR(readBody(cctx, req, &done));
+            chstr = getHeader(cctx->pool, req->hdrs,
+                              "Transfer-Encoding");
+            /* TODO: chunked can be one of more encodings */
+            /* Read Transfer-Encoding first, ignore C-L when T-E is set */
+            if (chstr && apr_strnatcasecmp(chstr, "chunked") == 0) {
+                STATUSREADERR(readChunked(cctx, req, &done));
             } else {
-                chstr = getHeader(cctx->pool, req->hdrs,
-                                  "Transfer-Encoding");
-                /* TODO: chunked can be one of more encodings */
-                if (apr_strnatcasecmp(chstr, "chunked") == 0)
-                    STATUSREADERR(readChunked(cctx, req, &done));
+                clstr = getHeader(cctx->pool, req->hdrs,
+                                  "Content-Length");
+                if (clstr)
+                    STATUSREADERR(readBody(cctx, req, &done));
             }
             break;
         }
@@ -534,7 +535,7 @@ static apr_status_t writeResponse(_mhClientCtx_t *cctx, mhResponse_t *resp)
     apr_status_t status;
 
     if (!cctx->respRem) {
-        mhResponseBuild(resp);
+        _mhResponseBuild(resp);
         cctx->respBody = respToString(pool, resp);
         cctx->respRem = strlen(cctx->respBody);
     }
@@ -606,6 +607,7 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                 resp = ctx->mh->defErrorResponse;
             }
 
+            resp->req = cctx->req;
             *((mhResponse_t **)apr_array_push(cctx->respQueue)) = resp;
             cctx->req = NULL;
         }
