@@ -429,8 +429,47 @@ static void test_verify_req_chunked_body_fails(CuTest *tc)
     Verify(mh)
       CuAssertTrue(tc, !VerifyAllRequestsReceived);
     EndVerify
+}
 
+/* Test various stubs that partially match the body, but not completely. */
+static void test_string_exact_match(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
 
+    /* None of these stubs are supposed to match. */
+    Given(mh)
+      GETRequest(URLEqualTo("/index1.html"), ChunkedBodyEqualTo("chunk1"))
+      GETRequest(URLEqualTo("/index2.html"), ChunkedBodyEqualTo("chunk20"))
+      GETRequest(URLEqualTo("/index3.html"), ChunkedBodyChunksEqualTo("chunk30",
+                                                                      "chunk4"))
+      GETRequest(URLEqualTo("/index4.html"), BodyEqualTo("body5"))
+      GETRequest(URLEqualTo("/index5.html"), BodyEqualTo("body60"))
+    EndGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendChunkedRequest(ctx, "GET", "/index1.html", hdrs, "chunk10", NULL);
+        mhRunServerLoop(mh);
+        sendChunkedRequest(ctx, "GET", "/index2.html", hdrs, "chunk2", NULL);
+        mhRunServerLoop(mh);
+        sendChunkedRequest(ctx, "GET", "/index3.html", hdrs, "chunk3", "chunk40",
+                           NULL);
+        mhRunServerLoop(mh);
+        sendChunkedRequest(ctx, "GET", "/index4.html", hdrs, "body50", NULL);
+        mhRunServerLoop(mh);
+        sendChunkedRequest(ctx, "GET", "/index5.html", hdrs, "body6", NULL);
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+      CuAssert(tc, ErrorMessage, !VerifyAllRequestsReceived);
+      CuAssertIntEquals(tc, 5, VerifyStats->requestsReceived);
+      CuAssertIntEquals(tc, 5, VerifyStats->requestsResponded);
+      CuAssertIntEquals(tc, 0, VerifyStats->requestsMatched);
+      CuAssertIntEquals(tc, 5, VerifyStats->requestsNotMatched);
+    EndVerify
 }
 
 /* TW9ja0hUVFA6TW9ja0hUVFBwd2Q= is Base64 encoding of MockHTTP:MockHTTPpwd */
@@ -929,6 +968,7 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_verify_all_reqs_received_in_order_more);
     SUITE_ADD_TEST(suite, test_verify_req_chunked_body);
     SUITE_ADD_TEST(suite, test_verify_req_chunked_body_fails);
+    SUITE_ADD_TEST(suite, test_string_exact_match);
     SUITE_ADD_TEST(suite, test_verify_req_header);
     SUITE_ADD_TEST(suite, test_verify_req_header_fails);
     SUITE_ADD_TEST(suite, test_verify_req_header_not_set);
@@ -941,8 +981,8 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_expectation_all_reqs_received_in_order);
     SUITE_ADD_TEST(suite, test_conn_close_handle_reqs_one_by_one);
     SUITE_ADD_TEST(suite, test_ignore_content_length_when_chunked);
-#endif
     SUITE_ADD_TEST(suite, test_use_request_body);
+#endif
 
     return suite;
 }
