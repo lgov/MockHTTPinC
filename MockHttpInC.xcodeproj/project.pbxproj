@@ -29,7 +29,7 @@
 		F34297A41865F86A00138981 /* libdummylib.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libdummylib.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		F3BEC0FC186EC8C6004073DE /* CuTest.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = CuTest.c; sourceTree = "<group>"; };
 		F3BEC0FD186EC8C6004073DE /* CuTest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CuTest.h; sourceTree = "<group>"; };
-		F3BEC103186EC965004073DE /* tests.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tests.h; path = tests/tests.h; sourceTree = "<group>"; };
+		F3BEC103186EC965004073DE /* tests.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tests.h; sourceTree = "<group>"; };
 		F3BEC105186ECD44004073DE /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
 		F3BEC11F1872B476004073DE /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
 		F3BEC1201872B476004073DE /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
@@ -51,7 +51,6 @@
 			children = (
 				F3BEC11F1872B476004073DE /* README.md */,
 				F3BEC1201872B476004073DE /* LICENSE */,
-				F3BEC103186EC965004073DE /* tests.h */,
 				F33CD839185F9871008890DD /* MockHTTP_server.c */,
 				F33CD836185C62DD008890DD /* MockHTTP_private.h */,
 				F33CD834185BBA22008890DD /* MockHTTP.c */,
@@ -65,9 +64,10 @@
 		F33CD827185BA2C9008890DD /* tests */ = {
 			isa = PBXGroup;
 			children = (
-				F3BEC0FB186EC8C6004073DE /* CuTest */,
+				F3BEC103186EC965004073DE /* tests.h */,
 				F33CD829185BA2E0008890DD /* expectations.c */,
 				F33CD83A1860DCC5008890DD /* httpClient.c */,
+				F3BEC0FB186EC8C6004073DE /* CuTest */,
 			);
 			path = tests;
 			sourceTree = "<group>";
