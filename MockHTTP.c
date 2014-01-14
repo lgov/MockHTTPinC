@@ -430,6 +430,7 @@ mhMatchChunkedBodyChunksEqualTo(const MockHTTP *mh, ...)
 {
     apr_pool_t *pool = mh->pool;
     apr_array_header_t *chunks;
+    mhMatchingPattern_t *mp;
     va_list argp;
 
     chunks = apr_array_make(pool, 5, sizeof(const char *));
@@ -441,7 +442,7 @@ mhMatchChunkedBodyChunksEqualTo(const MockHTTP *mh, ...)
     }
     va_end(argp);
 
-    mhMatchingPattern_t *mp = apr_palloc(pool, sizeof(mhMatchingPattern_t));
+    mp = apr_palloc(pool, sizeof(mhMatchingPattern_t));
     mp->baton = chunks;
     mp->matcher = chunked_body_chunks_matcher;
 
@@ -579,6 +580,7 @@ typedef struct RespBuilderHelper_t {
     const char *body;
     const char *header;
     const char *value;
+    const char *raw_data; /* complete response */
     bool chunked;
     apr_array_header_t *chunks;
     bool closeConn;
@@ -715,6 +717,26 @@ mhRespBuilder_t *mhRespSetUseRequestBody(const MockHTTP *mh)
 
     rb = apr_palloc(pool, sizeof(mhRespBuilder_t));
     rb->builder = respUseRequestBodySetter;
+    return rb;
+}
+
+static void respRawDataSetter(mhResponse_t *resp, const void *baton)
+{
+    const RespBuilderHelper_t *rbh = baton;
+    resp->raw_data = rbh->raw_data;
+}
+
+mhRespBuilder_t *mhRespSetRawData(const MockHTTP *mh, const char *data)
+{
+    apr_pool_t *pool = mh->pool;
+    mhRespBuilder_t *rb;
+
+    RespBuilderHelper_t *rbh = apr_palloc(pool, sizeof(RespBuilderHelper_t));
+    rbh->raw_data = apr_pstrdup(pool, data);
+
+    rb = apr_palloc(pool, sizeof(mhRespBuilder_t));
+    rb->baton = rbh;
+    rb->builder = respRawDataSetter;
     return rb;
 }
 

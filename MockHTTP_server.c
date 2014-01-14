@@ -40,7 +40,7 @@ struct _mhClientCtx_t {
     apr_size_t bufrem;
     mhRequest_t *req;
     apr_int16_t reqevents;
-    char *respBody;
+    const char *respBody;
     apr_size_t respRem;
     apr_array_header_t *respQueue;  /*  test will queue a response */
     mhResponse_t *currResp; /* response in progress */
@@ -515,7 +515,7 @@ static char *respToString(apr_pool_t *pool, mhResponse_t *resp)
         str = apr_psprintf(pool, "%s%s", str, resp->body);
     } else {
         int i;
-        apr_size_t len;
+        apr_size_t len = 0;
         for (i = 0 ; i < resp->chunks->nelts; i++) {
             const char *chunk;
 
@@ -538,7 +538,11 @@ static apr_status_t writeResponse(_mhClientCtx_t *cctx, mhResponse_t *resp)
 
     if (!cctx->respRem) {
         _mhResponseBuild(resp);
-        cctx->respBody = respToString(pool, resp);
+        if (resp->raw_data) {
+            cctx->respBody = resp->raw_data;
+        } else {
+            cctx->respBody = respToString(pool, resp);
+        }
         cctx->respRem = strlen(cctx->respBody);
     }
 
@@ -548,7 +552,7 @@ static apr_status_t writeResponse(_mhClientCtx_t *cctx, mhResponse_t *resp)
            status, (unsigned int)len, cctx->respBody, (unsigned int)len);
 
     if (len < cctx->respRem) {
-        memcpy(cctx->respBody, cctx->respBody + len, cctx->respRem - len + 1);
+        cctx->respBody += len;
         cctx->respRem -= len;
         cctx->currResp = resp;
     } else {
@@ -670,11 +674,12 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
     while (num--) {
         if (desc->desc.s == ctx->skt) {
             apr_socket_t *cskt;
+            _mhClientCtx_t *cctx;
             apr_pollfd_t pfd = { 0 };
 
             _mhLog(MH_VERBOSE, __FILE__, "Accepting client connection.\n");
 
-            _mhClientCtx_t *cctx = apr_pcalloc(ctx->pool, sizeof(_mhClientCtx_t));
+            cctx = apr_pcalloc(ctx->pool, sizeof(_mhClientCtx_t));
 
             STATUSERR(apr_socket_accept(&cskt, ctx->skt, ctx->pool));
 

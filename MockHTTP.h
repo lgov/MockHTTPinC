@@ -168,6 +168,10 @@ extern "C" {
 #define     WithConnectionCloseHeader\
                 mhRespSetConnCloseHdr(__mh)
 
+/* Use the provided string as raw response data. */
+#define     WithRawData(data)\
+                mhRespSetRawData(__mh, (data))
+
 #define EndGiven\
                 /* Assign local variables to NULL to avoid 'variable unused' 
                    warnings. */\
@@ -345,6 +349,7 @@ mhRespBuilder_t *mhRespAddHeader(const MockHTTP *mh, const char *header,
                                  const char *value);
 mhRespBuilder_t *mhRespSetConnCloseHdr(const MockHTTP *mh);
 mhRespBuilder_t *mhRespSetUseRequestBody(const MockHTTP *mh);
+mhRespBuilder_t *mhRespSetRawData(const MockHTTP *mh, const char *data);
 
 /* Define request/response pairs */
 void mhPushRequest(MockHTTP *mh, mhRequestMatcher_t *rm);

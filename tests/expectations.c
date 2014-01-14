@@ -994,7 +994,55 @@ static void test_use_request_body(CuTest *tc)
     }
 
     Verify(mh)
-    CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
+      CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
+    EndVerify
+}
+
+#define CRLF "\r\n"
+#define RESPONSE_408 "HTTP/1.1 408 Request Time-out" CRLF\
+"Date: Wed, 14 Nov 2012 19:50:35 GMT" CRLF\
+"Server: Apache/2.2.17 (Ubuntu)" CRLF\
+"Vary: Accept-Encoding" CRLF\
+"Content-Length: 305" CRLF\
+"Connection: close" CRLF\
+"Content-Type: text/html; charset=iso-8859-1" CRLF \
+CRLF\
+"<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\"><html><head>"\
+"<title>408 Request Time-out</title></head><body><h1>Request Time-out</h1>"\
+"<p>Server timeout waiting for the HTTP request from the client.</p><hr>"\
+"<address>Apache/2.2.17 (Ubuntu) Server at lgo-ubuntu.local Port 80</address>"\
+"</body></html>"
+
+static void test_raw_response(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+
+    Given(mh)
+      GETRequest(URLEqualTo("/index.html"))
+        Respond(WithRawData(RESPONSE_408))
+    EndGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        char *buf;
+        apr_size_t len;
+        apr_status_t status;
+
+        sendRequest(ctx, "GET", "/index.html", hdrs, "1");
+        mhRunServerLoop(mh);
+        do {
+            const char *exp_body = RESPONSE_408;
+            int curpos = 0;
+            status = receiveResponse(ctx, &buf, &len);
+            CuAssertStrnEquals(tc, exp_body + curpos, len, buf);
+            curpos += len;
+        } while (status == APR_EAGAIN);
+    }
+
+    Verify(mh)
+      CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
     EndVerify
 }
 
@@ -1034,6 +1082,7 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_ignore_content_length_when_chunked);
     SUITE_ADD_TEST(suite, test_use_request_body);
 #endif
+    SUITE_ADD_TEST(suite, test_raw_response);
 
     return suite;
 }

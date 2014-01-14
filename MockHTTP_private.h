@@ -104,6 +104,7 @@ struct mhResponse_t {
     bool built;
     unsigned int code;
     const char *body;
+    const char *raw_data; /* complete response */
     bool chunked;
     apr_array_header_t *chunks;
     apr_hash_t *hdrs;
