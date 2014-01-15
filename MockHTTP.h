@@ -96,6 +96,11 @@ extern "C" {
                 __rm = mhGivenRequest(__mh, "HEAD", __VA_ARGS__, NULL);\
                 mhPushRequest(__mh, __rm);
 
+/* Stub a HTTP request, first parameter is HTTP method (e.g. PROPFIND) */
+#define   HTTPRequest(method, ...)\
+                __rm = mhGivenRequest(__mh, method, __VA_ARGS__, NULL);\
+                mhPushRequest(__mh, __rm);
+
 /* Match the request's URL */
 #define     URLEqualTo(x)\
                 mhMatchURLEqualTo(__mh, (x))
