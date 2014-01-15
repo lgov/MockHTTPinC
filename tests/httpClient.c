@@ -157,8 +157,11 @@ apr_status_t sendRequest(clientCtx_t *ctx, const char *method, const char *url,
     apr_size_t len = strlen(body);
 
     apr_hash_t *hdrs = apr_hash_copy(ctx->pool, test_hdrs);
-    apr_hash_set(hdrs, "Content-Length", APR_HASH_KEY_STRING,
-                 apr_itoa(ctx->pool, len));
+
+    if (! apr_hash_get(hdrs, "Content-Length", APR_HASH_KEY_STRING)) {
+        apr_hash_set(hdrs, "Content-Length", APR_HASH_KEY_STRING,
+                     apr_itoa(ctx->pool, len));
+    }
 
     return _sendRequest(ctx, method, url, hdrs, body);
 }

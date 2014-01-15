@@ -1046,6 +1046,44 @@ static void test_raw_response(CuTest *tc)
     EndVerify
 }
 
+static void test_partial_request_body(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+    const char *body = "first part\r\n"; /* Unsent "second part\r\n"; */
+    Given(mh)
+      GETRequest(URLEqualTo("/index.html"),
+                 IncompleteBodyEqualTo("first part\r\n"))
+        Respond(WithCode(200), WithRequestBody)
+    EndGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        char *buf;
+        apr_size_t len;
+        apr_status_t status;
+
+        /* Set Content-Length to the complete body length (first & second part),
+           but only send the first part. */
+        apr_hash_set(hdrs, "Content-Length", APR_HASH_KEY_STRING, "25");
+
+        sendRequest(ctx, "GET", "/index.html", hdrs, body);
+        mhRunServerLoop(mh);
+        do {
+            const char *exp_body = "first part\r\n";
+            int curpos = 0;
+            status = receiveResponse(ctx, &buf, &len);
+            CuAssertStrnEquals(tc, exp_body + curpos, len, buf);
+            curpos += len;
+        } while (status == APR_EAGAIN);
+    }
+
+    Verify(mh)
+      CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
+    EndVerify
+}
+
 CuSuite *testMockWithHTTPserver(void)
 {
     CuSuite *suite = CuSuiteNew();
@@ -1081,8 +1119,9 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_conn_close_handle_reqs_one_by_one);
     SUITE_ADD_TEST(suite, test_ignore_content_length_when_chunked);
     SUITE_ADD_TEST(suite, test_use_request_body);
-#endif
     SUITE_ADD_TEST(suite, test_raw_response);
+#endif
+    SUITE_ADD_TEST(suite, test_partial_request_body);
 
     return suite;
 }

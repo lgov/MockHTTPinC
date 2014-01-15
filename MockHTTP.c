@@ -113,6 +113,8 @@ MockHTTP *mhInit()
     mh = apr_pcalloc(pool, sizeof(struct MockHTTP));
     mh->pool = pool;
     mh->reqMatchers = apr_array_make(pool, 5, sizeof(ReqMatcherRespPair_t *));;
+    mh->incompleteReqMatchers = apr_array_make(pool, 5,
+                                               sizeof(ReqMatcherRespPair_t *));;
     apr_queue_create(&mh->reqQueue, MaxReqRespQueueSize, pool);
     mh->reqsReceived = apr_array_make(pool, 5, sizeof(mhRequest_t *));
     mh->errmsg = apr_palloc(pool, ERRMSG_MAXSIZE);
@@ -218,14 +220,15 @@ mhError_t mhRunServerLoop(MockHTTP *mh)
     return MOCKHTTP_NO_ERROR;
 }
 
-bool _mhMatchRequest(const MockHTTP *mh, mhRequest_t *req, mhResponse_t **resp)
+bool matchRequest(const MockHTTP *mh, mhRequest_t *req, mhResponse_t **resp,
+                  apr_array_header_t *matchers)
 {
     int i;
 
-    for (i = 0 ; i < mh->reqMatchers->nelts; i++) {
+    for (i = 0 ; i < matchers->nelts; i++) {
         const ReqMatcherRespPair_t *pair;
 
-        pair = APR_ARRAY_IDX(mh->reqMatchers, i, ReqMatcherRespPair_t *);
+        pair = APR_ARRAY_IDX(matchers, i, ReqMatcherRespPair_t *);
 
         if (_mhRequestMatcherMatch(pair->rm, req) == YES) {
             *resp = pair->resp;
@@ -238,15 +241,43 @@ bool _mhMatchRequest(const MockHTTP *mh, mhRequest_t *req, mhResponse_t **resp)
     return NO;
 }
 
+bool _mhMatchRequest(const MockHTTP *mh, mhRequest_t *req, mhResponse_t **resp)
+{
+    return matchRequest(mh, req, resp, mh->reqMatchers);
+}
+
+bool _mhMatchIncompleteRequest(const MockHTTP *mh, mhRequest_t *req,
+                               mhResponse_t **resp)
+{
+    return matchRequest(mh, req, resp, mh->incompleteReqMatchers);
+}
+
 /* Define expectations*/
 
 void mhPushRequest(MockHTTP *mh, mhRequestMatcher_t *rm)
 {
     ReqMatcherRespPair_t *pair;
+    bool incomplete = NO;
+    int i;
+
     pair = apr_palloc(mh->pool, sizeof(ReqMatcherRespPair_t));
     pair->rm = rm;
     pair->resp = NULL;
-    *((ReqMatcherRespPair_t **)apr_array_push(mh->reqMatchers)) = pair;
+
+    for (i = 0 ; i < rm->matchers->nelts; i++) {
+        const mhMatchingPattern_t *mp;
+
+        mp = APR_ARRAY_IDX(rm->matchers, i, mhMatchingPattern_t *);
+        if (mp->match_incomplete == YES) {
+            incomplete = YES;
+            break;
+        }
+    }
+    if (incomplete)
+        *((ReqMatcherRespPair_t **)
+                apr_array_push(mh->incompleteReqMatchers)) = pair;
+    else
+        *((ReqMatcherRespPair_t **)apr_array_push(mh->reqMatchers)) = pair;
 }
 
 void mhSetRespForReq(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp)
@@ -309,7 +340,7 @@ mhMatchURLEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_palloc(pool, sizeof(mhMatchingPattern_t));
+    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
     mp->baton = apr_pstrdup(pool, expected);
     mp->matcher = url_matcher;
 
@@ -331,10 +362,22 @@ mhMatchBodyEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_palloc(pool, sizeof(mhMatchingPattern_t));
+    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
     mp->baton = apr_pstrdup(pool, expected);
     mp->matcher = body_matcher;
 
+    return mp;
+}
+
+mhMatchingPattern_t *
+mhMatchIncompleteBodyEqualTo(const MockHTTP *mh, const char *expected)
+{
+    apr_pool_t *pool = mh->pool;
+
+    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
+    mp->baton = apr_pstrdup(pool, expected);
+    mp->matcher = body_matcher;
+    mp->match_incomplete = TRUE;
     return mp;
 }
 
@@ -352,7 +395,7 @@ mhMatchBodyNotChunkedEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_palloc(pool, sizeof(mhMatchingPattern_t));
+    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
     mp->baton = apr_pstrdup(pool, expected);
     mp->matcher = body_notchunked_matcher;
 
@@ -393,12 +436,13 @@ mhMatchChunkedBodyEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_palloc(pool, sizeof(mhMatchingPattern_t));
+    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
     mp->baton = apr_pstrdup(pool, expected);
     mp->matcher = chunked_body_matcher;
 
     return mp;
 }
+
 static bool chunked_body_chunks_matcher(apr_pool_t *pool,
                                         const mhMatchingPattern_t *mp,
                                         const mhRequest_t *req)
@@ -462,7 +506,7 @@ mhMatchHeaderEqualTo(const MockHTTP *mh, const char *hdr, const char *value)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_palloc(pool, sizeof(mhMatchingPattern_t));
+    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
     mp->baton = apr_pstrdup(pool, value);
     mp->baton2 = apr_pstrdup(pool, hdr);
     mp->matcher = header_matcher;
@@ -486,7 +530,7 @@ mhMatchMethodEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_palloc(pool, sizeof(mhMatchingPattern_t));
+    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
     mp->baton = apr_pstrdup(pool, expected);
     mp->matcher = method_matcher;
 

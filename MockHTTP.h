@@ -129,6 +129,9 @@ extern "C" {
 #define     ChunkedBodyChunksEqualTo(...)\
                 mhMatchChunkedBodyChunksEqualTo(__mh, __VA_ARGS__, NULL)
 
+#define     IncompleteBodyEqualTo(x)\
+                mhMatchIncompleteBodyEqualTo(__mh, (x))
+
 /* TODO: http version, conditional, */
 /* When a request matches, the server will respond with the response defined
    here. */
@@ -331,6 +334,8 @@ mhMatchingPattern_t *mhMatchMethodEqualTo(const MockHTTP *mh,
                                           const char *expected);
 mhMatchingPattern_t *mhMatchBodyEqualTo(const MockHTTP *mh,
                                         const char *expected);
+mhMatchingPattern_t *mhMatchIncompleteBodyEqualTo(const MockHTTP *mh,
+                                                  const char *expected);
 /* Network level matching functions, for testing of http libraries */
 mhMatchingPattern_t *mhMatchBodyNotChunkedEqualTo(const MockHTTP *mh,
                                                   const char *expected);
