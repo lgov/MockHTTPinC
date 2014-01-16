@@ -25,6 +25,9 @@ apr_status_t sendRequest(clientCtx_t *ctx, const char *method, const char *url,
                          const apr_hash_t *hdrs, const char *body);
 apr_status_t sendChunkedRequest(clientCtx_t *ctx, const char *method,
                                 const char *url, const apr_hash_t *hdrs, ...);
+apr_status_t sendIncompleteChunkedRequest(clientCtx_t *ctx, const char *method,
+                                          const char *url,
+                                          const apr_hash_t *test_hdrs, ...);
 
 apr_status_t receiveResponse(clientCtx_t *ctx, char **buf, apr_size_t *len);
 

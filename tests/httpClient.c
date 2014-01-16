@@ -124,6 +124,34 @@ _sendRequest(clientCtx_t *ctx, const char *method, const char *url,
 }
 
 
+apr_status_t sendIncompleteChunkedRequest(clientCtx_t *ctx, const char *method,
+                                          const char *url,
+                                          const apr_hash_t *test_hdrs, ...)
+{
+    va_list argp;
+    const char *body = "";
+
+    apr_hash_t *hdrs = apr_hash_copy(ctx->pool, test_hdrs);
+    apr_hash_set(hdrs, "Transfer-Encoding", APR_HASH_KEY_STRING, "chunked");
+
+    va_start(argp, test_hdrs);
+    while (1) {
+        const char *chunk;
+        apr_size_t len;
+
+        chunk = va_arg(argp, const char *);
+        if (chunk == NULL) break;
+
+        len = strlen(chunk);
+        body = apr_psprintf(ctx->pool, "%s%" APR_UINT64_T_HEX_FMT "\r\n%s\r\n",
+                            body, (apr_uint64_t)len, chunk);
+    }
+    /* Don't send closing 0 chunk! */
+    va_end(argp);
+
+    return _sendRequest(ctx, method, url, hdrs, body);
+}
+
 apr_status_t sendChunkedRequest(clientCtx_t *ctx, const char *method,
                                 const char *url, const apr_hash_t *test_hdrs, ...)
 {

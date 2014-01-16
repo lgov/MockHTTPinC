@@ -312,6 +312,31 @@ mhRequest_t *_mhRequestInit(MockHTTP *mh)
 /* Requests matchers: define criteria to match different aspects of a HTTP    */
 /* request received by the MockHTTP server.                                   */
 /******************************************************************************/
+static bool
+chunks_matcher(const mhMatchingPattern_t *mp, apr_array_header_t *chunks)
+{
+    apr_size_t curpos = 0;
+    const char *expected = mp->baton;
+    int i;
+
+    for (i = 0 ; i < chunks->nelts; i++) {
+        const char *ptr, *actual;
+
+        ptr = expected + curpos;
+        actual = APR_ARRAY_IDX(chunks, i, const char *);
+        if (strncmp(ptr, actual, strlen(actual)) != 0)
+            return NO;
+        curpos += strlen(actual);
+    }
+
+    /* Up until now the body matches, but maybe the body is expected to be
+     longer. */
+    if (strlen(expected + curpos) > 0)
+        return NO;
+
+    return YES;
+}
+
 static bool str_matcher(const mhMatchingPattern_t *mp, const char *actual)
 {
     const char *expected = mp->baton;
@@ -352,7 +377,7 @@ static bool body_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
 {
     /* ignore chunked or not chunked */
     if (req->chunked == YES)
-        return str_matcher(mp, req->body);
+        return chunks_matcher(mp, req->chunks);
     else
         return str_matcher(mp, req->body);
 }
@@ -406,29 +431,10 @@ static bool
 chunked_body_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
                      const mhRequest_t *req)
 {
-    apr_size_t curpos = 0;
-    const char *expected = mp->baton;
-    int i;
-
     if (req->chunked == NO)
         return NO;
 
-    for (i = 0 ; i < req->chunks->nelts; i++) {
-        const char *ptr, *actual;
-
-        ptr = expected + curpos;
-        actual = APR_ARRAY_IDX(req->chunks, i, const char *);
-        if (strncmp(ptr, actual, strlen(actual)) != 0)
-            return NO;
-        curpos += strlen(actual);
-    }
-
-    /* Up until now the body matches, but maybe the body is expected to be 
-       longer. */
-    if (strlen(expected + curpos) > 0)
-        return NO;
-
-    return YES;
+    return chunks_matcher(mp, req->chunks);
 }
 
 mhMatchingPattern_t *

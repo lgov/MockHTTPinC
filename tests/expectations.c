@@ -361,6 +361,9 @@ static void test_verify_req_chunked_body(CuTest *tc)
 
     Given(mh)
       GETRequest(
+        URLEqualTo("/index0.html"),
+        BodyEqualTo("chunk0chunk1")) /* should matched chunked and not chunked */
+      GETRequest(
         URLEqualTo("/index1.html"),
         ChunkedBodyEqualTo("1"))
       GETRequest(
@@ -372,12 +375,13 @@ static void test_verify_req_chunked_body(CuTest *tc)
     {
         clientCtx_t *ctx = initClient(mh);
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
-        sendChunkedRequest(ctx, "GET", "/index1.html", hdrs, "1", NULL);
-        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        sendChunkedRequest(ctx, "GET", "/index0.html", hdrs,
+                           "chunk0", "chunk1", NULL);
         mhRunServerLoop(mh);
-        sendChunkedRequest(ctx, "GET", "/index2.html", hdrs, "chunk1",
-                           "chunk2", NULL);
-        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        sendChunkedRequest(ctx, "GET", "/index1.html", hdrs, "1", NULL);
+        mhRunServerLoop(mh);
+        sendChunkedRequest(ctx, "GET", "/index2.html", hdrs,
+                           "chunk1", "chunk2", NULL);
         mhRunServerLoop(mh);
     }
 
@@ -1046,7 +1050,7 @@ static void test_raw_response(CuTest *tc)
     EndVerify
 }
 
-static void test_partial_request_body(CuTest *tc)
+static void test_incomplete_request_body(CuTest *tc)
 {
     MockHTTP *mh = tc->testBaton;
     const char *body = "first part\r\n"; /* Unsent "second part\r\n"; */
@@ -1069,6 +1073,46 @@ static void test_partial_request_body(CuTest *tc)
         apr_hash_set(hdrs, "Content-Length", APR_HASH_KEY_STRING, "25");
 
         sendRequest(ctx, "GET", "/index.html", hdrs, body);
+        mhRunServerLoop(mh);
+        do {
+            const char *exp_body = "first part\r\n";
+            int curpos = 0;
+            status = receiveResponse(ctx, &buf, &len);
+            CuAssertStrnEquals(tc, exp_body + curpos, len, buf);
+            curpos += len;
+        } while (status == APR_EAGAIN);
+    }
+
+    Verify(mh)
+      CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
+    EndVerify
+}
+
+/* same test as test_incomplete_request_body but with a chunked request */
+static void test_incomplete_chunked_request_body(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+    const char *chunk = "first part\r\n"; /* Unsent "second part\r\n"; */
+    Given(mh)
+      GETRequest(URLEqualTo("/index.html"),
+                 IncompleteBodyEqualTo("first part\r\n"))
+        Respond(WithCode(200), WithRequestBody)
+    EndGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        char *buf;
+        apr_size_t len;
+        apr_status_t status;
+
+        /* Set Content-Length to the complete body length (first & second part),
+           but only send the first part. */
+        apr_hash_set(hdrs, "Content-Length", APR_HASH_KEY_STRING, "25");
+
+        sendIncompleteChunkedRequest(ctx, "GET", "/index.html", hdrs,
+                                     chunk, NULL);
         mhRunServerLoop(mh);
         do {
             const char *exp_body = "first part\r\n";
@@ -1120,8 +1164,9 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_ignore_content_length_when_chunked);
     SUITE_ADD_TEST(suite, test_use_request_body);
     SUITE_ADD_TEST(suite, test_raw_response);
+    SUITE_ADD_TEST(suite, test_incomplete_request_body);
+    SUITE_ADD_TEST(suite, test_incomplete_chunked_request_body);
 #endif
-    SUITE_ADD_TEST(suite, test_partial_request_body);
 
     return suite;
 }
