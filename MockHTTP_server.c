@@ -606,8 +606,7 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
             mhResponse_t *resp;
             ctx->mh->verifyStats->requestsReceived++;
             apr_queue_push(ctx->reqQueue, cctx->req);
-            if (_mhMatchRequest(ctx->mh, cctx->req, &resp) == YES ||
-                _mhMatchIncompleteRequest(ctx->mh, cctx->req, &resp) == YES) {
+            if (_mhMatchRequest(ctx->mh, cctx->req, &resp) == YES) {
 
                 ctx->mh->verifyStats->requestsMatched++;
                 if (resp) {
@@ -632,11 +631,18 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
         }
 
         if (ctx->mh->incompleteReqMatchers->nelts > 0) {
-            mhResponse_t *resp;
+            mhResponse_t *resp = NULL;
             /* (currently) incomplete request received? */
             if (_mhMatchIncompleteRequest(ctx->mh, cctx->req, &resp) == YES) {
                 _mhLog(MH_VERBOSE, __FILE__,
                        "Incomplete request matched, queueing response.\n");
+                ctx->mh->verifyStats->requestsMatched++;
+                if (!resp)
+                    resp = cloneResponse(ctx->pool, ctx->mh->defResponse);
+                resp->req = cctx->req;
+                *((mhResponse_t **)apr_array_push(cctx->respQueue)) = resp;
+                cctx->req = NULL;
+                return APR_SUCCESS;
             }
         }
     }

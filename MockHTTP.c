@@ -269,11 +269,11 @@ void mhPushRequest(MockHTTP *mh, mhRequestMatcher_t *rm)
 
         mp = APR_ARRAY_IDX(rm->matchers, i, mhMatchingPattern_t *);
         if (mp->match_incomplete == YES) {
-            incomplete = YES;
+            rm->incomplete = YES;
             break;
         }
     }
-    if (incomplete)
+    if (rm->incomplete)
         *((ReqMatcherRespPair_t **)
                 apr_array_push(mh->incompleteReqMatchers)) = pair;
     else
@@ -283,12 +283,13 @@ void mhPushRequest(MockHTTP *mh, mhRequestMatcher_t *rm)
 void mhSetRespForReq(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp)
 {
     int i;
+    apr_array_header_t *matchers;
 
-    for (i = 0 ; i < mh->reqMatchers->nelts; i++) {
+    matchers = rm->incomplete ? mh->incompleteReqMatchers : mh->reqMatchers;
+    for (i = 0 ; i < matchers->nelts; i++) {
         ReqMatcherRespPair_t *pair;
 
-        pair = APR_ARRAY_IDX(mh->reqMatchers, i, ReqMatcherRespPair_t *);
-
+        pair = APR_ARRAY_IDX(matchers, i, ReqMatcherRespPair_t *);
         if (rm == pair->rm) {
             pair->resp = resp;
             break;
@@ -548,7 +549,7 @@ constructRequestMatcher(const MockHTTP *mh, const char *method, va_list argp)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhRequestMatcher_t *rm = apr_palloc(pool, sizeof(mhRequestMatcher_t));
+    mhRequestMatcher_t *rm = apr_pcalloc(pool, sizeof(mhRequestMatcher_t));
     rm->pool = pool;
     rm->method = apr_pstrdup(pool, method);
     rm->matchers = apr_array_make(pool, 5, sizeof(mhMatchingPattern_t *));

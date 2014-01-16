@@ -1075,12 +1075,17 @@ static void test_incomplete_request_body(CuTest *tc)
         sendRequest(ctx, "GET", "/index.html", hdrs, body);
         mhRunServerLoop(mh);
         do {
-            const char *exp_body = "first part\r\n";
+            const char *exp_body = "HTTP/1.1 200 OK\r\nContent-Length: 12\r\n"
+            "\r\nfirst part\r\n";
             int curpos = 0;
             status = receiveResponse(ctx, &buf, &len);
             CuAssertStrnEquals(tc, exp_body + curpos, len, buf);
             curpos += len;
-        } while (status == APR_EAGAIN);
+            if (curpos >= strlen(exp_body)) {
+                CuAssertIntEquals(tc, strlen(exp_body), curpos);
+                break;
+            }
+        } while (status == APR_EAGAIN || status == APR_TIMEUP);
     }
 
     Verify(mh)
@@ -1115,12 +1120,17 @@ static void test_incomplete_chunked_request_body(CuTest *tc)
                                      chunk, NULL);
         mhRunServerLoop(mh);
         do {
-            const char *exp_body = "first part\r\n";
+            const char *exp_body = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked"
+            "\r\n\r\nc\r\nfirst part\r\n\r\n0\r\n\r\n";
             int curpos = 0;
             status = receiveResponse(ctx, &buf, &len);
             CuAssertStrnEquals(tc, exp_body + curpos, len, buf);
             curpos += len;
-        } while (status == APR_EAGAIN);
+            if (curpos >= strlen(exp_body)) {
+                CuAssertIntEquals(tc, strlen(exp_body), curpos);
+                break;
+            }
+        } while (status == APR_EAGAIN || status == APR_TIMEUP);
     }
 
     Verify(mh)

@@ -120,6 +120,7 @@ struct mhRequestMatcher_t {
 
     const char *method;
     apr_array_header_t *matchers;
+    bool incomplete;
 };
 
 struct mhMatchingPattern_t {
