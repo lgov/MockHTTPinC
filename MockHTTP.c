@@ -220,8 +220,9 @@ mhError_t mhRunServerLoop(MockHTTP *mh)
     return MOCKHTTP_NO_ERROR;
 }
 
-bool matchRequest(const MockHTTP *mh, mhRequest_t *req, mhResponse_t **resp,
-                  apr_array_header_t *matchers)
+static bool
+matchRequest(const MockHTTP *mh, mhRequest_t *req, mhResponse_t **resp,
+             apr_array_header_t *matchers)
 {
     int i;
 
