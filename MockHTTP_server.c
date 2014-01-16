@@ -377,13 +377,6 @@ static apr_status_t readRequest(_mhClientCtx_t *cctx, mhRequest_t **preq)
             cctx->bufrem -= len;
         }
 
-        if (!cctx->buflen) {
-            if (APR_STATUS_IS_EOF(status))
-                return MH_STATUS_INCOMPLETE_REQUEST;
-
-            return status;
-        }
-
         done = NO;
         switch(cctx->req->readState) {
             case 0: /* status line */
@@ -404,10 +397,12 @@ static apr_status_t readRequest(_mhClientCtx_t *cctx, mhRequest_t **preq)
                 if (chstr && apr_strnatcasecmp(chstr, "chunked") == 0) {
                     STATUSREADERR(readChunked(cctx, req, &done));
                 } else {
-                    clstr = getHeader(cctx->pool, req->hdrs,
-                                      "Content-Length");
-                    if (clstr)
+                    clstr = getHeader(cctx->pool, req->hdrs, "Content-Length");
+                    if (clstr) {
                         STATUSREADERR(readBody(cctx, req, &done));
+                    } else {
+                        done = YES; /* no body to read */
+                    }
                 }
                 if (done) {
                     _mhLog(MH_VERBOSE, __FILE__, "Server received request: %s %s\n",
@@ -416,6 +411,13 @@ static apr_status_t readRequest(_mhClientCtx_t *cctx, mhRequest_t **preq)
                 }
             }
         }
+    }
+
+    if (!cctx->buflen) {
+        if (APR_STATUS_IS_EOF(status))
+            return MH_STATUS_INCOMPLETE_REQUEST;
+
+        return status;
     }
 
     return status;

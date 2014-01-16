@@ -390,6 +390,29 @@ static void test_verify_req_chunked_body(CuTest *tc)
     EndVerify
 }
 
+static void test_verify_req_no_body(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+
+    Given(mh)
+      GETRequest(URLEqualTo("/index1.html"),
+                 BodyEqualTo(""))
+    EndGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        /* sendRequest will not add C-L header when len(body) = 0 */
+        sendRequest(ctx, "GET", "/index1.html", hdrs, "");
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+      CuAssertTrue(tc, VerifyAllRequestsReceived);
+    EndVerify
+}
+
 static void test_verify_req_chunked_body_fails(CuTest *tc)
 {
     MockHTTP *mh = tc->testBaton;
@@ -1177,6 +1200,7 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_incomplete_request_body);
     SUITE_ADD_TEST(suite, test_incomplete_chunked_request_body);
 #endif
+    SUITE_ADD_TEST(suite, test_verify_req_no_body);
 
     return suite;
 }
