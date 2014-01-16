@@ -257,7 +257,6 @@ bool _mhMatchIncompleteRequest(const MockHTTP *mh, mhRequest_t *req,
 void mhPushRequest(MockHTTP *mh, mhRequestMatcher_t *rm)
 {
     ReqMatcherRespPair_t *pair;
-    bool incomplete = NO;
     int i;
 
     pair = apr_palloc(mh->pool, sizeof(ReqMatcherRespPair_t));
