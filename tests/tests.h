@@ -21,6 +21,7 @@
 typedef struct clientCtx_t clientCtx_t ;
 
 clientCtx_t *initClient();
+apr_status_t sendData(clientCtx_t *ctx, const char *data, apr_size_t len);
 apr_status_t sendRequest(clientCtx_t *ctx, const char *method, const char *url,
                          const apr_hash_t *hdrs, const char *body);
 apr_status_t sendChunkedRequest(clientCtx_t *ctx, const char *method,

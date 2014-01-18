@@ -89,6 +89,17 @@ struct mhServCtx_t {
     _mhClientCtx_t *cctx;
 };
 
+typedef enum reqReadState_t {
+    ReadStateStatusLine = 0,
+    ReadStateHeaders,
+    ReadStateBody,
+    ReadStateChunked,
+    ReadStateChunkedHeader,
+    ReadStateChunkedChunk,
+    ReadStateChunkedTrailer,
+    ReadStateDone
+} reqReadState_t;
+
 struct mhRequest_t {
     apr_pool_t *pool;
     const char *method;
@@ -99,7 +110,7 @@ struct mhRequest_t {
     apr_size_t bodyLen;
     bool chunked;
     apr_array_header_t *chunks;
-    int readState;
+    reqReadState_t readState;
 };
 
 struct mhResponse_t {

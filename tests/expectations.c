@@ -15,6 +15,7 @@
 
 #include <apr.h>
 #include <apr_hash.h>
+#include <apr_strings.h>
 
 #include "MockHTTP.h"
 
@@ -24,6 +25,7 @@
 #include "tests.h"
 #include "CuTest/CuTest.h"
 
+#define CRLF "\r\n"
 
 void *testSetupNoServer(void *dummy)
 {
@@ -261,6 +263,67 @@ static void test_verify_all_reqs_received(CuTest *tc)
     EndVerify
 }
 
+static const char *
+create_large_chunked_body(apr_pool_t *pool, int count)
+{
+    struct iovec vecs[count];
+    const int num_vecs = count;
+    int i, j;
+    apr_size_t len;
+
+    for (i = 0; i < num_vecs; i++)
+    {
+        int chunk_len = 10 * (i + 1) * 3;
+        char *chunk;
+        char *buf;
+
+        /* end with empty chunk */
+        if (i == num_vecs - 1)
+            chunk_len = 0;
+
+        buf = apr_pcalloc(pool, chunk_len + 1);
+        for (j = 0; j < chunk_len; j += 10)
+            memcpy(buf + j, "0123456789", 10);
+
+        chunk = apr_pstrcat(pool,
+                            apr_psprintf(pool, "%x", chunk_len),
+                            CRLF, buf, CRLF, NULL);
+        vecs[i].iov_base = chunk;
+        vecs[i].iov_len = strlen(chunk);
+    }
+
+    return apr_pstrcatv(pool, vecs, num_vecs, &len);
+}
+
+static void test_verify_large_chunked_request(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+    const char *header = "GET /index.html HTTP/1.1" CRLF
+                         "Transfer-Encoding: chunked" CRLF
+                         CRLF;
+    const char *body = create_large_chunked_body(mh->pool, 4);
+    const char *request = apr_pstrcat(mh->pool, header, body, NULL);
+
+    Given(mh)
+      GETRequest(URLEqualTo("/index.html"), RawBodyEqualTo(body))
+    EndGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_size_t len = strlen(request);
+        apr_size_t part = len / 2;
+        sendData(ctx, request, part);
+        mhRunServerLoop(mh);
+        sendData(ctx, request + part, len - part);
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+        CuAssertTrue(tc, VerifyAllRequestsReceived);
+    EndVerify
+}
+
 static void test_verify_all_reqs_received_inverse(CuTest *tc)
 {
     MockHTTP *mh = tc->testBaton;
@@ -386,7 +449,7 @@ static void test_verify_req_chunked_body(CuTest *tc)
     }
 
     Verify(mh)
-      CuAssertTrue(tc, VerifyAllRequestsReceived);
+      CuAssert(tc, ErrorMessage, VerifyAllRequestsReceived);
     EndVerify
 }
 
@@ -1225,6 +1288,7 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_one_request_received);
     SUITE_ADD_TEST(suite, test_match_method);
     SUITE_ADD_TEST(suite, test_verify_all_reqs_received);
+    SUITE_ADD_TEST(suite, test_verify_large_chunked_request);
     SUITE_ADD_TEST(suite, test_verify_all_reqs_received_inverse);
     SUITE_ADD_TEST(suite, test_verify_all_reqs_received_in_order);
     SUITE_ADD_TEST(suite, test_verify_all_reqs_received_in_order_more);
@@ -1252,6 +1316,7 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_incomplete_request_body);
     SUITE_ADD_TEST(suite, test_incomplete_chunked_request_body);
 #endif
+    SUITE_ADD_TEST(suite, test_verify_req_chunked_body);
 
     return suite;
 }

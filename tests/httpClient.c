@@ -35,16 +35,13 @@ struct clientCtx_t {
     apr_socket_t *skt;
 };
 
-static apr_status_t connectToTCPServer(clientCtx_t *ctx, const char *url)
+apr_status_t connectToTCPServer(clientCtx_t *ctx)
 {
     apr_sockaddr_t *address;
-    apr_uri_t uri;
     apr_status_t status;
 
     const char *hostname = "localhost";
     apr_port_t port = 30080;
-
-    STATUSERR(apr_uri_parse(ctx->pool, url, &uri));
 
     STATUSERR(apr_sockaddr_info_get(&address,
                                     hostname,
@@ -81,6 +78,15 @@ clientCtx_t *initClient()
     return ctx;
 }
 
+apr_status_t sendData(clientCtx_t *ctx, const char *data, apr_size_t len)
+{
+    apr_status_t status;
+    if (!ctx->skt) {
+        STATUSERR(connectToTCPServer(ctx));
+    }
+    return apr_socket_send(ctx->skt, data, &len);
+}
+
 static apr_status_t
 _sendRequest(clientCtx_t *ctx, const char *method, const char *url,
              apr_hash_t *hdrs, const char *body)
@@ -88,11 +94,10 @@ _sendRequest(clientCtx_t *ctx, const char *method, const char *url,
     const char *line;
     const char *hdrstr;
     apr_uri_t uri;
-    apr_size_t len;
     apr_status_t status;
 
     if (!ctx->skt) {
-        STATUSERR(connectToTCPServer(ctx, url));
+        STATUSERR(connectToTCPServer(ctx));
     }
 
     apr_uri_parse(ctx->pool, url, &uri);
@@ -118,9 +123,7 @@ _sendRequest(clientCtx_t *ctx, const char *method, const char *url,
 
     line = apr_psprintf(ctx->pool, "%s%s\r\n%s",
                         line, hdrstr, body);
-    len = strlen(line);
-
-    return apr_socket_send(ctx->skt, line, &len);
+    return sendData(ctx, line, strlen(line));
 }
 
 
