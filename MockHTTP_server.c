@@ -167,6 +167,16 @@ mhError_t _mhStartServer(mhServCtx_t *ctx)
 /* Parse a request structure from incoming data                               */
 /******************************************************************************/
 
+mhRequest_t *_mhInitRequest(apr_pool_t *pool)
+{
+    mhRequest_t *req = apr_pcalloc(pool, sizeof(mhRequest_t));
+    req->pool = pool;
+    req->hdrs = apr_hash_make(pool);
+    req->body = apr_array_make(pool, 5, sizeof(struct iovec));
+
+    return req;
+}
+
 /* *len will be non-0 if a line ending with CRLF was found. buf will be copied 
    in mem allocatod from cctx->pool, cctx->buf ptrs will be moved. */
 static void readLine(_mhClientCtx_t *cctx, const char **buf, apr_size_t *len)
@@ -251,11 +261,32 @@ static apr_status_t readHeader(_mhClientCtx_t *cctx, mhRequest_t *req, bool *don
     return APR_SUCCESS;
 }
 
+static void
+storeRawDataBlock(mhRequest_t *req, const char *buf, apr_size_t len)
+{
+    struct iovec vec;
+    vec.iov_base = apr_pmemdup(req->pool, buf, len);
+    vec.iov_len = len;
+    *((struct iovec *)apr_array_push(req->body)) = vec;
+    req->bodyLen += len;
+}
+
+static void
+storeChunk(mhRequest_t *req, const char *buf, apr_size_t len)
+{
+    struct iovec vec;
+    vec.iov_base = apr_pmemdup(req->pool, buf, len);
+    vec.iov_len = len;
+    *((struct iovec *)apr_array_push(req->chunks)) = vec;
+    req->bodyLen += len;
+}
+
 /* APR_EAGAIN if not all data is ready, APR_SUCCESS + done = YES if body
    completely received. */
 static apr_status_t readBody(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
 {
     const char *clstr;
+    char *body;
     long cl;
     apr_size_t len;
 
@@ -263,16 +294,18 @@ static apr_status_t readBody(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
 
     clstr = getHeader(cctx->pool, cctx->req->hdrs, "Content-Length");
     cl = atol(clstr);
-    if (cctx->req->body == NULL) {
-        cctx->req->body = apr_palloc(cctx->pool, cl + 1);
-    }
 
-    len = (cctx->buflen < (cl - cctx->req->bodyLen)) ?
-                    cctx->buflen : /* partial body */
-                    cl;            /* full body */
-    memcpy(cctx->req->body + cctx->req->bodyLen, cctx->buf, len);
-    cctx->req->bodyLen += len;
-    *(cctx->req->body + cctx->req->bodyLen) = '\0';
+    len = cl - cctx->req->bodyLen; /* remaining # of bytes */
+    len = cctx->buflen <= len ? cctx->buflen : len; /* this packet */
+
+    if (cctx->req->body == NULL) {
+        cctx->req->body = apr_palloc(cctx->pool, sizeof(struct iovec) * 256);
+    }
+    body = apr_palloc(cctx->pool, len + 1);
+
+    memcpy(body, cctx->buf, len);
+    *(body + len) = '\0';
+    storeRawDataBlock(cctx->req, body, len);
 
     cctx->buflen -= len; /* eat body */
     cctx->bufrem += len;
@@ -290,28 +323,25 @@ static apr_status_t readChunk(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done
     apr_size_t len, chlen;
 
     *done = NO;
-
     /* TODO: state2 for partial chunks **/
     readLine(cctx, &buf, &len);
-    if (!len) return APR_EAGAIN;
-    
-    chlen = apr_strtoi64(buf, NULL, 16); /* read hex chunked length */
+    if (!len)
+        return APR_EAGAIN;
+    storeRawDataBlock(req, buf, len);
 
+    chlen = apr_strtoi64(buf, NULL, 16); /* read hex chunked length */
     if (chlen) {
         char *chunk;
 
         if (cctx->req->chunks == NULL) {
             cctx->req->chunks = apr_array_make(cctx->pool, 5,
-                                               sizeof(const char *));
+                                               sizeof(struct iovec));
         }
         chunk = apr_palloc(cctx->pool, chlen + 1);
-        len = (cctx->buflen < (chlen - cctx->req->bodyLen)) ?
-                        cctx->buflen : /* partial chunk */
-                        chlen;         /* full chunk */
-        memcpy(chunk, cctx->buf, len);
-        *(chunk + len) = '\0';
-
-        *((const char **)apr_array_push(cctx->req->chunks)) = chunk;
+        len = cctx->buflen < chlen ? cctx->buflen : /* partial chunk */
+                                     chlen;         /* full chunk */
+        storeChunk(req, cctx->buf, len);
+        storeRawDataBlock(req, cctx->buf, len);
 
         cctx->buflen -= len; /* eat chunk */
         cctx->bufrem += len;
@@ -322,8 +352,10 @@ static apr_status_t readChunk(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done
     }
 
     readLine(cctx, &buf, &len);
-    if (len < 2) return APR_EAGAIN;
+    if (len < 2)
+        return APR_EAGAIN;
 
+    storeRawDataBlock(req, buf, len);
     if (len == 2 && *buf == '\r' && *(buf+1) == '\n') {
         if (chlen == 0) /* body ends with chunk of length 0 */
             *done = YES;
@@ -358,8 +390,7 @@ static apr_status_t readRequest(_mhClientCtx_t *cctx, mhRequest_t **preq)
     apr_size_t len;
 
     if (req == NULL) {
-        req = *preq = apr_pcalloc(cctx->pool, sizeof(mhRequest_t));
-        req->hdrs = apr_hash_make(cctx->pool);
+        req = *preq = _mhInitRequest(cctx->pool);
     }
 
     while (!status) { /* read all available data */
@@ -486,13 +517,14 @@ static char *respToString(apr_pool_t *pool, mhResponse_t *resp)
     str = apr_psprintf(pool, "HTTP/1.1 %d %s\r\n", resp->code,
                        codeToString(resp->code));
 
+    /* headers */
     if (resp->chunked == YES) {
         /* TODO: add to existing header */
         apr_hash_set(resp->hdrs, "Transfer-Encoding", APR_HASH_KEY_STRING,
                      "chunked");
     } else {
         apr_hash_set(resp->hdrs, "Content-Length", APR_HASH_KEY_STRING,
-                     apr_itoa(pool, strlen(resp->body)));
+                     apr_itoa(pool, resp->bodyLen));
     }
 
     for (hi = apr_hash_first(pool, resp->hdrs); hi; hi = apr_hash_next(hi)) {
@@ -503,20 +535,29 @@ static char *respToString(apr_pool_t *pool, mhResponse_t *resp)
     }
     str = apr_psprintf(pool, "%s\r\n", str);
 
+    /* body */
     if (resp->chunked == NO) {
-        str = apr_psprintf(pool, "%s%s", str, resp->body);
+        int i;
+        for (i = 0 ; i < resp->body->nelts; i++) {
+            struct iovec vec;
+
+            vec = APR_ARRAY_IDX(resp->body, i, struct iovec);
+            str = apr_psprintf(pool, "%s%.*s", str, (unsigned int)vec.iov_len,
+                               vec.iov_base);
+        }
     } else {
         int i;
-        apr_size_t len = 0;
+        bool emptyChunk;
         for (i = 0 ; i < resp->chunks->nelts; i++) {
-            const char *chunk;
+            struct iovec vec;
 
-            chunk = APR_ARRAY_IDX(resp->chunks, i, const char *);
-            len = strlen(chunk);
-            str = apr_psprintf(pool, "%s%" APR_UINT64_T_HEX_FMT "\r\n%s\r\n",
-                               str, (apr_uint64_t)len, chunk);
+            vec = APR_ARRAY_IDX(resp->chunks, i, struct iovec);
+            str = apr_psprintf(pool, "%s%" APR_UINT64_T_HEX_FMT "\r\n%.*s\r\n",
+                               str, (apr_uint64_t)vec.iov_len,
+                               (unsigned int)vec.iov_len, vec.iov_base);
+            emptyChunk = vec.iov_len == 0 ? YES : NO;
         }
-        if (len != 0) /* Add 0 chunk only if last chunk wasn't empty already */
+        if (!emptyChunk) /* Add 0 chunk only if last chunk wasn't empty already */
             str = apr_psprintf(pool, "%s0\r\n\r\n", str);
     }
     return str;
@@ -560,7 +601,12 @@ static mhResponse_t *cloneResponse(apr_pool_t *pool, mhResponse_t *resp)
 {
     mhResponse_t *clone;
     clone = apr_pmemdup(pool, resp, sizeof(mhResponse_t));
+    /* Note: apr_hash_copy crashes on NULL or empty hashtables. */
     clone->hdrs = apr_hash_copy(pool, resp->hdrs);
+    if (resp->chunks)
+        clone->chunks = apr_array_copy(pool, resp->chunks);
+    if (resp->body)
+        clone->body = apr_array_copy(pool, resp->body);
     return clone;
 }
 

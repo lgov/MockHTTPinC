@@ -19,6 +19,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		F300DA86188A9BC3000C423C /* msg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = msg; sourceTree = "<group>"; };
 		F31C552F185B9683006958E7 /* MockHTTP.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MockHTTP.h; sourceTree = "<group>"; };
 		F33CD826185B9F6C008890DD /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		F33CD829185BA2E0008890DD /* expectations.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = expectations.c; sourceTree = "<group>"; };
@@ -49,6 +50,7 @@
 		F31C5524185B964C006958E7 = {
 			isa = PBXGroup;
 			children = (
+				F300DA86188A9BC3000C423C /* msg */,
 				F3BEC11F1872B476004073DE /* README.md */,
 				F3BEC1201872B476004073DE /* LICENSE */,
 				F33CD839185F9871008890DD /* MockHTTP_server.c */,

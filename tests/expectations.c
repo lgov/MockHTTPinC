@@ -68,7 +68,7 @@ static void test_urlmatcher(CuTest *tc)
     CuAssertPtrNotNull(tc, mp);
 
     /* Create a fake request and check that the matcher works */
-    req = _mhRequestInit(mh);
+    req = _mhInitRequest(mh->pool);
     req->url = "/index.html";
     CuAssertIntEquals(tc, mp->matcher(mh->pool, mp, req), YES);
 }
@@ -85,7 +85,7 @@ static void test_methodmatcher(CuTest *tc)
     CuAssertPtrNotNull(tc, rm);
 
     /* Create a fake request and check that the matcher works */
-    req = _mhRequestInit(mh);
+    req = _mhInitRequest(mh->pool);
     req->method = "get";
     CuAssertIntEquals(tc, mp->matcher(mh->pool, mp, req), YES);
 }
@@ -99,13 +99,13 @@ static void test_matchrequest(CuTest *tc)
     rm = mhGivenRequest(mh, "GET", mhMatchURLEqualTo(mh, "/index.html"), NULL);
 
     /* Create a fake request and check that the matcher works */
-    req = _mhRequestInit(mh);
+    req = _mhInitRequest(mh->pool);
     req->method = "get";
     req->url = "/index.html";
     CuAssertIntEquals(tc, _mhRequestMatcherMatch(rm, req), YES);
 
     /* Create a fake request and check that it doesn't match */
-    req = _mhRequestInit(mh);
+    req = _mhInitRequest(mh->pool);
     req->method = "get";
     req->url = "/notexisting.html";
     CuAssertIntEquals(tc, _mhRequestMatcherMatch(rm, req), NO);
@@ -148,7 +148,7 @@ static void test_basic_reqmatch_response(CuTest *tc)
     /* EndGiven */
     }
 
-    req = _mhRequestInit(mh);
+    req = _mhInitRequest(mh->pool);
     req->method = "get";
     req->url = "/index.html";
     CuAssertIntEquals(tc, YES, _mhMatchRequest(mh, req, &resp));
@@ -171,7 +171,7 @@ static void test_basic_reqmatch_response_with_macros(CuTest *tc)
     EndGiven
 
     /* verify that the request was received */
-    req = _mhRequestInit(mh);
+    req = _mhInitRequest(mh->pool);
     req->method = "get";
     req->url = "/index.html";
     CuAssertIntEquals(tc, YES, _mhMatchRequest(mh, req, &resp));
@@ -405,6 +405,55 @@ static void test_verify_req_no_body(CuTest *tc)
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         /* sendRequest will not add C-L header when len(body) = 0 */
         sendRequest(ctx, "GET", "/index1.html", hdrs, "");
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+      CuAssertTrue(tc, VerifyAllRequestsReceived);
+    EndVerify
+}
+
+static void test_verify_req_raw_body(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+
+    Given(mh)
+      GETRequest(URLEqualTo("/index0.html"),
+                 RawBodyEqualTo("chunk1\r\n"
+                                "chunk2\r\n"))
+    EndGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendRequest(ctx, "GET", "/index0.html", hdrs,
+                         "chunk1\r\nchunk2\r\n");
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+      CuAssertTrue(tc, VerifyAllRequestsReceived);
+    EndVerify
+}
+
+static void test_verify_req_raw_chunked_body(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+
+    Given(mh)
+      GETRequest(URLEqualTo("/index0.html"),
+                 RawBodyEqualTo("6\r\nchunk1\r\n"
+                                "6\r\nchunk2\r\n"
+                                "0\r\n\r\n"))
+    EndGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendChunkedRequest(ctx, "GET", "/index0.html", hdrs,
+                           "chunk1", "chunk2", NULL);
         mhRunServerLoop(mh);
     }
 
@@ -1180,6 +1229,9 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_verify_all_reqs_received_in_order);
     SUITE_ADD_TEST(suite, test_verify_all_reqs_received_in_order_more);
     SUITE_ADD_TEST(suite, test_verify_req_chunked_body);
+    SUITE_ADD_TEST(suite, test_verify_req_no_body);
+    SUITE_ADD_TEST(suite, test_verify_req_raw_body);
+    SUITE_ADD_TEST(suite, test_verify_req_raw_chunked_body);
     SUITE_ADD_TEST(suite, test_verify_req_chunked_body_fails);
     SUITE_ADD_TEST(suite, test_string_exact_match);
     SUITE_ADD_TEST(suite, test_verify_req_header);
@@ -1200,7 +1252,6 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_incomplete_request_body);
     SUITE_ADD_TEST(suite, test_incomplete_chunked_request_body);
 #endif
-    SUITE_ADD_TEST(suite, test_verify_req_no_body);
 
     return suite;
 }

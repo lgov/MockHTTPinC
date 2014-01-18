@@ -90,11 +90,12 @@ struct mhServCtx_t {
 };
 
 struct mhRequest_t {
+    apr_pool_t *pool;
     const char *method;
     const char *url;
     apr_hash_t *hdrs;
     int version;
-    char *body;
+    apr_array_header_t *body; /* body, or raw body when chunked encoding */
     apr_size_t bodyLen;
     bool chunked;
     apr_array_header_t *chunks;
@@ -105,11 +106,12 @@ struct mhResponse_t {
     apr_pool_t *pool;
     bool built;
     unsigned int code;
-    const char *body;
-    const char *raw_data; /* complete response */
+    apr_hash_t *hdrs;
+    apr_array_header_t *body; /* body, or raw body when chunked encoding */
+    apr_size_t bodyLen;
     bool chunked;
     apr_array_header_t *chunks;
-    apr_hash_t *hdrs;
+    const char *raw_data;
     apr_array_header_t *builders;
     bool closeConn;
     mhRequest_t *req;  /* mhResponse_t instance is reply to req */
@@ -142,14 +144,14 @@ void setHeader(apr_pool_t *pool, apr_hash_t *hdrs,
                const char *hdr, const char *val);
 
 /* Initialize a mhRequest_t object. */
-mhRequest_t *_mhRequestInit(MockHTTP *mh);
+mhRequest_t *_mhInitRequest(apr_pool_t *pool);
 bool _mhMatchRequest(const MockHTTP *mh, mhRequest_t *req, mhResponse_t **resp);
 bool _mhMatchIncompleteRequest(const MockHTTP *mh, mhRequest_t *req,
                                mhResponse_t **resp);
 
 bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm,
                             const mhRequest_t *req);
-/* Build a response */
+/* Build a response TODO: -> mhBuildResponse*/
 void _mhResponseBuild(mhResponse_t *resp);
 
 /* Test servers */
