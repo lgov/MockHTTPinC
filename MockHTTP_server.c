@@ -199,6 +199,9 @@ static void readLine(_mhClientCtx_t *cctx, const char **buf, apr_size_t *len)
     }
 }
 
+#define FAIL_ON_EOL(ptr)\
+    if (*ptr == '\0') return APR_EGENERAL; /* TODO: error code */
+
 /* APR_EAGAIN if no line ready, APR_SUCCESS + done = YES if request line parsed */
 static apr_status_t readReqLine(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
 {
@@ -213,15 +216,20 @@ static apr_status_t readReqLine(_mhClientCtx_t *cctx, mhRequest_t *req, bool *do
 
     /* TODO: add checks for incomplete request line */
     start = ptr = buf;
-    while (*ptr != ' ' && *ptr != '\r') ptr++;
+    while (*ptr && *ptr != ' ' && *ptr != '\r') ptr++;
+    FAIL_ON_EOL(ptr);
     req->method = apr_pstrndup(cctx->pool, start, ptr-start);
 
     ptr++; start = ptr;
-    while (*ptr != ' ' && *ptr != '\r') ptr++;
+    while (*ptr && *ptr != ' ' && *ptr != '\r') ptr++;
+    FAIL_ON_EOL(ptr);
     req->url = apr_pstrndup(cctx->pool, start, ptr-start);
 
     ptr++; start = ptr;
-    while (*ptr != ' ' && *ptr != '\r') ptr++;
+    while (*ptr && *ptr != ' ' && *ptr != '\r') ptr++;
+    if (ptr - start < strlen("HTTP/x.y")) {
+        return APR_EGENERAL;
+    }
     version = apr_pstrndup(cctx->pool, start, ptr-start);
     req->version = (version[5] - '0') * 100 +
     version[7] - '0';
