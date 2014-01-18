@@ -180,7 +180,8 @@ extern "C" {
 #define     WithConnectionCloseHeader\
                 mhRespSetConnCloseHdr(__mh)
 
-/* Use the provided string as raw response data. */
+/* Use the provided string as raw response data. The response need not be
+   valid HTTP.*/
 #define     WithRawData(data)\
                 mhRespSetRawData(__mh, (data))
 
