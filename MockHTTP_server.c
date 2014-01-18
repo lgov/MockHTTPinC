@@ -227,7 +227,7 @@ static apr_status_t readReqLine(_mhClientCtx_t *cctx, mhRequest_t *req, bool *do
 
     ptr++; start = ptr;
     while (*ptr && *ptr != ' ' && *ptr != '\r') ptr++;
-    if (ptr - start < strlen("HTTP/x.y")) {
+    if (ptr - start != strlen("HTTP/x.y")) {
         return APR_EGENERAL;
     }
     version = apr_pstrndup(cctx->pool, start, ptr-start);
