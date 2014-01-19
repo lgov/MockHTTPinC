@@ -232,7 +232,7 @@ static apr_status_t readReqLine(_mhClientCtx_t *cctx, mhRequest_t *req, bool *do
         return APR_EGENERAL;
     }
     version = apr_pstrndup(cctx->pool, start, ptr-start);
-    req->version = (version[5] - '0') * 100 +
+    req->version = (version[5] - '0') * 10 +
     version[7] - '0';
 
     *done = TRUE;
@@ -582,7 +582,7 @@ static char *respToString(apr_pool_t *pool, mhResponse_t *resp)
         apr_hash_this(hi, &key, &klen, &val);
 
         str = apr_psprintf(pool, "%s%s: %s\r\n", str,
-                                 (const char *) key, (const char *)val);
+                                 (const char *)key, (const char *)val);
     }
     str = apr_psprintf(pool, "%s\r\n", str);
 

@@ -117,7 +117,7 @@ _sendRequest(clientCtx_t *ctx, const char *method, const char *url,
             apr_hash_this(hi, &key, &klen, &val);
 
             hdrstr = apr_psprintf(ctx->pool, "%s%s: %s\r\n", hdrstr,
-                                (const char *) key, (const char *)val);
+                                (const char *)key, (const char *)val);
         }
     }
 

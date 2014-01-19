@@ -1362,6 +1362,7 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_incomplete_chunked_request_body);
     SUITE_ADD_TEST(suite, test_incomplete_large_chunked_request_body);
 #endif
+    SUITE_ADD_TEST(suite, test_verify_error_message);
 
     return suite;
 }
