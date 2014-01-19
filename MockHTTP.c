@@ -1017,7 +1017,7 @@ static int verifyAllRequestsReceived(const MockHTTP *mh, bool breakOnNotOnce)
     bool result = YES;
 
     /* TODO: improve error message */
-    if (mh->reqsReceived->nelts > mh->reqMatchers->nelts) {
+    if (breakOnNotOnce && mh->reqsReceived->nelts > mh->reqMatchers->nelts) {
         appendErrMessage(mh, "More requests received than expected!\n");
         return NO;
     } else if (mh->reqsReceived->nelts < mh->reqMatchers->nelts) {
