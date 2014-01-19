@@ -594,18 +594,18 @@ static char *respToString(apr_pool_t *pool, mhResponse_t *resp)
 
             vec = APR_ARRAY_IDX(resp->body, i, struct iovec);
             str = apr_psprintf(pool, "%s%.*s", str, (unsigned int)vec.iov_len,
-                               vec.iov_base);
+                               (const char *)vec.iov_base);
         }
     } else {
         int i;
-        bool emptyChunk;
+        bool emptyChunk = NO; /* empty response should atleast have 0-chunk */
         for (i = 0 ; i < resp->chunks->nelts; i++) {
             struct iovec vec;
 
             vec = APR_ARRAY_IDX(resp->chunks, i, struct iovec);
             str = apr_psprintf(pool, "%s%" APR_UINT64_T_HEX_FMT "\r\n%.*s\r\n",
                                str, (apr_uint64_t)vec.iov_len,
-                               (unsigned int)vec.iov_len, vec.iov_base);
+                               (unsigned int)vec.iov_len, (char *)vec.iov_base);
             emptyChunk = vec.iov_len == 0 ? YES : NO;
         }
         if (!emptyChunk) /* Add 0 chunk only if last chunk wasn't empty already */
