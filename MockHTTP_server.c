@@ -667,17 +667,19 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
     apr_status_t status = APR_SUCCESS;
 
     /* First sent any pending responses before reading the next request. */
-    if (desc->rtnevents & APR_POLLOUT && cctx->respQueue->nelts) {
+    if (desc->rtnevents & APR_POLLOUT &&
+        (cctx->currResp || cctx->respQueue->nelts)) {
         mhResponse_t **presp, *resp;
 
         /* TODO: response in progress */
-        presp = apr_array_pop(cctx->respQueue);
-        resp = *presp;
+        resp = cctx->currResp ? cctx->currResp :
+                                *(mhResponse_t **)apr_array_pop(cctx->respQueue);
         if (resp) {
             _mhLog(MH_VERBOSE, __FILE__, "Sending response to client.\n");
 
             status = writeResponse(cctx, resp);
             if (status == APR_EOF) {
+                cctx->currResp = NULL;
                 ctx->mh->verifyStats->requestsResponded++;
                 if (resp->closeConn) {
                     _mhLog(MH_VERBOSE, __FILE__,
@@ -771,7 +773,7 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
         apr_pollset_remove(ctx->pollset, &pfd);
 
         cctx->reqevents = APR_POLLIN;
-        if (cctx->respQueue->nelts > 0)
+        if (cctx->currResp || cctx->respQueue->nelts > 0)
             cctx->reqevents |= APR_POLLOUT;
         pfd.reqevents = ctx->cctx->reqevents;
         STATUSERR(apr_pollset_add(ctx->pollset, &pfd));
