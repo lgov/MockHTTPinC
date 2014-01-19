@@ -106,11 +106,13 @@ struct mhRequest_t {
     const char *url;
     apr_hash_t *hdrs;
     int version;
-    apr_array_header_t *body; /* body, or raw body when chunked encoding */
+    apr_array_header_t *body;
     apr_size_t bodyLen;
     bool chunked;
+    /* array of strings that form the dechunked body */
     apr_array_header_t *chunks;
     reqReadState_t readState;
+    bool incomplete_chunk; /* chunk reading in progress */
 };
 
 struct mhResponse_t {
@@ -118,9 +120,10 @@ struct mhResponse_t {
     bool built;
     unsigned int code;
     apr_hash_t *hdrs;
-    apr_array_header_t *body; /* body, or raw body when chunked encoding */
+    apr_array_header_t *body; /* array of strings that form the raw body */
     apr_size_t bodyLen;
     bool chunked;
+    /* array of strings that form the dechunked body */
     apr_array_header_t *chunks;
     const char *raw_data;
     apr_array_header_t *builders;

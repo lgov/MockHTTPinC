@@ -264,18 +264,18 @@ static void test_verify_all_reqs_received(CuTest *tc)
 }
 
 static const char *
-create_large_chunked_body(apr_pool_t *pool, int count)
+create_large_chunked_body(apr_pool_t *pool, int num_vecs)
 {
-    struct iovec vecs[count];
-    const int num_vecs = count;
-    int i, j;
+    int i;
     apr_size_t len;
+    struct iovec *vecs;
 
+    vecs = apr_pcalloc(pool, sizeof(struct iovec) * num_vecs);
     for (i = 0; i < num_vecs; i++)
     {
         int chunk_len = 10 * (i + 1) * 3;
-        char *chunk;
-        char *buf;
+        int j;
+        char *chunk, *buf;
 
         /* end with empty chunk */
         if (i == num_vecs - 1)
@@ -1247,10 +1247,6 @@ static void test_incomplete_chunked_request_body(CuTest *tc)
         apr_size_t len;
         apr_status_t status;
 
-        /* Set Content-Length to the complete body length (first & second part),
-           but only send the first part. */
-        apr_hash_set(hdrs, "Content-Length", APR_HASH_KEY_STRING, "25");
-
         sendIncompleteChunkedRequest(ctx, "GET", "/index.html", hdrs,
                                      chunk, NULL);
         mhRunServerLoop(mh);
@@ -1270,6 +1266,55 @@ static void test_incomplete_chunked_request_body(CuTest *tc)
 
     Verify(mh)
       CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
+    EndVerify
+}
+
+
+/* same test as test_incomplete_chunked_request_body but with a chunk parts
+   not arriving at once at the server */
+static void test_incomplete_large_chunked_request_body(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+    apr_size_t len;
+    const char *header = "GET /index.html HTTP/1.1" CRLF
+                         "Transfer-Encoding: chunked" CRLF
+                         CRLF;
+#define BODY "0123456789012345678901234567890123456789"
+    const char *rawbody = "28" CRLF BODY CRLF "0" CRLF CRLF;
+    const char *request = apr_pstrcat(mh->pool, header, rawbody, NULL);
+    apr_size_t rawpart = 80; /* right after second 0..9 block */
+
+    Given(mh)
+      GETRequest(URLEqualTo("/index.html"),
+                 IncompleteBodyEqualTo("01234567890123456789"))
+        Respond(WithCode(200), WithChunkedBody("part1", "part2"))
+    EndGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_status_t status;
+
+        sendData(ctx, request, rawpart);
+        mhRunServerLoop(mh);
+        do {
+            char *buf;
+            const char *exp_body = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked"
+                                    "\r\n\r\n5\r\npart1\r\n5\r\npart2\r\n"
+                                    "0\r\n\r\n";
+            int curpos = 0;
+            status = receiveResponse(ctx, &buf, &len);
+            CuAssertStrnEquals(tc, exp_body + curpos, len, buf);
+            curpos += len;
+            if (curpos >= strlen(exp_body)) {
+                CuAssertIntEquals(tc, strlen(exp_body), curpos);
+                break;
+            }
+        } while (status == APR_EAGAIN || status == APR_TIMEUP);
+    }
+
+    Verify(mh)
+      CuAssertTrue(tc, VerifyAllRequestsReceived);
     EndVerify
 }
 
@@ -1315,8 +1360,8 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_raw_response);
     SUITE_ADD_TEST(suite, test_incomplete_request_body);
     SUITE_ADD_TEST(suite, test_incomplete_chunked_request_body);
+    SUITE_ADD_TEST(suite, test_incomplete_large_chunked_request_body);
 #endif
-    SUITE_ADD_TEST(suite, test_verify_req_chunked_body);
 
     return suite;
 }

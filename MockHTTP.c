@@ -315,11 +315,14 @@ chunks_matcher(const mhMatchingPattern_t *mp, apr_array_header_t *chunks)
     ptr = expected;
     for (i = 0 ; i < chunks->nelts; i++) {
         struct iovec vec;
+        apr_size_t len;
 
         vec = APR_ARRAY_IDX(chunks, i, struct iovec);
-        if (strncmp(ptr, vec.iov_base, vec.iov_len) != 0)
+        /* iov_base can be incomplete, so shorter than iov_len */
+        len = strlen(vec.iov_base);
+        if (strncmp(ptr, vec.iov_base, len) != 0)
             return NO;
-        ptr += vec.iov_len;
+        ptr += len;
     }
 
     /* Up until now the body matches, but maybe the body is expected to be

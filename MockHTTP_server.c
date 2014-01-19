@@ -274,7 +274,7 @@ static void
 storeRawDataBlock(mhRequest_t *req, const char *buf, apr_size_t len)
 {
     struct iovec vec;
-    vec.iov_base = apr_pmemdup(req->pool, buf, len);
+    vec.iov_base = apr_pstrndup(req->pool, buf, len);
     vec.iov_len = len;
     *((struct iovec *)apr_array_push(req->body)) = vec;
     req->bodyLen += len;
@@ -348,22 +348,37 @@ static apr_status_t readChunk(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done
         }
         case ReadStateChunkedChunk:
         {
-            char *chunk;
             struct iovec *vec;
-            apr_size_t chlen;
+            apr_size_t chlen, curchunklen, len;
 
             vec = &APR_ARRAY_IDX(req->chunks, req->chunks->nelts - 1, struct iovec);
             chlen = vec->iov_len;
-            if (cctx->buflen < chlen) /* More data is needed to read one chunk */
+            if (req->incomplete_chunk) {
+                const char *tmp;
+                curchunklen = strlen(vec->iov_base); /* already read some data */
+                /* partial or full chunk? */
+                len = (cctx->buflen + curchunklen) >= chlen ? chlen - curchunklen :
+                                                              cctx->buflen;
+                tmp = apr_pstrndup(req->pool, cctx->buf, len);
+                storeRawDataBlock(req, cctx->buf, len);
+                vec->iov_base = apr_pstrcat(req->pool, vec->iov_base, tmp, NULL);
+                curchunklen += len;
+            } else {
+                /* partial or full chunk? */
+                len = cctx->buflen >= chlen ? chlen : cctx->buflen;
+                vec->iov_base = apr_pstrndup(req->pool, cctx->buf, len);
+                storeRawDataBlock(req, cctx->buf, len);
+                curchunklen = len;
+            }
+            cctx->buflen -= len; /* eat (part of the) chunk */
+            cctx->bufrem += len;
+            memcpy(cctx->buf, cctx->buf + len, cctx->buflen);
+
+            if (curchunklen < chlen) { /* More data is needed to read one chunk */
+                req->incomplete_chunk = YES;
                 return APR_EAGAIN;
-
-            chunk = apr_palloc(cctx->pool, chlen + 1);
-            vec->iov_base = apr_pmemdup(req->pool, cctx->buf, chlen);
-            storeRawDataBlock(req, cctx->buf, chlen);
-
-            cctx->buflen -= chlen; /* eat chunk */
-            cctx->bufrem += chlen;
-            memcpy(cctx->buf, cctx->buf + chlen, cctx->buflen);
+            }
+            req->incomplete_chunk = NO;
             req->readState = ReadStateChunkedTrailer;
             /* fall through */
         }
@@ -382,12 +397,13 @@ static apr_status_t readChunk(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done
                     *done = YES;
                     req->readState = ReadStateDone;
                     apr_array_pop(req->chunks); /* remove the 0-chunk */
-                } else
+                } else {
                     req->readState = ReadStateChunked;
-                break;
+                }
             } else {
                 return APR_EGENERAL; /* TODO: error code */
             }
+            break;
         }
         default:
             break;
