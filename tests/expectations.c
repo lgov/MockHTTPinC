@@ -133,18 +133,16 @@ static void test_basic_reqmatch_response(CuTest *tc)
         mhPushRequest(__mh, __rm);
         CuAssertPtrNotNull(tc, __rm);
 
-        ;
-
         /* Respond */
-        __resp = mhResponse(__mh,
-                            /*     WithCode(200) */
-                            mhRespSetCode(__mh, 200),
-                            /*     WithHeader("Connection", "Close") */
-                            mhRespAddHeader(__mh, "Connection", "Close"),
-                            /*     WithBody("blabla") */
-                            mhRespSetBody(__mh, "blabla"),
-                            NULL);
-        mhSetRespForReq(__mh, __rm, __resp);
+        __resp = mhNewResponseForRequest(__mh, __rm);
+        mhConfigResponse(__resp,
+                         /*     WithCode(200) */
+                         mhRespSetCode(__resp, 200),
+                         /*     WithHeader("Connection", "Close") */
+                         mhRespAddHeader(__resp, "Connection", "Close"),
+                         /*     WithBody("blabla") */
+                         mhRespSetBody(__resp, "blabla"),
+                         NULL);
         CuAssertPtrNotNull(tc, __resp);
 
     /* EndGiven */
@@ -1362,7 +1360,6 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_incomplete_chunked_request_body);
     SUITE_ADD_TEST(suite, test_incomplete_large_chunked_request_body);
 #endif
-    SUITE_ADD_TEST(suite, test_verify_error_message);
 
     return suite;
 }

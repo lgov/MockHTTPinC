@@ -621,7 +621,7 @@ static apr_status_t writeResponse(_mhClientCtx_t *cctx, mhResponse_t *resp)
     apr_status_t status;
 
     if (!cctx->respRem) {
-        _mhResponseBuild(resp);
+        _mhBuildResponse(resp);
         if (resp->raw_data) {
             cctx->respBody = resp->raw_data;
         } else {
@@ -669,7 +669,7 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
     /* First sent any pending responses before reading the next request. */
     if (desc->rtnevents & APR_POLLOUT &&
         (cctx->currResp || cctx->respQueue->nelts)) {
-        mhResponse_t **presp, *resp;
+        mhResponse_t *resp;
 
         /* TODO: response in progress */
         resp = cctx->currResp ? cctx->currResp :
