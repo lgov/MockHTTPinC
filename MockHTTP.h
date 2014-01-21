@@ -27,6 +27,12 @@ extern "C" {
 /* TODO: define all macro's with mh prefix, + create shortcuts with flag to
       not define this (in case of conflicts with other code ) */
 
+typedef enum mhServerType_t {
+    mhHTTPServer,
+    mhHTTPSServer,
+    mhHTTPSProxy,
+} mhServerType_t;
+
 /* Note: the variadic macro's used here require C99. */
 /* TODO: we can provide xxx1(x), xxx2(x,y)... macro's for C89 compilers */
 
@@ -40,24 +46,31 @@ extern "C" {
  */
 #define InitMockHTTP(mh)\
             {\
-                MockHTTP *__mh = (mh) = mhInit();
+                MockHTTP *__mh = (mh) = mhInit();\
+                mhServCtx_t *__servctx = NULL;
 
 /* TODO: Variadic macro's require at least one argument, otherwise compilation
    will fail. We should be able to initiate a server with all default params. */
 
-/* Setup a HTTP server */
-#define   WithHTTPserver(...)\
-                mhInitHTTPserver(__mh, __VA_ARGS__, NULL);
+#define   SetupServer(...)\
+                __servctx = mhNewServer(__mh);\
+                mhConfigAndStartServer(__servctx, __VA_ARGS__, NULL);
 
-/* Setup a HTTPS server (not yet implemented) */
-#define   WithHTTPSserver(...)
+/* Setup a HTTP server */
+#define     WithHTTP()\
+                mhSetServerType(__servctx, mhHTTPServer)
+
+/* Setup a HTTPS server */
+#define     WithHTTPS()\
+                mhSetServerType(__servctx, mhHTTPSServer)
 
 /* Setup a HTTP/HTTPS proxy (not yet implemented) */
-#define   WithHTTPproxy(...)
+#define     WithHTTPproxy()\
+                mhSetServerType(__servctx, mhHTTPSProxy)
 
 /*   Specify on which TCP port the server should listen. */
 #define     WithPort(port)\
-                mhConstructServerPortSetter(__mh, port)
+                mhSetServerPort(__servctx, port)
 
 /* Finalize MockHTTP library initialization */
 #define EndInit\
@@ -330,9 +343,10 @@ int mhServerPortNr(const MockHTTP *mh);
    The following functions should not be used directly, as they can be quite
    complex to use. Use the macro's instead.
  **/
-mhError_t mhInitHTTPserver(MockHTTP *mh, ...);
-mhServerBuilder_t *mhConstructServerPortSetter(const MockHTTP *mh,
-                                               unsigned int port);
+mhServCtx_t *mhNewServer(MockHTTP *mh);
+void mhConfigAndStartServer(mhServCtx_t *ctx, ...);
+int mhSetServerPort(mhServCtx_t *ctx, unsigned int port);
+int mhSetServerType(mhServCtx_t *ctx, mhServerType_t type);
 
 /* Define request stubs */
 mhRequestMatcher_t *mhGivenRequest(MockHTTP *mh, const char *method, ...);
@@ -360,6 +374,10 @@ mhMatchingPattern_t *mhMatchHeaderEqualTo(const MockHTTP *mh,
 /* Response functions */
 typedef void (* respbuilder_t)(mhResponse_t *resp);
 
+mhResponse_t *mhNewResponseForRequest(MockHTTP *mh, mhRequestMatcher_t *rm);
+void mhConfigResponse(mhResponse_t *resp, ...);
+mhResponse_t *mhNewDefaultResponse(MockHTTP *mh);
+
 respbuilder_t mhRespSetCode(mhResponse_t *resp, unsigned int status);
 respbuilder_t mhRespSetBody(mhResponse_t *resp, const char *body);
 respbuilder_t mhRespSetChunkedBody(mhResponse_t *resp, ...);
@@ -371,10 +389,6 @@ respbuilder_t mhRespSetRawData(mhResponse_t *resp, const char *raw_data);
 
 /* Define request/response pairs */
 void mhPushRequest(MockHTTP *mh, mhRequestMatcher_t *rm);
-
-mhResponse_t *mhNewResponseForRequest(MockHTTP *mh, mhRequestMatcher_t *rm);
-void mhConfigResponse(mhResponse_t *resp, ...);
-mhResponse_t *mhNewDefaultResponse(MockHTTP *mh);
 
 /* Define expectations */
 void mhExpectAllRequestsReceivedOnce(MockHTTP *mh);
@@ -388,6 +402,9 @@ int mhVerifyAllRequestsReceivedOnce(const MockHTTP *mh);
 int mhVerifyAllExpectationsOk(const MockHTTP *mh);
 mhStats_t *mhVerifyStatistics(const MockHTTP *mh);
 const char *mhGetLastErrorString(const MockHTTP *mh);
+
+
+mhError_t mhInitHTTPSserver(MockHTTP *mh, ...);
 
 #define MOCKHTTP_VERSION 0.1
 

@@ -85,6 +85,7 @@ struct mhServCtx_t {
     apr_pollset_t *pollset;
     apr_socket_t *skt;
     apr_queue_t *reqQueue;   /* thread safe, pass received reqs back to test, */
+    mhServerType_t type;
     /* TODO: allow more connections */
     _mhClientCtx_t *cctx;
 };

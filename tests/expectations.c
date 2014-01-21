@@ -37,7 +37,7 @@ void *testSetupWithHTTPServer(void *dummy)
     MockHTTP *mh;
 
     InitMockHTTP(mh)
-      WithHTTPserver(WithPort(30080))
+      SetupServer(WithHTTP(), WithPort(30080))
     EndInit
 
     return mh;
@@ -979,7 +979,7 @@ static void test_init_httpserver(CuTest *tc)
     MockHTTP *mh;
 
     InitMockHTTP(mh)
-      WithHTTPserver(WithPort(30080))
+      SetupServer(WithHTTP(), WithPort(30080))
     EndInit
     tc->testBaton = mh; /* Ensure server gets cleaned up in testTeardown. */
 
@@ -1316,6 +1316,38 @@ static void test_incomplete_large_chunked_request_body(CuTest *tc)
     EndVerify
 }
 
+static void test_init_httpsserver(CuTest *tc)
+{
+    MockHTTP *mh;
+
+    InitMockHTTP(mh)
+      SetupServer(WithHTTPS(),
+                  WithPort(30080))
+    EndInit
+    tc->testBaton = mh; /* Ensure server gets cleaned up in testTeardown. */
+
+    Given(mh)
+      GETRequest(URLEqualTo("/index.html"))
+        POSTRequest(URLEqualTo("/index2.html"))
+    Expect
+      AllRequestsReceivedInOrder
+    EndGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mh);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendRequest(ctx, "GET", "/index.html", hdrs, "1");
+        sendRequest(ctx, "POST", "/index2.html", hdrs, "1");
+        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+    CuAssert(tc, ErrorMessage, VerifyAllExpectationsOk);
+    EndVerify
+}
+
 CuSuite *testMockWithHTTPserver(void)
 {
     CuSuite *suite = CuSuiteNew();
@@ -1370,6 +1402,7 @@ CuSuite *testMockNoServer(void)
     CuSuiteSetSetupTeardownCallbacks(suite, testSetupNoServer, testTeardown);
 #if 1
     SUITE_ADD_TEST(suite, test_init_httpserver);
+    SUITE_ADD_TEST(suite, test_init_httpsserver);
 #endif
     return suite;
 }

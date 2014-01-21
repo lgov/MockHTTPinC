@@ -23,9 +23,6 @@
 #include <apr_strings.h>
 #include <apr_lib.h>
 
-static const int DefaultSrvPort =   30080;
-static const int DefaultProxyPort = 38080;
-
 char *serializeArrayOfIovecs(apr_pool_t *pool,
                              apr_array_header_t *blocks);
 mhResponse_t *initResponse(MockHTTP *mh);
@@ -134,56 +131,6 @@ MockHTTP *mhInit()
     mhConfigResponse(__resp, WithCode(500),
                      WithBody("Mock server error."), NULL);
     return mh;
-}
-
-/******************************************************************************/
-/* Init server                                                                */
-/******************************************************************************/
-typedef void (* srvbuilderfunc_t)(mhServCtx_t *ctx, const void *baton,
-                                  long baton2);
-struct mhServerBuilder_t {
-    const void *baton;
-    long baton2;
-    srvbuilderfunc_t builder;
-};
-
-mhError_t mhInitHTTPserver(MockHTTP *mh, ...)
-{
-    va_list argp;
-    apr_status_t status;
-
-    mh->servCtx = _mhInitTestServer(mh, "localhost", DefaultSrvPort);
-
-    va_start(argp, mh);
-    while (1) {
-        mhServerBuilder_t *bldr = va_arg(argp, mhServerBuilder_t *);
-        if (bldr == NULL) break;
-        bldr->builder(mh->servCtx, bldr->baton, bldr->baton2);
-    }
-    va_end(argp);
-
-    status = _mhStartServer(mh->servCtx);
-    if (status == MH_STATUS_WAITING)
-        return MOCKHTTP_WAITING;
-
-    /* TODO: store error message */
-    return MOCKHTTP_SETUP_FAILED;
-}
-
-static void srv_port_setter(mhServCtx_t *ctx, const void *baton, long baton2) {
-    ctx->port = (unsigned int)baton2;
-}
-
-mhServerBuilder_t *mhConstructServerPortSetter(const MockHTTP *mh,
-                                               unsigned int port)
-{
-    apr_pool_t *pool = mh->pool;
-
-    mhServerBuilder_t *bldr = apr_palloc(pool, sizeof(mhServerBuilder_t));
-    bldr->baton2 = (unsigned int)port;
-    bldr->builder = srv_port_setter;
-
-    return bldr;
 }
 
 void mhCleanup(MockHTTP *mh)
