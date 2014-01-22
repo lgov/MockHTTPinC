@@ -31,10 +31,41 @@
 #endif
 #endif
 
+#define MOCKHTTP_OPENSSL
+
+static void initSSLCtx(_mhClientCtx_t *cctx);
+static apr_status_t sslHandshake(_mhClientCtx_t *cctx);
+static apr_status_t sslSocketWrite(_mhClientCtx_t *cctx, const char *data,
+                                   apr_size_t *len);
+static apr_status_t sslSocketRead(_mhClientCtx_t *cctx, char *data,
+                                  apr_size_t *len);
+
 static const int DefaultSrvPort =   30080;
 static const int DefaultProxyPort = 38080;
 
+typedef apr_status_t (*handshake_func_t)(_mhClientCtx_t *cctx);
+typedef apr_status_t (*reset_conn_func_t)(_mhClientCtx_t *cctx);
+typedef apr_status_t (*send_func_t)(_mhClientCtx_t *cctx, const char *data,
+                                    apr_size_t *len);
+typedef apr_status_t (*receive_func_t)(_mhClientCtx_t *cctx, char *data,
+                                       apr_size_t *len);
+
+typedef struct sslCtx_t sslCtx_t;
+
 #define BUFSIZE 32768
+struct mhServCtx_t {
+    apr_pool_t *pool;
+    const MockHTTP *mh; /* keep const to avoid thread race problems */
+    const char *hostname;
+    apr_port_t port;
+    apr_pollset_t *pollset;
+    apr_socket_t *skt;
+    apr_queue_t *reqQueue;   /* thread safe, pass received reqs back to test, */
+    mhServerType_t type;
+    /* TODO: allow more connections */
+    _mhClientCtx_t *cctx;
+};
+
 struct _mhClientCtx_t {
     apr_pool_t *pool;
     apr_socket_t *skt;
@@ -48,6 +79,13 @@ struct _mhClientCtx_t {
     apr_array_header_t *respQueue;  /*  test will queue a response */
     mhResponse_t *currResp; /* response in progress */
     bool closeConn;
+    sslCtx_t *ssl_ctx;
+
+    send_func_t send;
+    receive_func_t read;
+    /* SSL-only callback functions, should be NULL when not implemented */
+    handshake_func_t handshake;
+    reset_conn_func_t reset;
 };
 
 static apr_status_t setupTCPServer(mhServCtx_t *ctx, bool blocking);
@@ -80,6 +118,18 @@ static apr_status_t cleanupServer(void *baton)
     ctx->pollset = NULL;
 
     return APR_SUCCESS;
+}
+
+static apr_status_t socketWrite(_mhClientCtx_t *cctx, const char *data,
+                                apr_size_t *len)
+{
+    return apr_socket_send(cctx->skt, data, len);
+}
+
+static apr_status_t socketRead(_mhClientCtx_t *cctx, char *data,
+                               apr_size_t *len)
+{
+    return apr_socket_recv(cctx->skt, data, len);
 }
 
 static apr_status_t setupTCPServer(mhServCtx_t *ctx, bool blocking)
@@ -128,8 +178,8 @@ static apr_status_t setupTCPServer(mhServCtx_t *ctx, bool blocking)
     return APR_SUCCESS;
 }
 
-mhServCtx_t *
-_mhInitTestServer(const MockHTTP *mh, const char *hostname, apr_port_t port)
+static mhServCtx_t *
+initServCtx(const MockHTTP *mh, const char *hostname, apr_port_t port)
 {
     apr_pool_t *pool = mh->pool;
 
@@ -445,8 +495,7 @@ static apr_status_t readRequest(_mhClientCtx_t *cctx, mhRequest_t **preq)
         bool done;
 
         len = cctx->bufrem;
-        STATUSREADERR(apr_socket_recv(cctx->skt, cctx->buf + cctx->buflen,
-                                      &len));
+        STATUSREADERR(cctx->read(cctx, cctx->buf + cctx->buflen, &len));
         if (len) {
             _mhLog(MH_VERBOSE, __FILE__,
                    "recvd with status %d:\n%.*s\n---- %d ----\n",
@@ -634,7 +683,7 @@ static apr_status_t writeResponse(_mhClientCtx_t *cctx, mhResponse_t *resp)
     }
 
     len = cctx->respRem;
-    STATUSREADERR(apr_socket_send(cctx->skt, cctx->respBody, &len));
+    STATUSREADERR(cctx->send(cctx, cctx->respBody, &len));
     _mhLog(MH_VERBOSE, __FILE__, "sent with status %d:\n%.*s\n---- %d ----\n",
            status, (unsigned int)len, cctx->respBody, (unsigned int)len);
 
@@ -754,6 +803,33 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
     return status;
 }
 
+static _mhClientCtx_t *initClientCtx(apr_pool_t *pool, apr_socket_t *cskt,
+                                     mhServerType_t type)
+{
+    _mhClientCtx_t *cctx;
+    cctx = apr_pcalloc(pool, sizeof(_mhClientCtx_t));
+    cctx->pool = pool;
+    cctx->skt = cskt;
+    cctx->buflen = 0;
+    cctx->bufrem = BUFSIZE;
+    cctx->closeConn = NO;
+    cctx->respQueue = apr_array_make(pool, 5, sizeof(mhResponse_t *));
+    cctx->currResp = NULL;
+    if (type == mhHTTPServer) {
+        cctx->read = socketRead;
+        cctx->send = socketWrite;
+    }
+#ifdef MOCKHTTP_OPENSSL
+    if (type == mhHTTPSServer) {
+        cctx->handshake = sslHandshake;
+        cctx->read = sslSocketRead;
+        cctx->send = sslSocketWrite;
+        initSSLCtx(cctx);
+    }
+#endif
+    return cctx;
+}
+
 /******************************************************************************/
 /* Process socket events                                                      */
 /******************************************************************************/
@@ -789,34 +865,23 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
     while (num--) {
         if (desc->desc.s == ctx->skt) {
             apr_socket_t *cskt;
-            _mhClientCtx_t *cctx;
             apr_pollfd_t pfd = { 0 };
 
             _mhLog(MH_VERBOSE, __FILE__, "Accepting client connection.\n");
-
-            cctx = apr_pcalloc(ctx->pool, sizeof(_mhClientCtx_t));
 
             STATUSERR(apr_socket_accept(&cskt, ctx->skt, ctx->pool));
 
             STATUSERR(apr_socket_opt_set(cskt, APR_SO_NONBLOCK, 1));
             STATUSERR(apr_socket_timeout_set(cskt, 0));
 
+            cctx = initClientCtx(ctx->pool, cskt, ctx->type);
             pfd.desc_type = APR_POLL_SOCKET;
             pfd.desc.s = cskt;
             pfd.reqevents = APR_POLLIN;
             pfd.client_data = cctx;
 
             STATUSERR(apr_pollset_add(ctx->pollset, &pfd));
-
-            cctx->pool = ctx->pool;
-            cctx->skt = cskt;
-            cctx->buflen = 0;
-            cctx->bufrem = BUFSIZE;
             cctx->reqevents = pfd.reqevents;
-            cctx->closeConn = NO;
-            cctx->respQueue = apr_array_make(ctx->pool, 5,
-                                             sizeof(mhResponse_t *));
-            cctx->currResp = NULL;
             ctx->cctx = cctx;
         } else {
             /* one of the client sockets */
@@ -830,35 +895,34 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
     return status;
 }
 
-int mhServerPortNr(const MockHTTP *mh)
-{
-    return mh->servCtx->port;
-}
-
-
 /******************************************************************************/
 /* Init HTTP server                                                           */
 /******************************************************************************/
 
 mhServCtx_t *mhNewServer(MockHTTP *mh)
 {
-    mh->servCtx = _mhInitTestServer(mh, "localhost", DefaultSrvPort);
+    mh->servCtx = initServCtx(mh, "localhost", DefaultSrvPort);
     return mh->servCtx;
 }
 
-void mhConfigAndStartServer(mhServCtx_t *ctx, ...)
+void mhConfigAndStartServer(mhServCtx_t *serv_ctx, ...)
 {
     apr_status_t status;
     mhError_t err;
 
     /* No config to do here, has been done during parameter evaluation */
-    status = _mhStartServer(ctx);
+    status = _mhStartServer(serv_ctx);
     if (status == MH_STATUS_WAITING)
         err = MOCKHTTP_WAITING;
 
     err = MOCKHTTP_SETUP_FAILED;
 
     /* TODO: store error message */
+}
+
+int mhServerPortNr(const MockHTTP *mh)
+{
+    return mh->servCtx->port;
 }
 
 int mhSetServerPort(mhServCtx_t *ctx, unsigned int port)
@@ -877,14 +941,107 @@ int mhSetServerType(mhServCtx_t *ctx, mhServerType_t type)
 /******************************************************************************/
 /* Init HTTPS server                                                          */
 /******************************************************************************/
-mhError_t mhInitHTTPSserver(MockHTTP *mh, ...)
+#include <openssl/bio.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
+struct sslCtx_t {
+    int handshake_done;
+    apr_status_t bio_read_status;
+
+    SSL_CTX* ctx;
+    SSL* ssl;
+    BIO *bio;
+
+};
+
+static int init_done = 0;
+
+static void initSSLCtx(_mhClientCtx_t *cctx)
 {
-    mhInitHTTPserver(mh);
+    sslCtx_t *ssl_ctx = apr_pcalloc(cctx->pool, sizeof(*ssl_ctx));
+    cctx->ssl_ctx = ssl_ctx;
+    ssl_ctx->bio_read_status = APR_SUCCESS;
+
+    /* Init OpenSSL globally */
+    if (!init_done)
+    {
+        CRYPTO_malloc_init();
+        ERR_load_crypto_strings();
+        SSL_load_error_strings();
+        SSL_library_init();
+        OpenSSL_add_all_algorithms();
+        init_done = 1;
+    }
+
+}
+
+static apr_status_t
+sslSocketWrite(_mhClientCtx_t *cctx, const char *data, apr_size_t *len)
+{
+    sslCtx_t *ssl_ctx = cctx->ssl_ctx;
+
+    int result = SSL_write(ssl_ctx->ssl, data, *len);
+    if (result > 0) {
+        *len = result;
+        return APR_SUCCESS;
+    }
+
+    if (result == 0)
+        return APR_EAGAIN;
+
+    _mhLog(MH_VERBOSE, __FILE__, "ssl_socket_write: ssl error?\n");
+
+    return APR_EGENERAL;
+}
+
+static apr_status_t
+sslSocketRead(_mhClientCtx_t *cctx, char *data, apr_size_t *len)
+{
+    sslCtx_t *ssl_ctx = cctx->ssl_ctx;
+
+    int result = SSL_read(ssl_ctx->ssl, data, *len);
+    if (result > 0) {
+        *len = result;
+        return APR_SUCCESS;
+    } else {
+        int ssl_err;
+
+        ssl_err = SSL_get_error(ssl_ctx->ssl, result);
+        switch (ssl_err) {
+            case SSL_ERROR_SYSCALL:
+                /* error in bio_bucket_read, probably APR_EAGAIN or APR_EOF */
+                *len = 0;
+                return ssl_ctx->bio_read_status;
+            case SSL_ERROR_WANT_READ:
+                *len = 0;
+                return APR_EAGAIN;
+            case SSL_ERROR_SSL:
+            default:
+                *len = 0;
+                _mhLog(MH_VERBOSE, __FILE__,
+                          "ssl_socket_read SSL Error %d: ", ssl_err);
+                ERR_print_errors_fp(stderr);
+                return APR_EGENERAL;
+        }
+    }
+
+    /* not reachable */
+    return APR_EGENERAL;
+}
+
+static apr_status_t sslHandshake(_mhClientCtx_t *cctx)
+{
+    sslCtx_t *ssl_ctx = cctx->ssl_ctx;
+
+    if (ssl_ctx->handshake_done)
+        return APR_SUCCESS;
+
+    return APR_EGENERAL;
 }
 
 #else /* OpenSSL not available => empty implementations */
-mhError_t mhInitHTTPSserver(MockHTTP *mh, ...) {
-    return MOCKHTTP_NO_ERROR;
+
 }
 #endif
 

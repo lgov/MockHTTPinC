@@ -1339,12 +1339,11 @@ static void test_init_httpsserver(CuTest *tc)
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendRequest(ctx, "GET", "/index.html", hdrs, "1");
         sendRequest(ctx, "POST", "/index2.html", hdrs, "1");
-        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
         mhRunServerLoop(mh);
     }
 
     Verify(mh)
-    CuAssert(tc, ErrorMessage, VerifyAllExpectationsOk);
+      CuAssert(tc, ErrorMessage, VerifyAllExpectationsOk);
     EndVerify
 }
 

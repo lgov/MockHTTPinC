@@ -77,19 +77,6 @@ struct MockHTTP {
 
 typedef struct _mhClientCtx_t _mhClientCtx_t;
 
-struct mhServCtx_t {
-    apr_pool_t *pool;
-    const MockHTTP *mh; /* keep const to avoid thread race problems */
-    const char *hostname;
-    apr_port_t port;
-    apr_pollset_t *pollset;
-    apr_socket_t *skt;
-    apr_queue_t *reqQueue;   /* thread safe, pass received reqs back to test, */
-    mhServerType_t type;
-    /* TODO: allow more connections */
-    _mhClientCtx_t *cctx;
-};
-
 typedef enum reqReadState_t {
     ReadStateStatusLine = 0,
     ReadStateHeaders,
@@ -166,9 +153,6 @@ bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm,
 void _mhBuildResponse(mhResponse_t *resp);
 
 /* Test servers */
-mhServCtx_t *_mhInitTestServer(const MockHTTP *mh, const char *host,
-apr_port_t port);
-mhError_t _mhStartServer(mhServCtx_t *ctx);
 apr_status_t _mhRunServerLoop(mhServCtx_t *ctx);
 
 void _mhLog(int verbose_flag, const char *filename, const char *fmt, ...);
