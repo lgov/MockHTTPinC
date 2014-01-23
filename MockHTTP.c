@@ -23,8 +23,8 @@
 #include <apr_strings.h>
 #include <apr_lib.h>
 
-char *serializeArrayOfIovecs(apr_pool_t *pool,
-                             apr_array_header_t *blocks);
+static char *serializeArrayOfIovecs(apr_pool_t *pool,
+                                    apr_array_header_t *blocks);
 mhResponse_t *initResponse(MockHTTP *mh);
 
 typedef struct ReqMatcherRespPair_t {
@@ -731,8 +731,8 @@ void mhExpectAllRequestsReceivedInOrder(MockHTTP *mh)
 /******************************************************************************/
 /* Verify results                                                             */
 /******************************************************************************/
-const char *serializeHeaders(apr_pool_t *pool, const mhRequest_t *req,
-                             const char *indent)
+static const char *serializeHeaders(apr_pool_t *pool, const mhRequest_t *req,
+                                    const char *indent)
 {
     apr_hash_index_t *hi;
     const char *hdrs = "";
@@ -750,7 +750,8 @@ const char *serializeHeaders(apr_pool_t *pool, const mhRequest_t *req,
     return hdrs;
 }
 
-char *serializeArrayOfIovecs(apr_pool_t *pool, apr_array_header_t *blocks)
+static char *serializeArrayOfIovecs(apr_pool_t *pool,
+                                    apr_array_header_t *blocks)
 {
     int i;
     char *str = "";
@@ -761,7 +762,7 @@ char *serializeArrayOfIovecs(apr_pool_t *pool, apr_array_header_t *blocks)
     return str;
 }
 
-const char *serializeRawBody(apr_pool_t *pool, const mhRequest_t *req)
+static const char *serializeRawBody(apr_pool_t *pool, const mhRequest_t *req)
 {
     char *body = serializeArrayOfIovecs(pool, req->body);
     const char *newbody = "";
@@ -773,7 +774,7 @@ const char *serializeRawBody(apr_pool_t *pool, const mhRequest_t *req)
     return newbody;
 }
 
-const char *serializeRequest(apr_pool_t *pool, const mhRequest_t *req)
+static const char *serializeRequest(apr_pool_t *pool, const mhRequest_t *req)
 {
     const char *str;
     str = apr_psprintf(pool, "         Method: %s\n"
@@ -791,7 +792,7 @@ const char *serializeRequest(apr_pool_t *pool, const mhRequest_t *req)
     return str;
 }
 
-const char *
+static const char *
 serializeRequestMatcher(apr_pool_t *pool, const mhRequestMatcher_t *rm,
                         const mhRequest_t *req)
 {
