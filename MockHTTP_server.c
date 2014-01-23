@@ -31,6 +31,9 @@
 #endif
 #endif
 
+static const int DefaultSrvPort =   30080;
+static const int DefaultProxyPort = 38080;
+
 #define BUFSIZE 32768
 struct _mhClientCtx_t {
     apr_pool_t *pool;
@@ -621,7 +624,7 @@ static apr_status_t writeResponse(_mhClientCtx_t *cctx, mhResponse_t *resp)
     apr_status_t status;
 
     if (!cctx->respRem) {
-        _mhResponseBuild(resp);
+        _mhBuildResponse(resp);
         if (resp->raw_data) {
             cctx->respBody = resp->raw_data;
         } else {
@@ -669,7 +672,7 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
     /* First sent any pending responses before reading the next request. */
     if (desc->rtnevents & APR_POLLOUT &&
         (cctx->currResp || cctx->respQueue->nelts)) {
-        mhResponse_t **presp, *resp;
+        mhResponse_t *resp;
 
         /* TODO: response in progress */
         resp = cctx->currResp ? cctx->currResp :
@@ -831,3 +834,57 @@ int mhServerPortNr(const MockHTTP *mh)
 {
     return mh->servCtx->port;
 }
+
+
+/******************************************************************************/
+/* Init HTTP server                                                           */
+/******************************************************************************/
+
+mhServCtx_t *mhNewServer(MockHTTP *mh)
+{
+    mh->servCtx = _mhInitTestServer(mh, "localhost", DefaultSrvPort);
+    return mh->servCtx;
+}
+
+void mhConfigAndStartServer(mhServCtx_t *ctx, ...)
+{
+    apr_status_t status;
+    mhError_t err;
+
+    /* No config to do here, has been done during parameter evaluation */
+    status = _mhStartServer(ctx);
+    if (status == MH_STATUS_WAITING)
+        err = MOCKHTTP_WAITING;
+
+    err = MOCKHTTP_SETUP_FAILED;
+
+    /* TODO: store error message */
+}
+
+int mhSetServerPort(mhServCtx_t *ctx, unsigned int port)
+{
+    ctx->port = port;
+    return YES;
+}
+
+int mhSetServerType(mhServCtx_t *ctx, mhServerType_t type)
+{
+    ctx->type = type;
+    return YES;
+}
+
+#ifdef MOCKHTTP_OPENSSL
+/******************************************************************************/
+/* Init HTTPS server                                                          */
+/******************************************************************************/
+mhError_t mhInitHTTPSserver(MockHTTP *mh, ...)
+{
+    mhInitHTTPserver(mh);
+}
+
+#else /* OpenSSL not available => empty implementations */
+mhError_t mhInitHTTPSserver(MockHTTP *mh, ...) {
+    return MOCKHTTP_NO_ERROR;
+}
+#endif
+
