@@ -234,23 +234,6 @@ void mhPushRequest(MockHTTP *mh, mhRequestMatcher_t *rm)
         *((ReqMatcherRespPair_t **)apr_array_push(mh->reqMatchers)) = pair;
 }
 
-void mhSetRespForReq(MockHTTP *mh, mhRequestMatcher_t *rm, mhResponse_t *resp)
-{
-    int i;
-    apr_array_header_t *matchers;
-
-    matchers = rm->incomplete ? mh->incompleteReqMatchers : mh->reqMatchers;
-    for (i = 0 ; i < matchers->nelts; i++) {
-        ReqMatcherRespPair_t *pair;
-
-        pair = APR_ARRAY_IDX(matchers, i, ReqMatcherRespPair_t *);
-        if (rm == pair->rm) {
-            pair->resp = resp;
-            break;
-        }
-    }
-}
-
 /******************************************************************************/
 /* Requests matchers: define criteria to match different aspects of a HTTP    */
 /* request received by the MockHTTP server.                                   */
@@ -597,8 +580,22 @@ mhResponse_t *initResponse(MockHTTP *mh)
 
 mhResponse_t *mhNewResponseForRequest(MockHTTP *mh, mhRequestMatcher_t *rm)
 {
+    apr_array_header_t *matchers;
+    int i;
+
     mhResponse_t *resp = initResponse(mh);
-    mhSetRespForReq(mh, rm, resp);
+
+    matchers = rm->incomplete ? mh->incompleteReqMatchers : mh->reqMatchers;
+    for (i = 0 ; i < matchers->nelts; i++) {
+        ReqMatcherRespPair_t *pair;
+
+        pair = APR_ARRAY_IDX(matchers, i, ReqMatcherRespPair_t *);
+        if (rm == pair->rm) {
+            pair->resp = resp;
+            break;
+        }
+    }
+
     return resp;
 }
 
@@ -608,7 +605,7 @@ mhResponse_t *mhNewDefaultResponse(MockHTTP *mh)
     return mh->defResponse;
 }
 
-void noop(mhResponse_t *resp) { }
+static void noop(mhResponse_t *resp) { }
 
 void mhConfigResponse(mhResponse_t *resp, ...)
 {

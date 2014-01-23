@@ -77,6 +77,11 @@ typedef enum mhServerType_t {
             }
 
 /**
+ * HTTP Server configuration options
+ */
+#define     WithCertificateKeyFile(keyFile)\
+                mhSetServerCertKeyFile(__servctx, keyFile)
+/**
  * Stub requests to the proxy or server, return canned responses. Define the 
  * expected results before starting the test, so the server can exit early
  * when expectations can't be matched. These macro's should be used like this:
@@ -347,6 +352,7 @@ mhServCtx_t *mhNewServer(MockHTTP *mh);
 void mhConfigAndStartServer(mhServCtx_t *ctx, ...);
 int mhSetServerPort(mhServCtx_t *ctx, unsigned int port);
 int mhSetServerType(mhServCtx_t *ctx, mhServerType_t type);
+int mhSetServerCertKeyFile(mhServCtx_t *ctx, const char *keyFile);
 
 /* Define request stubs */
 mhRequestMatcher_t *mhGivenRequest(MockHTTP *mh, const char *method, ...);

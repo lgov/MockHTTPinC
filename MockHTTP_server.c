@@ -64,6 +64,9 @@ struct mhServCtx_t {
     mhServerType_t type;
     /* TODO: allow more connections */
     _mhClientCtx_t *cctx;
+
+    /* HTTPS specific */
+    const char *keyFile;
 };
 
 struct _mhClientCtx_t {
@@ -197,7 +200,7 @@ initServCtx(const MockHTTP *mh, const char *hostname, apr_port_t port)
     return ctx;
 }
 
-mhError_t _mhStartServer(mhServCtx_t *ctx)
+static mhError_t startServer(mhServCtx_t *ctx)
 {
     apr_thread_t *thread;
 
@@ -911,7 +914,7 @@ void mhConfigAndStartServer(mhServCtx_t *serv_ctx, ...)
     mhError_t err;
 
     /* No config to do here, has been done during parameter evaluation */
-    status = _mhStartServer(serv_ctx);
+    status = startServer(serv_ctx);
     if (status == MH_STATUS_WAITING)
         err = MOCKHTTP_WAITING;
 
@@ -934,6 +937,12 @@ int mhSetServerPort(mhServCtx_t *ctx, unsigned int port)
 int mhSetServerType(mhServCtx_t *ctx, mhServerType_t type)
 {
     ctx->type = type;
+    return YES;
+}
+
+int mhSetServerCertKeyFile(mhServCtx_t *ctx, const char *keyFile)
+{
+    ctx->keyFile = keyFile;
     return YES;
 }
 
