@@ -33,7 +33,7 @@
 
 #define MOCKHTTP_OPENSSL
 
-static void initSSLCtx(_mhClientCtx_t *cctx);
+static apr_status_t initSSLCtx(_mhClientCtx_t *cctx);
 static apr_status_t sslHandshake(_mhClientCtx_t *cctx);
 static apr_status_t sslSocketWrite(_mhClientCtx_t *cctx, const char *data,
                                    apr_size_t *len);
@@ -67,6 +67,7 @@ struct mhServCtx_t {
 
     /* HTTPS specific */
     const char *keyFile;
+    apr_array_header_t *certFiles;
 };
 
 struct _mhClientCtx_t {
@@ -89,6 +90,8 @@ struct _mhClientCtx_t {
     /* SSL-only callback functions, should be NULL when not implemented */
     handshake_func_t handshake;
     reset_conn_func_t reset;
+    const char *keyFile;
+    apr_array_header_t *certFiles;
 };
 
 static apr_status_t setupTCPServer(mhServCtx_t *ctx, bool blocking);
@@ -806,8 +809,8 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
     return status;
 }
 
-static _mhClientCtx_t *initClientCtx(apr_pool_t *pool, apr_socket_t *cskt,
-                                     mhServerType_t type)
+static _mhClientCtx_t *initClientCtx(apr_pool_t *pool, mhServCtx_t *serv_ctx,
+                                     apr_socket_t *cskt, mhServerType_t type)
 {
     _mhClientCtx_t *cctx;
     cctx = apr_pcalloc(pool, sizeof(_mhClientCtx_t));
@@ -827,6 +830,8 @@ static _mhClientCtx_t *initClientCtx(apr_pool_t *pool, apr_socket_t *cskt,
         cctx->handshake = sslHandshake;
         cctx->read = sslSocketRead;
         cctx->send = sslSocketWrite;
+        cctx->keyFile = serv_ctx->keyFile;
+        cctx->certFiles = serv_ctx->certFiles;
         initSSLCtx(cctx);
     }
 #endif
@@ -877,7 +882,7 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
             STATUSERR(apr_socket_opt_set(cskt, APR_SO_NONBLOCK, 1));
             STATUSERR(apr_socket_timeout_set(cskt, 0));
 
-            cctx = initClientCtx(ctx->pool, cskt, ctx->type);
+            cctx = initClientCtx(ctx->pool, ctx, cskt, ctx->type);
             pfd.desc_type = APR_POLL_SOCKET;
             pfd.desc.s = cskt;
             pfd.reqevents = APR_POLLIN;
@@ -890,6 +895,9 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
             /* one of the client sockets */
             _mhClientCtx_t *cctx = desc->client_data;
 
+            if (cctx->handshake) {
+                cctx->handshake(cctx);
+            }
             STATUSREADERR(process(ctx, cctx, desc));
         }
         desc++;
@@ -946,6 +954,34 @@ int mhSetServerCertKeyFile(mhServCtx_t *ctx, const char *keyFile)
     return YES;
 }
 
+int mhAddServerCertFiles(mhServCtx_t *ctx, ...)
+{
+    va_list argp;
+
+    ctx->certFiles = apr_array_make(ctx->pool, 5, sizeof(const char *));
+    va_start(argp, ctx);
+    while (1) {
+        const char *certFile = va_arg(argp, const char *);
+        if (certFile == NULL)
+            break;
+        *((const char **)apr_array_push(ctx->certFiles)) = certFile;
+    }
+    va_end(argp);
+    return YES;
+}
+
+int mhAddServerCertFileArray(mhServCtx_t *ctx, const char **certFiles)
+{
+    const char *certFile;
+    int i = 0;
+
+    do {
+        certFile = certFiles[i++];
+        mhAddServerCertFiles(ctx, certFile, NULL);
+    } while (certFiles[i] != NULL);
+    return YES;
+}
+
 #ifdef MOCKHTTP_OPENSSL
 /******************************************************************************/
 /* Init HTTPS server                                                          */
@@ -966,7 +1002,125 @@ struct sslCtx_t {
 
 static int init_done = 0;
 
-static void initSSLCtx(_mhClientCtx_t *cctx)
+static int pem_passwd_cb(char *buf, int size, int rwflag, void *userdata)
+{
+    strncpy(buf, "serftest", size); /* TODO */
+    buf[size - 1] = '\0';
+    return strlen(buf);
+}
+
+
+static int bio_apr_socket_create(BIO *bio)
+{
+    bio->shutdown = 1;
+    bio->init = 1;
+    bio->num = -1;
+    bio->ptr = NULL;
+
+    return 1;
+}
+
+static int bio_apr_socket_destroy(BIO *bio)
+{
+    /* Did we already free this? */
+    if (bio == NULL) {
+        return 0;
+    }
+
+    return 1;
+}
+
+static long bio_apr_socket_ctrl(BIO *bio, int cmd, long num, void *ptr)
+{
+    long ret = 1;
+
+    switch (cmd) {
+        default:
+            /* abort(); */
+            break;
+        case BIO_CTRL_FLUSH:
+            /* At this point we can't force a flush. */
+            break;
+        case BIO_CTRL_PUSH:
+        case BIO_CTRL_POP:
+            ret = 0;
+            break;
+    }
+    return ret;
+}
+
+/* Returns the amount read. */
+static int bio_apr_socket_read(BIO *bio, char *in, int inlen)
+{
+    apr_size_t len = inlen;
+    _mhClientCtx_t *cctx = bio->ptr;
+    sslCtx_t *ssl_ctx = cctx->ssl_ctx;
+    apr_status_t status;
+
+    BIO_clear_retry_flags(bio);
+
+    status = apr_socket_recv(cctx->skt, in, &len);
+    ssl_ctx->bio_read_status = status;
+    _mhLog(MH_VERBOSE, __FILE__, "Read %d bytes from socket with status %d.\n",
+           len, status);
+
+    if (status == APR_EAGAIN) {
+        BIO_set_retry_read(bio);
+        if (len == 0)
+            return -1;
+    }
+
+    if (READ_ERROR(status))
+        return -1;
+
+    return len;
+}
+
+/* Returns the amount written. */
+static int bio_apr_socket_write(BIO *bio, const char *in, int inlen)
+{
+    apr_size_t len = inlen;
+    _mhClientCtx_t *cctx = bio->ptr;
+
+    apr_status_t status = apr_socket_send(cctx->skt, in, &len);
+
+    _mhLog(MH_VERBOSE, __FILE__, "Wrote %d of %d bytes to socket with "
+           "status %d.\n", len, inlen, status);
+
+    if (READ_ERROR(status))
+        return -1;
+
+    return len;
+}
+
+
+static BIO_METHOD bio_apr_socket_method = {
+    BIO_TYPE_SOCKET,
+    "APR sockets",
+    bio_apr_socket_write,
+    bio_apr_socket_read,
+    NULL,                        /* Is this called? */
+    NULL,                        /* Is this called? */
+    bio_apr_socket_ctrl,
+    bio_apr_socket_create,
+    bio_apr_socket_destroy,
+#ifdef OPENSSL_VERSION_NUMBER
+    NULL /* sslc does not have the callback_ctrl field */
+#endif
+};
+
+static apr_status_t initSSL(_mhClientCtx_t *cctx)
+{
+    sslCtx_t *ssl_ctx = cctx->ssl_ctx;
+
+    ssl_ctx->ssl = SSL_new(ssl_ctx->ctx);
+    SSL_set_cipher_list(ssl_ctx->ssl, "ALL");
+    SSL_set_bio(ssl_ctx->ssl, ssl_ctx->bio, ssl_ctx->bio);
+
+    return APR_SUCCESS;
+}
+
+static apr_status_t initSSLCtx(_mhClientCtx_t *cctx)
 {
     sslCtx_t *ssl_ctx = apr_pcalloc(cctx->pool, sizeof(*ssl_ctx));
     cctx->ssl_ctx = ssl_ctx;
@@ -983,6 +1137,49 @@ static void initSSLCtx(_mhClientCtx_t *cctx)
         init_done = 1;
     }
 
+    if (!ssl_ctx->ctx) {
+        X509_STORE *store;
+        const char *certfile;
+        int i;
+
+        ssl_ctx->ctx = SSL_CTX_new(SSLv23_server_method());
+        SSL_CTX_set_default_passwd_cb(ssl_ctx->ctx, pem_passwd_cb);
+        if (SSL_CTX_use_PrivateKey_file(ssl_ctx->ctx, cctx->keyFile,
+                                        SSL_FILETYPE_PEM) != 1) {
+            _mhLog(MH_VERBOSE, "Cannot load private key from file '%s'\n",
+                   cctx->keyFile);
+            return APR_EGENERAL;
+        }
+
+        /* Set server certificate, add ca certificates if provided. */
+        certfile = APR_ARRAY_IDX(cctx->certFiles, 0, const char *);
+        if (SSL_CTX_use_certificate_file(ssl_ctx->ctx, certfile,
+                                         SSL_FILETYPE_PEM) != 1) {
+            _mhLog(MH_VERBOSE, "Cannot load certificatefrom file '%s'\n",
+                   certfile);
+            return APR_EGENERAL;
+        }
+
+        store = SSL_CTX_get_cert_store(ssl_ctx->ctx);
+        for (i = 1; i < cctx->certFiles->nelts; i++) {
+            certfile = APR_ARRAY_IDX(cctx->certFiles, i, const char *);
+            FILE *fp = fopen(certfile, "r");
+            if (fp) {
+                X509 *ssl_cert = PEM_read_X509(fp, NULL, NULL, NULL);
+                fclose(fp);
+
+                SSL_CTX_add_extra_chain_cert(ssl_ctx->ctx, ssl_cert);
+                X509_STORE_add_cert(store, ssl_cert);
+            }
+        }
+
+        SSL_CTX_set_mode(ssl_ctx->ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
+
+        ssl_ctx->bio = BIO_new(&bio_apr_socket_method);
+        ssl_ctx->bio->ptr = cctx;
+        initSSL(cctx);
+    }
+    return APR_SUCCESS;
 }
 
 static apr_status_t
@@ -1042,9 +1239,33 @@ sslSocketRead(_mhClientCtx_t *cctx, char *data, apr_size_t *len)
 static apr_status_t sslHandshake(_mhClientCtx_t *cctx)
 {
     sslCtx_t *ssl_ctx = cctx->ssl_ctx;
+    int result;
 
     if (ssl_ctx->handshake_done)
         return APR_SUCCESS;
+
+    /* SSL handshake */
+    result = SSL_accept(ssl_ctx->ssl);
+    if (result == 1) {
+        _mhLog(MH_VERBOSE, __FILE__, "Handshake successful.\n");
+    } else {
+        int ssl_err;
+
+        ssl_err = SSL_get_error(ssl_ctx->ssl, result);
+        switch (ssl_err) {
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+                return APR_EAGAIN;
+            case SSL_ERROR_SYSCALL:
+                return ssl_ctx->bio_read_status; /* Usually APR_EAGAIN */
+            default:
+                _mhLog(MH_VERBOSE, __FILE__, "SSL Error %d: ", ssl_err);
+                ERR_print_errors_fp(stderr);
+                return APR_EGENERAL;
+        }
+    }
+
+    return APR_EAGAIN;
 
     return APR_EGENERAL;
 }
