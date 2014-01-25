@@ -896,7 +896,9 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
             _mhClientCtx_t *cctx = desc->client_data;
 
             if (cctx->handshake) {
-                cctx->handshake(cctx);
+                /* APR_SUCCESS = handshake finished */
+                if (cctx->handshake(cctx))
+                    continue;
             }
             STATUSREADERR(process(ctx, cctx, desc));
         }
@@ -991,7 +993,7 @@ int mhAddServerCertFileArray(mhServCtx_t *ctx, const char **certFiles)
 #include <openssl/err.h>
 
 struct sslCtx_t {
-    int handshake_done;
+    bool handshake_done;
     apr_status_t bio_read_status;
 
     SSL_CTX* ctx;
@@ -1061,8 +1063,8 @@ static int bio_apr_socket_read(BIO *bio, char *in, int inlen)
 
     status = apr_socket_recv(cctx->skt, in, &len);
     ssl_ctx->bio_read_status = status;
-    _mhLog(MH_VERBOSE, __FILE__, "Read %d bytes from socket with status %d.\n",
-           len, status);
+    _mhLog(MH_VERBOSE, __FILE__, "Read %d bytes from ssl socket with "
+           "status %d.\n", len, status);
 
     if (status == APR_EAGAIN) {
         BIO_set_retry_read(bio);
@@ -1084,7 +1086,7 @@ static int bio_apr_socket_write(BIO *bio, const char *in, int inlen)
 
     apr_status_t status = apr_socket_send(cctx->skt, in, &len);
 
-    _mhLog(MH_VERBOSE, __FILE__, "Wrote %d of %d bytes to socket with "
+    _mhLog(MH_VERBOSE, __FILE__, "Wrote %d of %d bytes to ssl socket with "
            "status %d.\n", len, inlen, status);
 
     if (READ_ERROR(status))
@@ -1248,6 +1250,8 @@ static apr_status_t sslHandshake(_mhClientCtx_t *cctx)
     result = SSL_accept(ssl_ctx->ssl);
     if (result == 1) {
         _mhLog(MH_VERBOSE, __FILE__, "Handshake successful.\n");
+        ssl_ctx->handshake_done = YES;
+        return APR_SUCCESS;
     } else {
         int ssl_err;
 
@@ -1264,9 +1268,7 @@ static apr_status_t sslHandshake(_mhClientCtx_t *cctx)
                 return APR_EGENERAL;
         }
     }
-
-    return APR_EAGAIN;
-
+    /* not reachable */
     return APR_EGENERAL;
 }
 
