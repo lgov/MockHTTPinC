@@ -958,7 +958,8 @@ int mhAddServerCertFiles(mhServCtx_t *ctx, ...)
 {
     va_list argp;
 
-    ctx->certFiles = apr_array_make(ctx->pool, 5, sizeof(const char *));
+    if (!ctx->certFiles)
+        ctx->certFiles = apr_array_make(ctx->pool, 5, sizeof(const char *));
     va_start(argp, ctx);
     while (1) {
         const char *certFile = va_arg(argp, const char *);
