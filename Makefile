@@ -1,7 +1,7 @@
 # Makefile for MockHTTPinC
 
 CC=clang
-CFLAGS=-g -std=c99 -Wdeclaration-after-statement -Wall 
+CFLAGS=-g -std=c99 -Wdeclaration-after-statement -Wall -DMOCKHTTP_OPENSSL 
 
 LIB_PATHS=-L/opt/local/lib -L/usr/local/lib
 INC_PATHS=-I. -I/opt/local/include/apr-1 -I/opt/local/include

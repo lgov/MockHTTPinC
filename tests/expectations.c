@@ -1401,7 +1401,9 @@ CuSuite *testMockNoServer(void)
     CuSuiteSetSetupTeardownCallbacks(suite, testSetupNoServer, testTeardown);
 #if 1
     SUITE_ADD_TEST(suite, test_init_httpserver);
+ #ifdef MOCKHTTP_OPENSSL
     SUITE_ADD_TEST(suite, test_init_httpsserver);
+ #endif
 #endif
     return suite;
 }

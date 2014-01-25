@@ -31,8 +31,6 @@
 #endif
 #endif
 
-#define MOCKHTTP_OPENSSL
-
 static apr_status_t initSSLCtx(_mhClientCtx_t *cctx);
 static apr_status_t sslHandshake(_mhClientCtx_t *cctx);
 static apr_status_t sslSocketWrite(_mhClientCtx_t *cctx, const char *data,
@@ -1274,6 +1272,5 @@ static apr_status_t sslHandshake(_mhClientCtx_t *cctx)
 
 #else /* OpenSSL not available => empty implementations */
 
-}
 #endif
 
