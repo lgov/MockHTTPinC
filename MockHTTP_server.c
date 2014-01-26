@@ -144,24 +144,30 @@ static apr_status_t setupTCPServer(mhServCtx_t *ctx, bool blocking)
     apr_pool_t *pool = ctx->pool;
     apr_status_t status;
 
-    STATUSERR(apr_sockaddr_info_get(&serv_addr, ctx->hostname,
-                                    APR_UNSPEC, ctx->port, 0,
-                                    pool));
+    while (1) {
+        STATUSERR(apr_sockaddr_info_get(&serv_addr, ctx->hostname,
+                                        APR_UNSPEC, ctx->port, 0,
+                                        pool));
 
-    /* Create server socket */
-    /* Note: this call requires APR v1.0.0 or higher */
-    STATUSERR(apr_socket_create(&ctx->skt, serv_addr->family,
-                                SOCK_STREAM, 0, pool));
+        /* Create server socket */
+        /* Note: this call requires APR v1.0.0 or higher */
+        STATUSERR(apr_socket_create(&ctx->skt, serv_addr->family,
+                                    SOCK_STREAM, 0, pool));
 
-    STATUSERR(apr_socket_opt_set(ctx->skt, APR_SO_NONBLOCK, 1));
-    STATUSERR(apr_socket_timeout_set(ctx->skt, 0));
-    STATUSERR(apr_socket_opt_set(ctx->skt, APR_SO_REUSEADDR, 1));
+        STATUSERR(apr_socket_opt_set(ctx->skt, APR_SO_NONBLOCK, 1));
+        STATUSERR(apr_socket_timeout_set(ctx->skt, 0));
+        STATUSERR(apr_socket_opt_set(ctx->skt, APR_SO_REUSEADDR, 1));
 
-    /* TODO: try the next port until bind succeeds */
-    STATUSERR(apr_socket_bind(ctx->skt, serv_addr));
-
-    /* Listen for clients */
-    STATUSERR(apr_socket_listen(ctx->skt, SOMAXCONN));
+        /* TODO: try the next port until bind succeeds */
+        status = apr_socket_bind(ctx->skt, serv_addr);
+        if (status == EADDRINUSE) {
+            ctx->port++;
+            continue;
+        }
+        /* Listen for clients */
+        STATUSERR(apr_socket_listen(ctx->skt, SOMAXCONN));
+        break;
+    };
 
     /* Create a new pollset, avoid broken WSAPoll implemenation on Windows. */
 #ifdef BROKEN_WSAPOLL
@@ -941,7 +947,7 @@ void mhConfigAndStartServer(mhServCtx_t *serv_ctx, ...)
     /* TODO: store error message */
 }
 
-int mhServerPortNr(const MockHTTP *mh)
+unsigned int mhServerPortNr(const MockHTTP *mh)
 {
     return mh->servCtx->port;
 }

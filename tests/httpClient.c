@@ -33,6 +33,7 @@
 struct clientCtx_t {
     apr_pool_t *pool;
     apr_socket_t *skt;
+    unsigned int port;
 };
 
 apr_status_t connectToTCPServer(clientCtx_t *ctx)
@@ -41,12 +42,11 @@ apr_status_t connectToTCPServer(clientCtx_t *ctx)
     apr_status_t status;
 
     const char *hostname = "localhost";
-    apr_port_t port = 30080;
 
     STATUSERR(apr_sockaddr_info_get(&address,
                                     hostname,
                                     APR_UNSPEC,
-                                    port,
+                                    ctx->port,
                                     0,
                                     ctx->pool));
 
@@ -66,7 +66,7 @@ apr_status_t connectToTCPServer(clientCtx_t *ctx)
     return APR_SUCCESS;
 }
 
-clientCtx_t *initClient()
+clientCtx_t *initClient(unsigned int port)
 {
     apr_pool_t *pool;
     apr_pool_create(&pool, NULL);
@@ -74,7 +74,7 @@ clientCtx_t *initClient()
     clientCtx_t *ctx = apr_palloc(pool, sizeof(clientCtx_t));
     ctx->pool = pool;
     ctx->skt = NULL;
-
+    ctx->port = port;
     return ctx;
 }
 

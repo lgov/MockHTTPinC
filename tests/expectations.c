@@ -189,7 +189,7 @@ static void test_one_request_received(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendRequest(ctx, "GET", "/index.html", hdrs, "1");
         mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
@@ -223,7 +223,7 @@ static void test_match_method(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendRequest(ctx, "POST", "/index.html", hdrs, "1");
         mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
@@ -249,7 +249,7 @@ static void test_verify_all_reqs_received(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendRequest(ctx, "GET", "/index.html", hdrs, "1");
         mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
@@ -308,7 +308,7 @@ static void test_verify_large_chunked_request(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_size_t len = strlen(request);
         apr_size_t part = len / 2;
         sendData(ctx, request, part);
@@ -335,7 +335,7 @@ static void test_verify_all_reqs_received_inverse(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendRequest(ctx, "GET", "/noindex.html", hdrs, "1");
         sendRequest(ctx, "OPTIONS", "/index.html", hdrs, "2");
@@ -361,7 +361,7 @@ static void test_verify_all_reqs_received_in_order(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendRequest(ctx, "GET", "/index.html", hdrs, "1");
         sendRequest(ctx, "POST", "/index2.html", hdrs, "1");
@@ -391,7 +391,7 @@ static void test_verify_all_reqs_received_in_order_more(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendRequest(ctx, "GET", "/index1.html", hdrs, "1");
         mhRunServerLoop(mh);
@@ -434,7 +434,7 @@ static void test_verify_req_chunked_body(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendChunkedRequest(ctx, "GET", "/index0.html", hdrs,
                            "chunk0", "chunk1", NULL);
@@ -462,7 +462,7 @@ static void test_verify_req_no_body(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         /* sendRequest will not add C-L header when len(body) = 0 */
         sendRequest(ctx, "GET", "/index1.html", hdrs, "");
@@ -486,7 +486,7 @@ static void test_verify_req_raw_body(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendRequest(ctx, "GET", "/index0.html", hdrs,
                          "chunk1\r\nchunk2\r\n");
@@ -511,7 +511,7 @@ static void test_verify_req_raw_chunked_body(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendChunkedRequest(ctx, "GET", "/index0.html", hdrs,
                            "chunk1", "chunk2", NULL);
@@ -535,7 +535,7 @@ static void test_verify_req_chunked_body_fails(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendChunkedRequest(ctx, "GET", "/index.html", hdrs, "chunk1",
                            "chunk2", "chunk3", NULL);
@@ -555,7 +555,7 @@ static void test_verify_req_chunked_body_fails(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendChunkedRequest(ctx, "GET", "/index.html", hdrs, "chunk notfound",
                            "chunk2", NULL);
@@ -585,7 +585,7 @@ static void test_string_exact_match(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendChunkedRequest(ctx, "GET", "/index1.html", hdrs, "chunk10", NULL);
         mhRunServerLoop(mh);
@@ -625,7 +625,7 @@ static void test_verify_req_header(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         apr_hash_set(hdrs, "Authorization", APR_HASH_KEY_STRING,
                      "TW9ja0hUVFA6TW9ja0hUVFBwd2Q=");
@@ -645,7 +645,7 @@ static void test_verify_req_header(CuTest *tc)
 static void test_verify_req_header_not_set(CuTest *tc)
 {
     MockHTTP *mh = tc->testBaton;
-    clientCtx_t *ctx = initClient(mh);
+    clientCtx_t *ctx = initClient(mhServerPortNr(mh));
     apr_hash_t *hdrs = apr_hash_make(mh->pool);
 
     Given(mh)
@@ -667,7 +667,7 @@ static void test_verify_req_header_not_set(CuTest *tc)
 static void test_verify_req_header_not_set_fails_if_set(CuTest *tc)
 {
     MockHTTP *mh = tc->testBaton;
-    clientCtx_t *ctx = initClient(mh);
+    clientCtx_t *ctx = initClient(mhServerPortNr(mh));
     apr_hash_t *hdrs = apr_hash_make(mh->pool);
 
     Given(mh)
@@ -698,7 +698,7 @@ static void test_verify_req_header_fails(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         apr_hash_set(hdrs, "Authorizatio", APR_HASH_KEY_STRING,
                      "TW9ja0hUVFA6TW9ja0hUVFBwd2Q=");
@@ -730,7 +730,7 @@ static void test_verify_error_message(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         apr_hash_set(hdrs, "Authorization", APR_HASH_KEY_STRING,
                      "TW9ja0hUVFA6TW9ja0hUVFBwd2Q=");
@@ -766,7 +766,7 @@ static void test_one_request_response(CuTest *tc)
     {
         const char *exp_body = "HTTP/1.1 200 OK\r\nContent-Length: 6\r\n"
                                "Connection: Close\r\n\r\nblabla";
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         char *buf;
         apr_size_t len;
@@ -806,7 +806,7 @@ static void test_one_request_response_chunked(CuTest *tc)
     {
         const char *exp_body = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked"
         "\r\nConnection: Close\r\n\r\n6\r\nchunk1\r\n6\r\nchunk2\r\n0\r\n\r\n";
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         char *buf;
         apr_size_t len;
@@ -846,7 +846,7 @@ static void test_default_response(CuTest *tc)
                                 "\r\nbody1";
         const char *exp_body2 = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n"
                                 "\r\n6\r\nchunk1\r\n6\r\nchunk2\r\n0\r\n\r\n";
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         char *buf;
         apr_size_t len;
@@ -895,7 +895,7 @@ static void test_connection_close(CuTest *tc)
     {
         const char *exp_body = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked"
         "\r\nConnection: close\r\n\r\n6\r\nchunk1\r\n6\r\nchunk2\r\n0\r\n\r\n";
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         char *buf;
         apr_size_t len;
@@ -934,7 +934,7 @@ static void test_expectation_all_reqs_received(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendRequest(ctx, "POST", "/index2.html", hdrs, "1");
         sendRequest(ctx, "GET", "/index.html", hdrs, "1");
@@ -961,7 +961,7 @@ static void test_expectation_all_reqs_received_in_order(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendRequest(ctx, "GET", "/index.html", hdrs, "1");
         sendRequest(ctx, "POST", "/index2.html", hdrs, "1");
@@ -992,7 +992,7 @@ static void test_init_httpserver(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendRequest(ctx, "GET", "/index.html", hdrs, "1");
         sendRequest(ctx, "POST", "/index2.html", hdrs, "1");
@@ -1003,6 +1003,48 @@ static void test_init_httpserver(CuTest *tc)
     Verify(mh)
       CuAssert(tc, ErrorMessage, VerifyAllExpectationsOk);
     EndVerify
+}
+
+
+static void test_init_2httpservers(CuTest *tc)
+{
+    MockHTTP *mh1, *mh2;
+
+    InitMockHTTP(mh1)
+      SetupServer(WithHTTP())
+    EndInit
+    InitMockHTTP(mh2)
+      SetupServer(WithHTTP())
+    EndInit
+
+    Given(mh1)
+      GETRequest(URLEqualTo("/index.html"), BodyEqualTo("1"))
+        Respond(WithCode(200), WithRequestBody)
+    EndGiven
+    Given(mh2)
+      GETRequest(URLEqualTo("/index.html"), BodyEqualTo("2"))
+        Respond(WithCode(200), WithRequestBody)
+    EndGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx1 = initClient(mhServerPortNr(mh1));
+        apr_hash_t *hdrs = apr_hash_make(mh1->pool);
+        sendRequest(ctx1, "GET", "/index.html", hdrs, "1");
+        mhRunServerLoop(mh1);
+
+        clientCtx_t *ctx2 = initClient(mhServerPortNr(mh2));
+        sendRequest(ctx2, "GET", "/index.html", hdrs, "2");
+        mhRunServerLoop(mh2);
+    }
+
+    Verify(mh1)
+      CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
+    EndVerify
+    Verify(mh2)
+      CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
+    EndVerify
+
 }
 
 static void test_conn_close_handle_reqs_one_by_one(CuTest *tc)
@@ -1029,7 +1071,7 @@ static void test_conn_close_handle_reqs_one_by_one(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendRequest(ctx, "GET", "/", hdrs, "1");
         sendRequest(ctx, "GET", "/", hdrs, "2");
@@ -1062,7 +1104,7 @@ static void test_ignore_content_length_when_chunked(CuTest *tc)
     {
         const char *exp_body = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n"
                                "\r\n6\r\nchunk1\r\n6\r\nchunk2\r\n0\r\n\r\n";
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         char *buf;
         apr_size_t len;
@@ -1104,7 +1146,7 @@ static void test_use_request_body(CuTest *tc)
                                 "\r\nbody1";
         const char *exp_body2 = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n"
                                 "\r\n6\r\nchunk1\r\n6\r\nchunk2\r\n0\r\n\r\n";
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         char *buf;
         apr_size_t len;
@@ -1161,7 +1203,7 @@ static void test_raw_response(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         char *buf;
         apr_size_t len;
@@ -1195,7 +1237,7 @@ static void test_incomplete_request_body(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         char *buf;
         apr_size_t len;
@@ -1239,7 +1281,7 @@ static void test_incomplete_chunked_request_body(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         char *buf;
         apr_size_t len;
@@ -1290,7 +1332,7 @@ static void test_incomplete_large_chunked_request_body(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_status_t status;
 
         sendData(ctx, request, rawpart);
@@ -1335,7 +1377,7 @@ static void test_init_httpsserver(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx = initClient(mh);
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendRequest(ctx, "GET", "/index.html", hdrs, "1");
         sendRequest(ctx, "POST", "/index2.html", hdrs, "1");
@@ -1401,8 +1443,9 @@ CuSuite *testMockNoServer(void)
     CuSuiteSetSetupTeardownCallbacks(suite, testSetupNoServer, testTeardown);
 #if 1
     SUITE_ADD_TEST(suite, test_init_httpserver);
+    SUITE_ADD_TEST(suite, test_init_2httpservers);
  #ifdef MOCKHTTP_OPENSSL
-    SUITE_ADD_TEST(suite, test_init_httpsserver);
+//    SUITE_ADD_TEST(suite, test_init_httpsserver);
  #endif
 #endif
     return suite;

@@ -366,7 +366,7 @@ mhError_t mhRunServerLoop(MockHTTP *mh);
 /**
  * Get the actual port number on which the server is listening.
  */
-int mhServerPortNr(const MockHTTP *mh);
+unsigned int mhServerPortNr(const MockHTTP *mh);
 
 /**
    The following functions should not be used directly, as they can be quite
