@@ -404,7 +404,7 @@ mhMatchingPattern_t *mhMatchChunkedBodyChunksEqualTo(const MockHTTP *mh, ...);
 mhMatchingPattern_t *mhMatchHeaderEqualTo(const MockHTTP *mh,
                                           const char *hdr, const char *value);
 
-mhConnectionMatcher_t *mhGivenConnSetup(MockHTTP *mh, ...);
+void mhGivenConnSetup(MockHTTP *mh, ...);
 mhMatchingPattern_t *mhMatchClientCertCNEqualTo(const MockHTTP *mh,
                                                 const char *expected);
 mhMatchingPattern_t *mhMatchClientCertValid(const MockHTTP *mh);

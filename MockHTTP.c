@@ -585,8 +585,8 @@ constructConnectionMatcher(const MockHTTP *mh, va_list argp)
     return cm;
 }
 
-/* TODO: void, return value not needed */
-mhConnectionMatcher_t *mhGivenConnSetup(MockHTTP *mh, ...)
+/* Stores a mhConnectionMatcher_t * in the MockHTTP context */
+void mhGivenConnSetup(MockHTTP *mh, ...)
 {
     va_list argp;
     mhConnectionMatcher_t *cm;
@@ -596,7 +596,6 @@ mhConnectionMatcher_t *mhGivenConnSetup(MockHTTP *mh, ...)
     va_end(argp);
 
     mh->connMatcher = cm;
-    return cm;
 }
 
 mhMatchingPattern_t *
