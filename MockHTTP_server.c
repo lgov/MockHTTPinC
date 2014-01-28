@@ -910,8 +910,6 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
 
     cctx = ctx->cctx;
 
-    printf(".\n");
-
     /* something to write */
     if (cctx) {
         pfd.desc_type = APR_POLL_SOCKET;
