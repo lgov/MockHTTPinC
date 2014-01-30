@@ -694,6 +694,8 @@ void mhPushRequest(mhServCtx_t *ctx, mhRequestMatcher_t *rm)
     ReqMatcherRespPair_t *pair;
     int i;
 
+    /* TODO: ctx can be null (e.g. when no proxy is configured for a request
+       expected to arrive at a proxy. */
     pair = apr_palloc(ctx->pool, sizeof(ReqMatcherRespPair_t));
     pair->rm = rm;
     pair->resp = NULL;
