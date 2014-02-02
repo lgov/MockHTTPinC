@@ -26,7 +26,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#define MH_VERBOSE 1
+#define MH_VERBOSE 0
 
 /* Simple macro to return from function when status != 0
    expects 'apr_status_t status;' declaration. */
@@ -174,6 +174,9 @@ struct mhMatchingPattern_t {
 const char *getHeader(apr_pool_t *pool, apr_table_t *hdrs, const char *hdr);
 void setHeader(apr_table_t *hdrs, const char *hdr, const char *val);
 
+/* Initialize a mhRequest_t object. */
+mhRequest_t *_mhInitRequest(apr_pool_t *pool);
+
 bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm,
                             const mhRequest_t *req);
 bool _mhClientcertcn_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
@@ -188,7 +191,7 @@ void _mhBuildResponse(mhResponse_t *resp);
 /* Test servers */
 apr_status_t _mhRunServerLoop(mhServCtx_t *ctx);
 
-void _mhLog(int verbose_flag, const char *filename, const char *fmt, ...);
+void _mhLog(int verbose_flag, apr_socket_t *skt, const char *fmt, ...);
 
 #ifdef __cplusplus
 }
