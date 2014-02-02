@@ -149,6 +149,9 @@ mhError_t mhRunServerLoop(MockHTTP *mh)
     if (status == MH_STATUS_WAITING)
         return MOCKHTTP_WAITING;
 
+    if (READ_ERROR(status) && !APR_STATUS_IS_TIMEUP(status))
+        return MOCKHTTP_TEST_FAILED;
+
     return MOCKHTTP_NO_ERROR;
 }
 
@@ -664,10 +667,13 @@ static void respUseRequestBody(mhResponse_t *resp)
     if (req->chunked) {
         resp->chunks = req->chunks;
         resp->chunked = YES;
+        setHeader(resp->hdrs, "Transfer-Encoding", "chunked");
     } else {
         resp->body  = req->body;
         resp->bodyLen = req->bodyLen;
         resp->chunked = NO;
+        setHeader(resp->hdrs, "Content-Length",
+                  apr_itoa(resp->pool, resp->bodyLen));
     }
 }
 
