@@ -26,7 +26,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#define MH_VERBOSE 0
+#define MH_VERBOSE 1
 
 /* Simple macro to return from function when status != 0
    expects 'apr_status_t status;' declaration. */

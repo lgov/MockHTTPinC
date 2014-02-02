@@ -55,15 +55,18 @@ typedef struct sslCtx_t sslCtx_t;
 struct _mhClientCtx_t {
     apr_pool_t *pool;
     apr_socket_t *skt;
-    char buf[BUFSIZE];
+    char buf[BUFSIZE];  /* buffer for data received from the client @ server */
     apr_size_t buflen;
     apr_size_t bufrem;
-    mhRequest_t *req;
-    apr_int16_t reqevents;
+    char obuf[BUFSIZE]; /* buffer for data to be sent from server to client */
+    apr_size_t obuflen;
+    apr_size_t obufrem;
     const char *respBody;
     apr_size_t respRem;
     apr_array_header_t *respQueue;  /*  test will queue a response */
     mhResponse_t *currResp; /* response in progress */
+    mhRequest_t *req;
+    apr_int16_t reqevents;
     bool closeConn;
     sslCtx_t *ssl_ctx;
 
@@ -193,9 +196,8 @@ static apr_status_t connectToServer(mhServCtx_t *ctx, const char *url)
     STATUSERR(apr_socket_timeout_set(ctx->proxyskt, 0));
     STATUSERR(apr_socket_opt_set(ctx->proxyskt, APR_SO_REUSEADDR, 1));
 
-    STATUSREADERR(apr_socket_connect(ctx->proxyskt, address));
-
-    {
+    status = apr_socket_connect(ctx->proxyskt, address);
+    if (status == APR_SUCCESS || APR_STATUS_IS_EINPROGRESS(status)) {
         apr_pollfd_t pfd = { 0 };
 
         pfd.desc_type = APR_POLL_SOCKET;
@@ -780,13 +782,14 @@ matchRequest(const _mhClientCtx_t *cctx, mhRequest_t *req, mhResponse_t **resp,
     return NO;
 }
 
-bool _mhMatchRequest(const mhServCtx_t *ctx, const _mhClientCtx_t *cctx,
-                     mhRequest_t *req, mhResponse_t **resp, mhAction_t *action)
+static bool
+_mhMatchRequest(const mhServCtx_t *ctx, const _mhClientCtx_t *cctx,
+                mhRequest_t *req, mhResponse_t **resp, mhAction_t *action)
 {
     return matchRequest(cctx, req, resp, action, ctx->reqMatchers);
 }
 
-bool
+static bool
 _mhMatchIncompleteRequest(const mhServCtx_t *ctx, const _mhClientCtx_t *cctx,
                           mhRequest_t *req, mhResponse_t **resp,
                           mhAction_t *action)
@@ -810,6 +813,27 @@ static mhResponse_t *cloneResponse(apr_pool_t *pool, mhResponse_t *resp)
 static apr_status_t processProxy(mhServCtx_t *ctx, const apr_pollfd_t *desc)
 {
     apr_status_t status = APR_SUCCESS;
+    _mhClientCtx_t *cctx = ctx->cctx;
+
+    if ((desc->rtnevents & APR_POLLOUT) && (cctx->buflen > 0)) {
+        apr_size_t len = cctx->buflen;
+        STATUSREADERR(apr_socket_send(ctx->proxyskt, cctx->buf, &len));
+        _mhLog(MH_VERBOSE, ctx->proxyskt,
+               "sent with status %d:\n%.*s\n---- %d ----\n",
+               status, (unsigned int)len, cctx->buf, (unsigned int)len);
+        cctx->bufrem += len;
+        cctx->buflen -= len;
+    }
+    if (desc->rtnevents & APR_POLLIN) {
+        char *buf = cctx->buf + cctx->obuflen;
+        apr_size_t len = cctx->obufrem;
+        STATUSREADERR(apr_socket_recv(ctx->proxyskt, cctx->obuf, &len));
+        _mhLog(MH_VERBOSE, ctx->proxyskt,
+               "received with status %d:\n%.*s\n---- %d ----\n",
+               status, (unsigned int)len, buf, (unsigned int)len);
+        cctx->obuflen += len;
+        cctx->obufrem -= len;
+    }
 
     return status;
 }
@@ -822,8 +846,19 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
 
     /* First sent any pending responses before reading the next request. */
     if (desc->rtnevents & APR_POLLOUT &&
-        (cctx->currResp || cctx->respQueue->nelts)) {
+        (cctx->currResp || cctx->respQueue->nelts || cctx->obuflen)) {
         mhResponse_t *resp;
+
+        if (cctx->obuflen) {
+            apr_size_t len = cctx->obuflen;
+            STATUSREADERR(apr_socket_send(cctx->skt, cctx->obuf, &len));
+            _mhLog(MH_VERBOSE, ctx->proxyskt,
+                   "sent with status %d:\n%.*s\n---- %d ----\n",
+                   status, (unsigned int)len, cctx->obuf, (unsigned int)len);
+            cctx->obufrem += len;
+            cctx->obuflen -= len;
+            return status; /* can't send more data */
+        }
 
         /* TODO: response in progress */
         resp = cctx->currResp ? cctx->currResp :
@@ -940,6 +975,8 @@ static _mhClientCtx_t *initClientCtx(apr_pool_t *pool, mhServCtx_t *serv_ctx,
     cctx->skt = cskt;
     cctx->buflen = 0;
     cctx->bufrem = BUFSIZE;
+    cctx->obuflen = 0;
+    cctx->obufrem = BUFSIZE;
     cctx->closeConn = NO;
     cctx->respQueue = apr_array_make(pool, 5, sizeof(mhResponse_t *));
     cctx->currResp = NULL;
@@ -983,7 +1020,7 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
         apr_pollset_remove(ctx->pollset, &pfd);
 
         cctx->reqevents = APR_POLLIN;
-        if (cctx->currResp || cctx->respQueue->nelts > 0)
+        if (cctx->currResp || cctx->respQueue->nelts > 0 || cctx->obuflen > 0)
             cctx->reqevents |= APR_POLLOUT;
         pfd.reqevents = ctx->cctx->reqevents;
         STATUSERR(apr_pollset_add(ctx->pollset, &pfd));
@@ -991,6 +1028,7 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
 
     STATUSERR(apr_pollset_poll(ctx->pollset, APR_USEC_PER_SEC >> 1,
                                &num, &desc));
+    _mhLog(MH_VERBOSE, ctx->skt, "poll on server\n");
 
     /* The same socket can be returned multiple times by apr_pollset_poll() */
     while (num--) {
@@ -1317,6 +1355,7 @@ static apr_status_t initSSL(_mhClientCtx_t *cctx)
     ssl_ctx->ssl = SSL_new(ssl_ctx->ctx);
     SSL_set_cipher_list(ssl_ctx->ssl, "ALL");
     SSL_set_bio(ssl_ctx->ssl, ssl_ctx->bio, ssl_ctx->bio);
+    SSL_set_app_data(ssl_ctx->ssl, cctx);
 
     return APR_SUCCESS;
 }
@@ -1381,7 +1420,6 @@ static apr_status_t initSSLCtx(_mhClientCtx_t *cctx)
         if (cctx->clientCert)
             SSL_CTX_set_verify(ssl_ctx->ctx, SSL_VERIFY_PEER,
                                validateClientCertificate);
-        SSL_set_app_data(ssl_ctx->ssl, cctx);
 
         SSL_CTX_set_mode(ssl_ctx->ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
 
