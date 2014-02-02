@@ -583,6 +583,24 @@ mhResponse_t *mhNewResponseForRequest(MockHTTP *mh, mhServCtx_t *ctx,
     return resp;
 }
 
+void mhNewActionForRequest(mhServCtx_t *ctx, mhRequestMatcher_t *rm,
+                           mhAction_t action)
+{
+    apr_array_header_t *matchers;
+    int i;
+
+    matchers = rm->incomplete ? ctx->incompleteReqMatchers : ctx->reqMatchers;
+    for (i = 0 ; i < matchers->nelts; i++) {
+        ReqMatcherRespPair_t *pair;
+
+        pair = APR_ARRAY_IDX(matchers, i, ReqMatcherRespPair_t *);
+        if (rm == pair->rm) {
+            pair->action = action;
+            break;
+        }
+    }
+}
+
 mhResponse_t *mhNewDefaultResponse(MockHTTP *mh)
 {
     mh->defResponse = initResponse(mh);

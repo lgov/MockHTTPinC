@@ -26,7 +26,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#define MH_VERBOSE 0
+#define MH_VERBOSE 1
 
 /* Simple macro to return from function when status != 0
    expects 'apr_status_t status;' declaration. */
@@ -74,22 +74,31 @@ struct MockHTTP {
     mhServCtx_t *proxyCtx;
 };
 
-
 typedef struct ReqMatcherRespPair_t {
     mhRequestMatcher_t *rm;
     mhResponse_t *resp;
+    mhAction_t action;
 } ReqMatcherRespPair_t;
+
+typedef enum servMode_t {
+    ModeServer,
+    ModeProxy,
+    ModeTunnel,
+} servMode_t;
 
 struct mhServCtx_t {
     apr_pool_t *pool;
-    const MockHTTP *mh;      /* keep const to avoid thread race problems */
+    const MockHTTP *mh;        /* keep const to avoid thread race problems */
     const char *hostname;
     apr_port_t port;
     apr_pollset_t *pollset;
-    apr_socket_t *skt;
+    apr_socket_t *skt;         /* Server listening socket */
+    apr_socket_t *proxyskt;    /* Socket for conn proxy <-> server */
     mhServerType_t type;
     /* TODO: allow more connections */
     _mhClientCtx_t *cctx;
+
+    servMode_t mode;      /* default = server, but can switch to proxy/tunnel */
 
     /* HTTPS specific */
     const char *keyFile;
@@ -164,13 +173,6 @@ struct mhMatchingPattern_t {
 
 const char *getHeader(apr_pool_t *pool, apr_table_t *hdrs, const char *hdr);
 void setHeader(apr_table_t *hdrs, const char *hdr, const char *val);
-
-/* Initialize a mhRequest_t object. */
-mhRequest_t *_mhInitRequest(apr_pool_t *pool);
-bool _mhMatchRequest(const mhServCtx_t *ctx, mhRequest_t *req,
-                     mhResponse_t **resp);
-bool _mhMatchIncompleteRequest(const mhServCtx_t *ctx, mhRequest_t *req,
-                               mhResponse_t **resp);
 
 bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm,
                             const mhRequest_t *req);
