@@ -497,7 +497,7 @@ static apr_status_t readRequest(_mhClientCtx_t *cctx, mhRequest_t **preq)
         len = cctx->bufrem;
         STATUSREADERR(cctx->read(cctx, cctx->buf + cctx->buflen, &len));
         if (len) {
-            _mhLog(MH_VERBOSE, __FILE__,
+            _mhLog(MH_VERBOSE, cctx->skt,
                    "recvd with status %d:\n%.*s\n---- %d ----\n",
                    status, (unsigned int)len, cctx->buf + cctx->buflen,
                    (unsigned int)len);
@@ -537,7 +537,7 @@ static apr_status_t readRequest(_mhClientCtx_t *cctx, mhRequest_t **preq)
                     }
                 }
                 if (done) {
-                    _mhLog(MH_VERBOSE, __FILE__, "Server received request: %s %s\n",
+                    _mhLog(MH_VERBOSE, cctx->skt, "Server received request: %s %s\n",
                            req->method, req->url);
                     return APR_EOF;
                 }
@@ -673,7 +673,7 @@ static apr_status_t writeResponse(_mhClientCtx_t *cctx, mhResponse_t *resp)
 
     len = cctx->respRem;
     STATUSREADERR(cctx->send(cctx, cctx->respBody, &len));
-    _mhLog(MH_VERBOSE, __FILE__, "sent with status %d:\n%.*s\n---- %d ----\n",
+    _mhLog(MH_VERBOSE, cctx->skt, "sent with status %d:\n%.*s\n---- %d ----\n",
            status, (unsigned int)len, cctx->respBody, (unsigned int)len);
 
     if (len < cctx->respRem) {
@@ -715,7 +715,7 @@ void mhPushRequest(mhServCtx_t *ctx, mhRequestMatcher_t *rm)
 }
 
 static bool
-matchRequest(mhRequest_t *req, mhResponse_t **resp,
+matchRequest(const _mhClientCtx_t *cctx, mhRequest_t *req, mhResponse_t **resp,
              apr_array_header_t *matchers)
 {
     int i;
@@ -730,22 +730,23 @@ matchRequest(mhRequest_t *req, mhResponse_t **resp,
             return YES;
         }
     }
-    _mhLog(MH_VERBOSE, __FILE__, "Couldn't match request!\n");
+    _mhLog(MH_VERBOSE, cctx->skt, "Couldn't match request!\n");
 
     *resp = NULL;
     return NO;
 }
 
-bool _mhMatchRequest(const mhServCtx_t *ctx, mhRequest_t *req,
-                     mhResponse_t **resp)
+bool _mhMatchRequest(const mhServCtx_t *ctx, const _mhClientCtx_t *cctx,
+                     mhRequest_t *req, mhResponse_t **resp)
 {
-    return matchRequest(req, resp, ctx->reqMatchers);
+    return matchRequest(cctx, req, resp, ctx->reqMatchers);
 }
 
-bool _mhMatchIncompleteRequest(const mhServCtx_t *ctx, mhRequest_t *req,
-                               mhResponse_t **resp)
+bool
+_mhMatchIncompleteRequest(const mhServCtx_t *ctx, const _mhClientCtx_t *cctx,
+                          mhRequest_t *req, mhResponse_t **resp)
 {
-    return matchRequest(req, resp, ctx->incompleteReqMatchers);
+    return matchRequest(cctx, req, resp, ctx->incompleteReqMatchers);
 }
 
 static mhResponse_t *cloneResponse(apr_pool_t *pool, mhResponse_t *resp)
@@ -774,14 +775,14 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
         resp = cctx->currResp ? cctx->currResp :
                                 *(mhResponse_t **)apr_array_pop(cctx->respQueue);
         if (resp) {
-            _mhLog(MH_VERBOSE, __FILE__, "Sending response to client.\n");
+            _mhLog(MH_VERBOSE, cctx->skt, "Sending response to client.\n");
 
             status = writeResponse(cctx, resp);
             if (status == APR_EOF) {
                 cctx->currResp = NULL;
                 ctx->mh->verifyStats->requestsResponded++;
                 if (resp->closeConn) {
-                    _mhLog(MH_VERBOSE, __FILE__,
+                    _mhLog(MH_VERBOSE, cctx->skt,
                            "Actively closing connection.\n");
                     apr_socket_close(cctx->skt);
                     ctx->cctx = NULL;
@@ -806,20 +807,20 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
             mhResponse_t *resp;
             ctx->mh->verifyStats->requestsReceived++;
             *((mhRequest_t **)apr_array_push(ctx->reqsReceived)) = cctx->req;
-            if (_mhMatchRequest(ctx, cctx->req, &resp) == YES) {
+            if (_mhMatchRequest(ctx, cctx, cctx->req, &resp) == YES) {
 
                 ctx->mh->verifyStats->requestsMatched++;
                 if (resp) {
-                    _mhLog(MH_VERBOSE, __FILE__,
+                    _mhLog(MH_VERBOSE, cctx->skt,
                            "Request matched, queueing response.\n");
                 } else {
-                    _mhLog(MH_VERBOSE, __FILE__,
+                    _mhLog(MH_VERBOSE, cctx->skt,
                            "Request matched, queueing default response.\n");
                     resp = cloneResponse(ctx->pool, ctx->mh->defResponse);
                 }
             } else {
                 ctx->mh->verifyStats->requestsNotMatched++;
-                _mhLog(MH_VERBOSE, __FILE__,
+                _mhLog(MH_VERBOSE, cctx->skt,
                        "Request found no match, queueing error response.\n");
                 resp = cloneResponse(ctx->pool, ctx->mh->defErrorResponse);
             }
@@ -833,8 +834,8 @@ static apr_status_t process(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
         if (ctx->incompleteReqMatchers->nelts > 0) {
             mhResponse_t *resp = NULL;
             /* (currently) incomplete request received? */
-            if (_mhMatchIncompleteRequest(ctx, cctx->req, &resp) == YES) {
-                _mhLog(MH_VERBOSE, __FILE__,
+            if (_mhMatchIncompleteRequest(ctx, cctx, cctx->req, &resp) == YES) {
+                _mhLog(MH_VERBOSE, cctx->skt,
                        "Incomplete request matched, queueing response.\n");
                 ctx->mh->verifyStats->requestsMatched++;
                 if (!resp)
@@ -922,7 +923,7 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
             apr_socket_t *cskt;
             apr_pollfd_t pfd = { 0 };
 
-            _mhLog(MH_VERBOSE, __FILE__, "Accepting client connection.\n");
+            _mhLog(MH_VERBOSE, ctx->skt, "Accepting client connection.\n");
 
             STATUSERR(apr_socket_accept(&cskt, ctx->skt, ctx->pool));
 
@@ -1158,7 +1159,7 @@ static int bio_apr_socket_read(BIO *bio, char *in, int inlen)
 
     status = apr_socket_recv(cctx->skt, in, &len);
     ssl_ctx->bio_read_status = status;
-    _mhLog(MH_VERBOSE, __FILE__, "Read %d bytes from ssl socket with "
+    _mhLog(MH_VERBOSE, cctx->skt, "Read %d bytes from ssl socket with "
            "status %d.\n", len, status);
 
     if (status == APR_EAGAIN) {
@@ -1181,7 +1182,7 @@ static int bio_apr_socket_write(BIO *bio, const char *in, int inlen)
 
     apr_status_t status = apr_socket_send(cctx->skt, in, &len);
 
-    _mhLog(MH_VERBOSE, __FILE__, "Wrote %d of %d bytes to ssl socket with "
+    _mhLog(MH_VERBOSE, cctx->skt, "Wrote %d of %d bytes to ssl socket with "
            "status %d.\n", len, inlen, status);
 
     if (READ_ERROR(status))
@@ -1222,7 +1223,11 @@ static apr_status_t cleanupSSL(void *baton)
 
 static int validateClientCertificate(int preverify_ok, X509_STORE_CTX *ctx)
 {
-    _mhLog(MH_VERBOSE, __FILE__, "validate_client_certificate called, "
+    SSL *ssl = X509_STORE_CTX_get_ex_data(ctx,
+                                          SSL_get_ex_data_X509_STORE_CTX_idx());
+    _mhClientCtx_t *cctx = SSL_get_app_data(ssl);
+
+    _mhLog(MH_VERBOSE, cctx->skt, "validate_client_certificate called, "
                                  "preverify: %d.\n", preverify_ok);
     /* Client cert is valid for now, can be validated later. */
     return 1;
@@ -1265,8 +1270,8 @@ static apr_status_t initSSLCtx(_mhClientCtx_t *cctx)
         SSL_CTX_set_default_passwd_cb(ssl_ctx->ctx, pem_passwd_cb);
         if (SSL_CTX_use_PrivateKey_file(ssl_ctx->ctx, cctx->keyFile,
                                         SSL_FILETYPE_PEM) != 1) {
-            _mhLog(MH_VERBOSE, "Cannot load private key from file '%s'\n",
-                   cctx->keyFile);
+            _mhLog(MH_VERBOSE, cctx->skt,
+                   "Cannot load private key from file '%s'\n", cctx->keyFile);
             return APR_EGENERAL;
         }
 
@@ -1274,8 +1279,8 @@ static apr_status_t initSSLCtx(_mhClientCtx_t *cctx)
         certfile = APR_ARRAY_IDX(cctx->certFiles, 0, const char *);
         if (SSL_CTX_use_certificate_file(ssl_ctx->ctx, certfile,
                                          SSL_FILETYPE_PEM) != 1) {
-            _mhLog(MH_VERBOSE, "Cannot load certificatefrom file '%s'\n",
-                   certfile);
+            _mhLog(MH_VERBOSE, cctx->skt,
+                   "Cannot load certificatefrom file '%s'\n", certfile);
             return APR_EGENERAL;
         }
 
@@ -1299,6 +1304,7 @@ static apr_status_t initSSLCtx(_mhClientCtx_t *cctx)
         if (cctx->clientCert)
             SSL_CTX_set_verify(ssl_ctx->ctx, SSL_VERIFY_PEER,
                                validateClientCertificate);
+        SSL_set_app_data(ssl_ctx->ssl, cctx);
 
         SSL_CTX_set_mode(ssl_ctx->ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
 
@@ -1326,7 +1332,7 @@ sslSocketWrite(_mhClientCtx_t *cctx, const char *data, apr_size_t *len)
     if (result == 0)
         return APR_EAGAIN;
 
-    _mhLog(MH_VERBOSE, __FILE__, "ssl_socket_write: ssl error?\n");
+    _mhLog(MH_VERBOSE, cctx->skt, "ssl_socket_write: ssl error?\n");
 
     return APR_EGENERAL;
 }
@@ -1355,7 +1361,7 @@ sslSocketRead(_mhClientCtx_t *cctx, char *data, apr_size_t *len)
             case SSL_ERROR_SSL:
             default:
                 *len = 0;
-                _mhLog(MH_VERBOSE, __FILE__,
+                _mhLog(MH_VERBOSE, cctx->skt,
                           "ssl_socket_read SSL Error %d: ", ssl_err);
                 ERR_print_errors_fp(stderr);
                 return APR_EGENERAL;
@@ -1391,7 +1397,7 @@ bool _mhClientcert_valid_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp
 //            appendSSLErrMessage(mh, result);
         }
         /* TODO: add to error message */
-        _mhLog(MH_VERBOSE, __FILE__, "No client certificate was received.\n");
+        _mhLog(MH_VERBOSE, cctx->skt, "No client certificate was received.\n");
     }
     return NO;
 }
@@ -1418,12 +1424,12 @@ bool _mhClientcertcn_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
         }
 
         /* TODO: add to error message */
-        _mhLog(MH_VERBOSE, __FILE__, "Client certificate common name "
+        _mhLog(MH_VERBOSE, cctx->skt, "Client certificate common name "
                "\"%s\" doesn't match expected \"%s\".\n", buf, clientCN);
         return NO;
     } else {
         /* TODO: add to error message */
-        _mhLog(MH_VERBOSE, __FILE__, "No client certificate was received.\n");
+        _mhLog(MH_VERBOSE, cctx->skt, "No client certificate was received.\n");
         return NO;
     }
 }
@@ -1440,7 +1446,7 @@ static apr_status_t sslHandshake(_mhClientCtx_t *cctx)
     /* SSL handshake */
     result = SSL_accept(ssl_ctx->ssl);
     if (result == 1) {
-        _mhLog(MH_VERBOSE, __FILE__, "Handshake successful.\n");
+        _mhLog(MH_VERBOSE, cctx->skt, "Handshake successful.\n");
         ssl_ctx->handshake_done = YES;
 
         return APR_SUCCESS;
@@ -1455,7 +1461,7 @@ static apr_status_t sslHandshake(_mhClientCtx_t *cctx)
             case SSL_ERROR_SYSCALL:
                 return ssl_ctx->bio_read_status; /* Usually APR_EAGAIN */
             default:
-                _mhLog(MH_VERBOSE, __FILE__, "SSL Error %d: ", ssl_err);
+                _mhLog(MH_VERBOSE, cctx->skt, "SSL Error %d: ", ssl_err);
                 ERR_print_errors_fp(stderr);
                 return APR_EGENERAL;
         }

@@ -167,10 +167,6 @@ void setHeader(apr_table_t *hdrs, const char *hdr, const char *val);
 
 /* Initialize a mhRequest_t object. */
 mhRequest_t *_mhInitRequest(apr_pool_t *pool);
-bool _mhMatchRequest(const mhServCtx_t *ctx, mhRequest_t *req,
-                     mhResponse_t **resp);
-bool _mhMatchIncompleteRequest(const mhServCtx_t *ctx, mhRequest_t *req,
-                               mhResponse_t **resp);
 
 bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm,
                             const mhRequest_t *req);
@@ -186,7 +182,7 @@ void _mhBuildResponse(mhResponse_t *resp);
 /* Test servers */
 apr_status_t _mhRunServerLoop(mhServCtx_t *ctx);
 
-void _mhLog(int verbose_flag, const char *filename, const char *fmt, ...);
+void _mhLog(int verbose_flag, apr_socket_t *skt, const char *fmt, ...);
 
 #ifdef __cplusplus
 }
