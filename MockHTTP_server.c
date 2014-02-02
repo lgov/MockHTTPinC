@@ -255,7 +255,7 @@ static mhError_t startServer(mhServCtx_t *ctx)
 /* Parse a request structure from incoming data                               */
 /******************************************************************************/
 
-static mhRequest_t *_mhInitRequest(apr_pool_t *pool)
+mhRequest_t *_mhInitRequest(apr_pool_t *pool)
 {
     mhRequest_t *req = apr_pcalloc(pool, sizeof(mhRequest_t));
     req->pool = pool;
@@ -868,7 +868,8 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
 
                 ctx->mh->verifyStats->requestsReceived++;
                 *((mhRequest_t **)apr_array_push(ctx->reqsReceived)) = cctx->req;
-                if (_mhMatchRequest(ctx, cctx->req, &resp, &action) == YES) {
+                if (_mhMatchRequest(ctx, cctx, cctx->req,
+                                    &resp, &action) == YES) {
                     ctx->mh->verifyStats->requestsMatched++;
                     if (resp) {
                         _mhLog(MH_VERBOSE, cctx->skt,
@@ -900,7 +901,7 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
             if (ctx->incompleteReqMatchers->nelts > 0) {
                 mhResponse_t *resp = NULL;
                 /* (currently) incomplete request received? */
-                if (_mhMatchIncompleteRequest(ctx, cctx->req,
+                if (_mhMatchIncompleteRequest(ctx, cctx, cctx->req,
                                               &resp, &action) == YES) {
                     _mhLog(MH_VERBOSE, cctx->skt,
                            "Incomplete request matched, queueing response.\n");
@@ -973,7 +974,6 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
 
     cctx = ctx->cctx;
 
-    printf(".\n");
     /* something to write */
     if (cctx) {
         pfd.desc_type = APR_POLL_SOCKET;
