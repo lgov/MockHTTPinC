@@ -56,7 +56,7 @@ In these examples we will use the CuTest framework (https://github.com/asimjalis
         GETRequest(URLEqualTo("/index.html"))
           Respond(
             WithCode(200), WithHeader("Connection", "Close"),
-            WithBody("body of the request"))
+            WithBody("response body"))
       EndGiven
 
 **Step 3**: Run the code that's expected to eventually send a GET request to the server.
