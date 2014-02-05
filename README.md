@@ -37,7 +37,7 @@ Write a first test
 In these examples we will use the CuTest framework (https://github.com/asimjalis/cutest) as unit testing library, you'll recognize its functions by the *Cu* prefix.
 
 
-**Step 1**: Include MockHTTPinC's main header file, create a test function and setup the mock HTTP server on default port 30080.
+**Step 1**: Include MockHTTPinC's main header file, create a test function and setup the mock HTTP server on the default port 30080.
 
     #include "MockHTTP.h"
 
@@ -45,30 +45,31 @@ In these examples we will use the CuTest framework (https://github.com/asimjalis
     {
       MockHTTP *mh;
 
-      InitMockHTTP(mh)
-        WithHTTPserver(WithPort(30080))
+      mh = mhInit();
+      InitMockServers(mh)
+        SetupServer(WithHTTP)
       EndInit
 
 **Step 2**: Use the macro's to instruct the mock HTTP server to expect a GET request to url /index.html. Also, tell the server how to respond when that request arrives.
 
-        Given(mh)
-          GETRequest(
-            URLEqualTo("/index.html"))
+      Given(mh)
+        GETRequest(URLEqualTo("/index.html"))
           Respond(
-            WithCode(200), WithHeader("Connection", "Close"), WithBody("body"))
-        EndGiven
+            WithCode(200), WithHeader("Connection", "Close"),
+            WithBody("response body"))
+      EndGiven
 
 **Step 3**: Run the code that's expected to eventually send a GET request to the server.
 
-        ctx = connectToTCPServer("http://localhost:30080");
-        sendRequest(ctx, "GET", "/index.html", headers, "body of the request");
-        response = readResponse(ctx);
+      ctx = connectToTCPServer("http://localhost:30080");
+      sendRequest(ctx, "GET", "/index.html", headers, "body of the request");
+      response = readResponse(ctx);
 
-        // ... test that the response was received correctly
+      // ... test that the response was received correctly
 
 **Step 4**: Use the macro's to verify that all requests were received in the correct order, at least the one request in this simple example.
 
-        Verify(mh)
-          CuAssert(tc, ErrorMessage, VerifyAllRequestsReceivedInOrder);
-        EndVerify
+      Verify(mh)
+        CuAssert(tc, ErrorMessage, VerifyAllRequestsReceivedInOrder);
+      EndVerify
     }
