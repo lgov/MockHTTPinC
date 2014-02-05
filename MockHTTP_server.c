@@ -860,8 +860,8 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
         if (cctx->obuflen) {
             apr_size_t len = cctx->obuflen;
             STATUSREADERR(apr_socket_send(cctx->skt, cctx->obuf, &len));
-            _mhLog(MH_VERBOSE, ctx->proxyskt,
-                   "sent with status %d:\n%.*s\n---- %d ----\n",
+            _mhLog(MH_VERBOSE, cctx->skt,
+                   "Proxy/Server sent to client, status %d:\n%.*s\n---- %d ----\n",
                    status, (unsigned int)len, cctx->obuf, (unsigned int)len);
             cctx->obufrem += len;
             cctx->obuflen -= len;
@@ -1020,8 +1020,6 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
 
     cctx = ctx->cctx;
 
-    _mhLog(MH_VERBOSE, ctx->skt, "poll on server\n");
-
     /* something to write */
     if (cctx && cctx->skt) {
         pfd.desc_type = APR_POLL_SOCKET;
@@ -1037,7 +1035,7 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
         STATUSERR(apr_pollset_add(ctx->pollset, &pfd));
     }
 
-    STATUSERR(apr_pollset_poll(ctx->pollset, APR_USEC_PER_SEC >> 1,
+    STATUSERR(apr_pollset_poll(ctx->pollset, APR_USEC_PER_SEC / 10,
                                &num, &desc));
 
     /* The same socket can be returned multiple times by apr_pollset_poll() */
@@ -1287,8 +1285,10 @@ static int bio_apr_socket_read(BIO *bio, char *in, int inlen)
 
     status = apr_socket_recv(cctx->skt, in, &len);
     ssl_ctx->bio_read_status = status;
-    _mhLog(MH_VERBOSE, cctx->skt, "Read %d bytes from ssl socket with "
-           "status %d.\n", len, status);
+
+    if (len || status != APR_EAGAIN)
+        _mhLog(MH_VERBOSE, cctx->skt, "Read %d bytes from ssl socket with "
+               "status %d.\n", len, status);
 
     if (status == APR_EAGAIN) {
         BIO_set_retry_read(bio);
@@ -1310,8 +1310,9 @@ static int bio_apr_socket_write(BIO *bio, const char *in, int inlen)
 
     apr_status_t status = apr_socket_send(cctx->skt, in, &len);
 
-    _mhLog(MH_VERBOSE, cctx->skt, "Wrote %d of %d bytes to ssl socket with "
-           "status %d.\n", len, inlen, status);
+    if (len || status != APR_EAGAIN)
+        _mhLog(MH_VERBOSE, cctx->skt, "Wrote %d of %d bytes to ssl socket with "
+               "status %d.\n", len, inlen, status);
 
     if (READ_ERROR(status))
         return -1;
