@@ -38,6 +38,7 @@ static apr_status_t sslSocketWrite(_mhClientCtx_t *cctx, const char *data,
                                    apr_size_t *len);
 static apr_status_t sslSocketRead(_mhClientCtx_t *cctx, char *data,
                                   apr_size_t *len);
+static apr_status_t renegotiateSSLSession(_mhClientCtx_t *cctx);
 
 static const int DefaultSrvPort =   30080;
 static const int DefaultProxyPort = 38080;
@@ -850,7 +851,7 @@ static apr_status_t processProxy(mhServCtx_t *ctx, const apr_pollfd_t *desc)
 static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                                   const apr_pollfd_t *desc)
 {
-    apr_status_t status = APR_SUCCESS;
+    apr_status_t status = APR_EAGAIN;
 
     /* First sent any pending responses before reading the next request. */
     if (desc->rtnevents & APR_POLLOUT &&
@@ -928,6 +929,10 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                         ctx->mode = ModeTunnel;
                         ctx->proxyhost = apr_pstrdup(ctx->pool, cctx->req->url);
                         connectToServer(ctx, ctx->proxyhost);
+                    } else if (action == mhActionSSLRenegotiate) {
+                        _mhLog(MH_VERBOSE, cctx->skt, "Renegotiating SSL "
+                               "session.\n");
+                        renegotiateSSLSession(cctx);
                     }
                 } else {
                     ctx->mh->verifyStats->requestsNotMatched++;
@@ -1019,7 +1024,7 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
     apr_status_t status;
 
     cctx = ctx->cctx;
-
+#if 0
     /* something to write */
     if (cctx && cctx->skt) {
         pfd.desc_type = APR_POLL_SOCKET;
@@ -1034,8 +1039,8 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
         pfd.reqevents = ctx->cctx->reqevents;
         STATUSERR(apr_pollset_add(ctx->pollset, &pfd));
     }
-
-    STATUSERR(apr_pollset_poll(ctx->pollset, APR_USEC_PER_SEC / 10,
+#endif
+    STATUSERR(apr_pollset_poll(ctx->pollset, APR_USEC_PER_SEC / 100,
                                &num, &desc));
 
     /* The same socket can be returned multiple times by apr_pollset_poll() */
@@ -1054,7 +1059,7 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
             cctx = initClientCtx(ctx->pool, ctx, cskt, ctx->type);
             pfd.desc_type = APR_POLL_SOCKET;
             pfd.desc.s = cskt;
-            pfd.reqevents = APR_POLLIN;
+            pfd.reqevents = APR_POLLIN | APR_POLLOUT;
             pfd.client_data = cctx;
 
             STATUSERR(apr_pollset_add(ctx->pollset, &pfd));
@@ -1216,6 +1221,7 @@ mhServCtx_t *mhGetProxyCtx(MockHTTP *mh)
 
 struct sslCtx_t {
     bool handshake_done;
+    bool renegotiate;
     apr_status_t bio_read_status;
 
     SSL_CTX* ctx;
@@ -1335,6 +1341,20 @@ static BIO_METHOD bio_apr_socket_method = {
     NULL /* sslc does not have the callback_ctrl field */
 #endif
 };
+
+static apr_status_t renegotiateSSLSession(_mhClientCtx_t *cctx)
+{
+    sslCtx_t *ssl_ctx = cctx->ssl_ctx;
+
+    if (!SSL_renegotiate(ssl_ctx->ssl))
+        return APR_EGENERAL;     /* TODO: log error */
+    if (!SSL_do_handshake(ssl_ctx->ssl))
+        return APR_EGENERAL;
+
+    ssl_ctx->renegotiate = YES;
+
+    return APR_SUCCESS;
+}
 
 static apr_status_t cleanupSSL(void *baton)
 {
@@ -1569,10 +1589,16 @@ static apr_status_t sslHandshake(_mhClientCtx_t *cctx)
     sslCtx_t *ssl_ctx = cctx->ssl_ctx;
     int result;
 
+
+    if (ssl_ctx->renegotiate) {
+        if (!SSL_do_handshake(ssl_ctx->ssl))
+            return APR_EGENERAL;
+    }
+
     if (ssl_ctx->handshake_done)
         return APR_SUCCESS;
 
-    /* SSL handshake */
+    /* Initial SSL handshake */
     result = SSL_accept(ssl_ctx->ssl);
     if (result == 1) {
         _mhLog(MH_VERBOSE, cctx->skt, "Handshake successful.\n");
@@ -1595,6 +1621,7 @@ static apr_status_t sslHandshake(_mhClientCtx_t *cctx)
                 return APR_EGENERAL;
         }
     }
+
     /* not reachable */
     return APR_EGENERAL;
 }

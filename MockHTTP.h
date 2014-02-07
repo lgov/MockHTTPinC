@@ -45,6 +45,7 @@ typedef enum mhAction_t {
     mhActionInitiateNone,
     mhActionInitiateProxyConn,
     mhActionInitiateSSLTunnel,
+    mhActionSSLRenegotiate,
 } mhAction_t;
 
 /* Note: the variadic macro's used here require C99. */
@@ -211,6 +212,9 @@ typedef enum mhAction_t {
 #define   SetupSSLTunnel\
                 mhNewActionForRequest(__servctx, __rm,\
                                       mhActionInitiateSSLTunnel);
+#define   SSLRenegotiate\
+                mhNewActionForRequest(__servctx, __rm,\
+                                      mhActionSSLRenegotiate);
 
 /* Set the HTTP response code. Default: 200 OK */
 #define     WithCode(x)\
