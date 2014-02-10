@@ -78,7 +78,7 @@ struct _mhClientCtx_t {
     reset_conn_func_t reset;
     const char *keyFile;
     apr_array_header_t *certFiles;
-    bool clientCert;
+    mhClientCertVerification_t clientCert;
 };
 
 static apr_status_t setupTCPServer(mhServCtx_t *ctx, bool blocking);
@@ -227,6 +227,7 @@ initServCtx(const MockHTTP *mh, const char *hostname, apr_port_t port)
     ctx->incompleteReqMatchers = apr_array_make(pool, 5,
                                                sizeof(ReqMatcherRespPair_t *));
     ctx->mode = ModeServer;
+    ctx->clientCert = mhCCVerifyNone;
 
     apr_pool_cleanup_register(pool, ctx,
                               cleanupServer,
@@ -1186,9 +1187,9 @@ int mhAddServerCertFileArray(mhServCtx_t *ctx, const char **certFiles)
     return YES;
 }
 
-int mhSetServerRequestClientCert(mhServCtx_t *ctx)
+int mhSetServerRequestClientCert(mhServCtx_t *ctx, mhClientCertVerification_t v)
 {
-    ctx->clientCert = YES;
+    ctx->clientCert = v;
     return YES;
 }
 
@@ -1448,12 +1449,24 @@ static apr_status_t initSSLCtx(_mhClientCtx_t *cctx)
             }
         }
 
-        /* This makes the server send a client certificate request during
-           handshake. The client certificate is optional, so processing
-           won't stop of the client didn't provide one.*/
-        if (cctx->clientCert)
-            SSL_CTX_set_verify(ssl_ctx->ctx, SSL_VERIFY_PEER,
-                               validateClientCertificate);
+        /* Check if the server needs to ask the client to send a certificate
+           during handshake. */
+        switch (cctx->clientCert) {
+            case mhCCVerifyNone:
+                break;
+            case mhCCVerifyPeer:
+                SSL_CTX_set_verify(ssl_ctx->ctx, SSL_VERIFY_PEER,
+                                   validateClientCertificate);
+                break;
+            case mhCCVerifyFailIfNoPeerSet:
+                SSL_CTX_set_verify(ssl_ctx->ctx,
+                                   SSL_VERIFY_PEER |
+                                     SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                                   validateClientCertificate);
+                break;
+            default:
+                break;
+        }
 
         SSL_CTX_set_mode(ssl_ctx->ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
 

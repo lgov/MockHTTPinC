@@ -48,6 +48,12 @@ typedef enum mhAction_t {
     mhActionSSLRenegotiate,
 } mhAction_t;
 
+typedef enum mhClientCertVerification_t {
+    mhCCVerifyNone,
+    mhCCVerifyPeer,
+    mhCCVerifyFailIfNoPeerSet,
+} mhClientCertVerification_t;
+
 /* Note: the variadic macro's used here require C99. */
 /* TODO: we can provide xxx1(x), xxx2(x,y)... macro's for C89 compilers */
 
@@ -100,8 +106,11 @@ typedef enum mhAction_t {
                 mhAddServerCertFiles(__servctx, __VA_ARGS__, NULL)
 #define     WithCertificateFileArray(files)\
                 mhAddServerCertFileArray(__servctx, files)
-#define     WithClientCertificate\
-                mhSetServerRequestClientCert(__servctx)
+#define     WithOptionalClientCertificate\
+                mhSetServerRequestClientCert(__servctx, mhCCVerifyPeer)
+#define     WithRequiredClientCertificate\
+                mhSetServerRequestClientCert(__servctx,\
+                                             mhCCVerifyFailIfNoPeerSet)
 
 /**
  * Stub requests to the proxy or server, return canned responses. Define the
@@ -400,7 +409,7 @@ int mhSetServerType(mhServCtx_t *ctx, mhServerType_t type);
 int mhSetServerCertKeyFile(mhServCtx_t *ctx, const char *keyFile);
 int mhAddServerCertFiles(mhServCtx_t *ctx, ...);
 int mhAddServerCertFileArray(mhServCtx_t *ctx, const char **certFiles);
-int mhSetServerRequestClientCert(mhServCtx_t *ctx);
+int mhSetServerRequestClientCert(mhServCtx_t *ctx, mhClientCertVerification_t v);
 
 /* Define request stubs */
 mhRequestMatcher_t *mhGivenRequest(MockHTTP *mh, const char *method, ...);
