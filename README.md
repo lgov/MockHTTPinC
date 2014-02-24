@@ -6,11 +6,13 @@ MockHTTPinC is a C library that helps testing HTTP client code.
 The library provides:
 - a HTTP server that can be instructed to handle requests in certain ways: returning a prebaked response, abort the connection etc.
 - support for both HTTP/1.0 and HTTP/1.1 including pipelining and chunked encoding
-- macro's to make writing expectations and verifying the results straightforward
+- macro's to make writing expectations and verifying the results straigthforward
+- strong HTTPS support: full SSL/TLS handshake, client certificates and session renegotiation
+- SSL tunnel support
 
 The library will provide (but does not at this time):
-- strong HTTPS support: full SSL/TLS handshake, client certificates, session renegotiation and session resumption
-- a simple HTTP/HTTPS proxy
+- a simple HTTP proxy
+- SSL session resumption
 - Basic and Digest authentication
 - Deflate/GZip content encoding support
 
