@@ -46,6 +46,7 @@ typedef enum mhAction_t {
     mhActionInitiateProxyConn,
     mhActionInitiateSSLTunnel,
     mhActionSSLRenegotiate,
+    mhActionCloseConnection,
 } mhAction_t;
 
 typedef enum mhClientCertVerification_t {
@@ -240,7 +241,9 @@ typedef enum mhSSLProtocol_t {
 #define   SSLRenegotiate\
                 mhNewActionForRequest(__servctx, __rm,\
                                       mhActionSSLRenegotiate);
-
+#define   CloseConnection\
+                mhNewActionForRequest(__servctx, __rm,\
+                                      mhActionCloseConnection);
 /* Set the HTTP response code. Default: 200 OK */
 #define     WithCode(x)\
                 mhRespSetCode(__resp, (x))

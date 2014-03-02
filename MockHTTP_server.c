@@ -936,6 +936,8 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                         _mhLog(MH_VERBOSE, cctx->skt, "Renegotiating SSL "
                                "session.\n");
                         renegotiateSSLSession(cctx);
+                    } else if (action == mhActionCloseConnection) {
+                        resp->closeConn = YES; /* close conn after response */
                     }
                 } else {
                     ctx->mh->verifyStats->requestsNotMatched++;
