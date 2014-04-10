@@ -379,7 +379,9 @@ typedef struct mhStats_t {
 /* Everything ok */
 #define MOCKHTTP_NO_ERROR 0
 /* Responses pending in queueu but can't be sent now */
-#define MOCKHTTP_WAITING 1
+#define MOCKHTTP_WAITING  1
+/* Maximum timeout exceeded when waiting for a complete request */
+#define MOCKHTTP_TIMEOUT  2
 /* There was a problem while setting up the test environment */
 #define MOCKHTTP_SETUP_FAILED 100
 /* There was a problem while running a test */
@@ -408,7 +410,19 @@ void mhCleanup(MockHTTP *mh);
  * MOCKHTTP_WAITING if there's nothing more to be done at this time, but there
  *                  are still pending responses with a certain delay
  */
-mhError_t mhRunServerLoop(MockHTTP *mh);
+mhError_t mhRunServerLoopCompleteRequests(MockHTTP *mh);
+
+/**
+ * Runs the server loop as long as there are requests to receive or responses
+ * to send. This function will wait for requests to arrive completely, with
+ * a maximum delay of 15 seconds.
+ *
+ * Returns:
+ * MOCKHTTP_NO_ERROR if there's nothing more to be done at this time
+ * MOCKHTTP_TIMEOUT  maximum timeout exceeded when waiting for a complete 
+ *                   request
+ */
+mhError_t mhRunServerLoopOneRequest(MockHTTP *mh);
 
 /**
  * Get the actual port number on which the server is listening.

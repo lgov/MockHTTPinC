@@ -317,7 +317,7 @@ static void test_verify_large_chunked_request(CuTest *tc)
         sendData(ctx, request, part);
         mhRunServerLoop(mh);
         sendData(ctx, request + part, len - part);
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
     }
 
     Verify(mh)

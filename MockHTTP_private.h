@@ -96,6 +96,8 @@ struct mhServCtx_t {
     apr_socket_t *proxyskt;    /* Socket for conn proxy <-> server */
     const char *proxyhost;     /* Proxy host:port */
     mhServerType_t type;
+    int partialRequest;        /* 1 if a request is in progress, 0 if no req
+                                  received yet or read completely. */
     /* TODO: allow more connections */
     _mhClientCtx_t *cctx;
 

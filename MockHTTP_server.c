@@ -914,6 +914,7 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                 mhAction_t action;
 
                 ctx->mh->verifyStats->requestsReceived++;
+                ctx->partialRequest = 0;
                 *((mhRequest_t **)apr_array_push(ctx->reqsReceived)) = cctx->req;
                 if (_mhMatchRequest(ctx, cctx, cctx->req,
                                     &resp, &action) == YES) {
@@ -950,6 +951,8 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                 *((mhResponse_t **)apr_array_push(cctx->respQueue)) = resp;
                 cctx->req = NULL;
                 return APR_SUCCESS;
+            } else if (status == APR_SUCCESS || status == APR_EAGAIN) {
+                ctx->partialRequest = 1;
             }
 
             if (ctx->incompleteReqMatchers->nelts > 0) {
