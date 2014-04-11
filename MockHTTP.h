@@ -87,7 +87,8 @@ typedef enum mhSSLProtocol_t {
 
 #define   SetupServer(...)\
                 __servctx = mhNewServer(__mh);\
-                mhConfigAndStartServer(__servctx, __VA_ARGS__, NULL);
+                mhConfigServer(__servctx, __VA_ARGS__, NULL);\
+                mhStartServer(__servctx);
 
 /* Setup a HTTP server */
 #define     WithHTTP\
@@ -96,6 +97,11 @@ typedef enum mhSSLProtocol_t {
 /* Setup a HTTPS server */
 #define     WithHTTPS\
                 mhSetServerType(__servctx, mhHTTPS)
+
+/* Give the server a name, so it can be found (optional, only needed when
+   using multiple servers and requiring post-init configuration) */
+#define     WithID(serverID)\
+                mhSetServerID(__servctx, serverID)
 
 /*   Specify on which TCP port the server should listen. */
 #define     WithPort(port)\
@@ -107,8 +113,12 @@ typedef enum mhSSLProtocol_t {
 
 #define   SetupProxy(...)\
                 __servctx = mhNewProxy(__mh);\
-                mhConfigAndStartServer(__servctx, __VA_ARGS__, NULL);
+                mhConfigServer(__servctx, __VA_ARGS__, NULL);\
+                mhStartServer(__servctx);
 
+#define   ConfigServerWithID(serverID, ...)\
+                __servctx = mhFindServerByID(__mh, serverID);\
+                mhConfigServer(__servctx, __VA_ARGS__, NULL);
 /**
  * HTTPS Server configuration options
  */
@@ -440,9 +450,12 @@ unsigned int mhProxyPortNr(const MockHTTP *mh);
  **/
 mhServCtx_t *mhNewServer(MockHTTP *mh);
 mhServCtx_t *mhNewProxy(MockHTTP *mh);
-void mhConfigAndStartServer(mhServCtx_t *ctx, ...);
+mhServCtx_t *mhFindServerByID(MockHTTP *mh, const char *serverID);
+void mhConfigServer(mhServCtx_t *ctx, ...);
+void mhStartServer(mhServCtx_t *ctx);
 mhServCtx_t *mhGetServerCtx(MockHTTP *mh);
 mhServCtx_t *mhGetProxyCtx(MockHTTP *mh);
+int mhSetServerID(mhServCtx_t *ctx, const char *serverID);
 int mhSetServerPort(mhServCtx_t *ctx, unsigned int port);
 int mhSetServerType(mhServCtx_t *ctx, mhServerType_t type);
 int mhSetServerCertPrefix(mhServCtx_t *ctx, const char *prefix);

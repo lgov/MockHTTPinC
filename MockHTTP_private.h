@@ -90,6 +90,7 @@ struct mhServCtx_t {
     apr_pool_t *pool;
     const MockHTTP *mh;        /* keep const to avoid thread race problems */
     const char *hostname;
+    const char *serverID;      /* unique id for this server */
     apr_port_t port;
     apr_pollset_t *pollset;
     apr_socket_t *skt;         /* Server listening socket */

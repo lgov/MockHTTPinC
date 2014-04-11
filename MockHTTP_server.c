@@ -1107,15 +1107,19 @@ mhServCtx_t *mhNewServer(MockHTTP *mh)
     return mh->servCtx;
 }
 
-void mhConfigAndStartServer(mhServCtx_t *serv_ctx, ...)
+void mhConfigServer(mhServCtx_t *serv_ctx, ...)
 {
-    apr_status_t status;
-    mhError_t err;
-
     if (serv_ctx->protocols == mhProtoUnspecified) {
         serv_ctx->protocols = mhProtoAllSecure;
     }
     /* No more config to do here, has been done during parameter evaluation */
+}
+
+void mhStartServer(mhServCtx_t *serv_ctx)
+{
+    apr_status_t status;
+    mhError_t err;
+
     status = startServer(serv_ctx);
     if (status == MH_STATUS_WAITING)
         err = MOCKHTTP_WAITING;
@@ -1124,6 +1128,14 @@ void mhConfigAndStartServer(mhServCtx_t *serv_ctx, ...)
 
     /* TODO: store error message */
 }
+
+int mhSetServerID(mhServCtx_t *ctx, const char *serverID)
+{
+    ctx->serverID = serverID;
+    return YES;
+}
+
+
 
 unsigned int mhServerPortNr(const MockHTTP *mh)
 {
@@ -1229,6 +1241,19 @@ mhServCtx_t *mhNewProxy(MockHTTP *mh)
     mh->proxyCtx = initServCtx(mh, "localhost", DefaultSrvPort);
     mh->proxyCtx->type = mhGenericProxy;
     return mh->proxyCtx;
+}
+
+mhServCtx_t *mhFindServerByID(MockHTTP *mh, const char *serverID)
+{
+    if (mh->servCtx && mh->servCtx->serverID &&
+        strcmp(mh->servCtx->serverID, serverID)) {
+        return mh->servCtx;
+    }
+
+    if (mh->proxyCtx && mh->proxyCtx->serverID &&
+        strcmp(mh->proxyCtx->serverID, serverID)) {
+        return mh->proxyCtx;
+    }
 }
 
 mhServCtx_t *mhGetServerCtx(MockHTTP *mh)
