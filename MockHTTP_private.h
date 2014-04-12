@@ -99,6 +99,8 @@ struct mhServCtx_t {
     mhServerType_t type;
     int partialRequest;        /* 1 if a request is in progress, 0 if no req
                                   received yet or read completely. */
+    unsigned int maxRequests;  /* Max. nr of reqs per connection. */
+
     /* TODO: allow more connections */
     _mhClientCtx_t *cctx;
 

@@ -38,7 +38,7 @@ void *testSetupWithHTTPServer(void *dummy)
 
     mh = mhInit();
     InitMockServers(mh)
-      SetupServer(WithHTTP, WithPort(30080))
+      SetupServer(WithHTTP, WithID("server"), WithPort(30080))
     EndInit
 
     return mh;
@@ -924,6 +924,52 @@ static void test_connection_close(CuTest *tc)
     EndVerify
 }
 
+
+static void test_conn_keep_alive_max_requests(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+
+    Given(mh)
+      GETRequest(URLEqualTo("/"), BodyEqualTo("1"))
+        Respond(WithCode(200), WithChunkedBody(""))
+      GETRequest(URLEqualTo("/"), BodyEqualTo("2"))
+        Respond(WithCode(200), WithChunkedBody(""))
+      GETRequest(URLEqualTo("/"), BodyEqualTo("3"))
+        Respond(WithCode(200), WithChunkedBody(""))
+      GETRequest(URLEqualTo("/"), BodyEqualTo("4"))
+        Respond(WithCode(200), WithChunkedBody(""))
+      /* These requests will be sent by the client, but shouldn't be handled by
+         the server because it has to close the connection first. */
+/*      GETRequest(URLEqualTo("/"), BodyEqualTo("5"))
+          Respond(WithCode(200), WithChunkedBody(""))
+        GETRequest(URLEqualTo("/"), BodyEqualTo("6"))
+          Respond(WithCode(200), WithChunkedBody(""))*/
+    EndGiven
+
+    InitMockServers(mh)
+        ConfigServerWithID("server", WithMaxKeepAliveRequests(4))
+    EndInit
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        sendRequest(ctx, "GET", "/", hdrs, "1");
+        sendRequest(ctx, "GET", "/", hdrs, "2");
+        sendRequest(ctx, "GET", "/", hdrs, "3");
+        sendRequest(ctx, "GET", "/", hdrs, "4");
+        sendRequest(ctx, "GET", "/", hdrs, "5");
+        sendRequest(ctx, "GET", "/", hdrs, "6");
+        mhRunServerLoop(mh);
+    }
+
+    Verify(mh)
+      CuAssert(tc, ErrorMessage, VerifyAllRequestsReceivedInOrder);
+      CuAssertIntEquals(tc, 4, VerifyStats->requestsReceived);
+      CuAssertIntEquals(tc, 4, VerifyStats->requestsResponded);
+    EndVerify
+}
+
 static void test_expectation_all_reqs_received(CuTest *tc)
 {
     MockHTTP *mh = tc->testBaton;
@@ -1432,6 +1478,7 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_default_response);
     SUITE_ADD_TEST(suite, test_one_request_response_chunked);
     SUITE_ADD_TEST(suite, test_connection_close);
+    SUITE_ADD_TEST(suite, test_conn_keep_alive_max_requests);
     SUITE_ADD_TEST(suite, test_expectation_all_reqs_received);
     SUITE_ADD_TEST(suite, test_expectation_all_reqs_received_in_order);
     SUITE_ADD_TEST(suite, test_conn_close_handle_reqs_one_by_one);

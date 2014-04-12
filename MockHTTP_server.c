@@ -64,8 +64,9 @@ struct _mhClientCtx_t {
     apr_size_t obufrem;
     const char *respBody;
     apr_size_t respRem;
-    apr_array_header_t *respQueue;  /*  test will queue a response */
-    mhResponse_t *currResp; /* response in progress */
+    apr_array_header_t *respQueue;  /* test will queue a response */
+    mhResponse_t *currResp;         /* response in progress */
+    unsigned int reqsReceived;      /* # of reqs received on this connection */
     mhRequest_t *req;
     apr_int16_t reqevents;
     bool closeConn;
@@ -914,6 +915,7 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                 mhAction_t action;
 
                 ctx->mh->verifyStats->requestsReceived++;
+                cctx->reqsReceived++;
                 ctx->partialRequest = 0;
                 *((mhRequest_t **)apr_array_push(ctx->reqsReceived)) = cctx->req;
                 if (_mhMatchRequest(ctx, cctx, cctx->req,
@@ -946,7 +948,10 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                            "Request found no match, queueing error response.\n");
                     resp = cloneResponse(ctx->pool, ctx->mh->defErrorResponse);
                 }
-
+                if (ctx->maxRequests && cctx->reqsReceived >= ctx->maxRequests) {
+                    setHeader(resp->hdrs, "Connection", "close");
+                    resp->closeConn = YES;
+                }
                 resp->req = cctx->req;
                 *((mhResponse_t **)apr_array_push(cctx->respQueue)) = resp;
                 cctx->req = NULL;
@@ -1135,7 +1140,10 @@ int mhSetServerID(mhServCtx_t *ctx, const char *serverID)
     return YES;
 }
 
-
+int mhSetServerMaxRequestsPerConn(mhServCtx_t *ctx, unsigned int maxRequests)
+{
+    ctx->maxRequests = maxRequests;
+}
 
 unsigned int mhServerPortNr(const MockHTTP *mh)
 {
@@ -1246,12 +1254,12 @@ mhServCtx_t *mhNewProxy(MockHTTP *mh)
 mhServCtx_t *mhFindServerByID(MockHTTP *mh, const char *serverID)
 {
     if (mh->servCtx && mh->servCtx->serverID &&
-        strcmp(mh->servCtx->serverID, serverID)) {
+        strcmp(mh->servCtx->serverID, serverID) == 0) {
         return mh->servCtx;
     }
 
     if (mh->proxyCtx && mh->proxyCtx->serverID &&
-        strcmp(mh->proxyCtx->serverID, serverID)) {
+        strcmp(mh->proxyCtx->serverID, serverID) == 0) {
         return mh->proxyCtx;
     }
 }

@@ -107,6 +107,10 @@ typedef enum mhSSLProtocol_t {
 #define     WithPort(port)\
                 mhSetServerPort(__servctx, port)
 
+/* Set the maximum number of requests per connection. Default is unlimited */
+#define     WithMaxKeepAliveRequests(maxRequests)\
+                mhSetServerMaxRequestsPerConn(__servctx, maxRequests)
+
 /* Finalize MockHTTP library initialization */
 #define EndInit\
             }
@@ -458,6 +462,7 @@ mhServCtx_t *mhGetProxyCtx(MockHTTP *mh);
 int mhSetServerID(mhServCtx_t *ctx, const char *serverID);
 int mhSetServerPort(mhServCtx_t *ctx, unsigned int port);
 int mhSetServerType(mhServCtx_t *ctx, mhServerType_t type);
+int mhSetServerMaxRequestsPerConn(mhServCtx_t *ctx, unsigned int maxRequests);
 int mhSetServerCertPrefix(mhServCtx_t *ctx, const char *prefix);
 int mhSetServerCertKeyFile(mhServCtx_t *ctx, const char *keyFile);
 int mhAddServerCertFiles(mhServCtx_t *ctx, ...);
