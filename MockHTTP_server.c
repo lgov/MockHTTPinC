@@ -916,7 +916,7 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
 
                 ctx->mh->verifyStats->requestsReceived++;
                 cctx->reqsReceived++;
-                ctx->partialRequest = 0;
+                ctx->reqState = FullReqReceived;
                 *((mhRequest_t **)apr_array_push(ctx->reqsReceived)) = cctx->req;
                 if (_mhMatchRequest(ctx, cctx, cctx->req,
                                     &resp, &action) == YES) {
@@ -924,6 +924,7 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                     if (resp) {
                         _mhLog(MH_VERBOSE, cctx->skt,
                                "Request matched, queueing response.\n");
+                        resp = cloneResponse(ctx->pool, resp);
                     } else {
                         _mhLog(MH_VERBOSE, cctx->skt,
                                "Request matched, queueing default response.\n");
@@ -952,12 +953,16 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                     setHeader(resp->hdrs, "Connection", "close");
                     resp->closeConn = YES;
                 }
+
+                /* Link the request to the response, and push the request on the
+                   queue back to the client */
                 resp->req = cctx->req;
                 *((mhResponse_t **)apr_array_push(cctx->respQueue)) = resp;
                 cctx->req = NULL;
+
                 return APR_SUCCESS;
             } else if (status == APR_SUCCESS || status == APR_EAGAIN) {
-                ctx->partialRequest = 1;
+                ctx->reqState = PartialReqReceived;
             }
 
             if (ctx->incompleteReqMatchers->nelts > 0) {
@@ -1038,6 +1043,8 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
     apr_status_t status;
 
     cctx = ctx->cctx;
+    if (ctx->reqState == FullReqReceived)
+        ctx->reqState = NoReqsReceived;
 #if 0
     /* something to write */
     if (cctx && cctx->skt) {
@@ -1143,6 +1150,7 @@ int mhSetServerID(mhServCtx_t *ctx, const char *serverID)
 int mhSetServerMaxRequestsPerConn(mhServCtx_t *ctx, unsigned int maxRequests)
 {
     ctx->maxRequests = maxRequests;
+    return YES;
 }
 
 unsigned int mhServerPortNr(const MockHTTP *mh)
@@ -1262,6 +1270,7 @@ mhServCtx_t *mhFindServerByID(MockHTTP *mh, const char *serverID)
         strcmp(mh->proxyCtx->serverID, serverID) == 0) {
         return mh->proxyCtx;
     }
+    return NULL;
 }
 
 mhServCtx_t *mhGetServerCtx(MockHTTP *mh)

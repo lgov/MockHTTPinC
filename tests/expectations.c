@@ -1188,7 +1188,9 @@ static void test_use_request_body(CuTest *tc)
     Given(mh)
       GETRequest(URLEqualTo("/index1.html"), BodyEqualTo("body1"))
         Respond(WithCode(200), WithRequestBody)
-      GETRequest(URLEqualTo("/index2.html"), ChunkedBodyEqualTo("chunk1chunk2"))
+      GETRequest(URLEqualTo("/index2.html"))
+        Respond(WithCode(200), WithRequestBody)
+      GETRequest(URLEqualTo("/index4.html"), ChunkedBodyEqualTo("chunk1chunk2"))
         Respond(WithCode(200), WithRequestBody)
     EndGiven
 
@@ -1196,7 +1198,11 @@ static void test_use_request_body(CuTest *tc)
     {
         const char *exp_body1 = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n"
                                 "\r\nbody1";
-        const char *exp_body2 = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n"
+        const char *exp_body2 = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n"
+                                "\r\nbody2";
+        const char *exp_body3 = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n"
+                                "\r\nbody3";
+        const char *exp_body4 = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n"
                                 "\r\n6\r\nchunk1\r\n6\r\nchunk2\r\n0\r\n\r\n";
         clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
@@ -1204,8 +1210,9 @@ static void test_use_request_body(CuTest *tc)
         apr_size_t len;
         apr_status_t status;
 
+        /* request 1 */
         sendRequest(ctx, "GET", "/index1.html", hdrs, "body1");
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
         do {
             int curpos = 0;
             status = receiveResponse(ctx, &buf, &len);
@@ -1213,19 +1220,39 @@ static void test_use_request_body(CuTest *tc)
             curpos += len;
         } while (status == APR_EAGAIN);
 
-        sendChunkedRequest(ctx, "GET", "/index2.html", hdrs, "chunk1", "chunk2",
-                           NULL);
-        mhRunServerLoop(mh);
+        /* request 2 */
+        sendRequest(ctx, "GET", "/index2.html", hdrs, "body2");
+        mhRunServerLoopCompleteRequests(mh);
         do {
             int curpos = 0;
             status = receiveResponse(ctx, &buf, &len);
             CuAssertStrnEquals(tc, exp_body2 + curpos, len, buf);
             curpos += len;
         } while (status == APR_EAGAIN);
+
+        /* request 3 */
+        sendRequest(ctx, "GET", "/index2.html", hdrs, "body3");
+        mhRunServerLoopCompleteRequests(mh);
+        do {
+            int curpos = 0;
+            status = receiveResponse(ctx, &buf, &len);
+            CuAssertStrnEquals(tc, exp_body3 + curpos, len, buf);
+            curpos += len;
+        } while (status == APR_EAGAIN);
+
+        sendChunkedRequest(ctx, "GET", "/index4.html", hdrs, "chunk1", "chunk2",
+                           NULL);
+        mhRunServerLoopCompleteRequests(mh);
+        do {
+            int curpos = 0;
+            status = receiveResponse(ctx, &buf, &len);
+            CuAssertStrnEquals(tc, exp_body4 + curpos, len, buf);
+            curpos += len;
+        } while (status == APR_EAGAIN);
     }
 
     Verify(mh)
-      CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
+      CuAssertTrue(tc, VerifyAllRequestsReceived);
     EndVerify
 }
 

@@ -86,6 +86,13 @@ typedef enum servMode_t {
     ModeTunnel,
 } servMode_t;
 
+
+typedef enum loopRequestState_t {
+    NoReqsReceived = 0,
+    PartialReqReceived = 1,
+    FullReqReceived = 2,
+} loopRequestState_t;
+
 struct mhServCtx_t {
     apr_pool_t *pool;
     const MockHTTP *mh;        /* keep const to avoid thread race problems */
@@ -97,8 +104,8 @@ struct mhServCtx_t {
     apr_socket_t *proxyskt;    /* Socket for conn proxy <-> server */
     const char *proxyhost;     /* Proxy host:port */
     mhServerType_t type;
-    int partialRequest;        /* 1 if a request is in progress, 0 if no req
-                                  received yet or read completely. */
+    loopRequestState_t reqState;  /* 1 if a request is in progress, 0 if
+                                  no req received yet or read completely. */
     unsigned int maxRequests;  /* Max. nr of reqs per connection. */
 
     /* TODO: allow more connections */

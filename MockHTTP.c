@@ -136,23 +136,25 @@ void mhCleanup(MockHTTP *mh)
  * Runs both the proxy and the server loops. This function will block as long
  * as there's data to read or write.
  *
- * partial: 1 if either proxy or server blocks on a partly read request. 0 if
- *            all requests have been read completely.
+ * reqState: NoReqsReceived if no requests were received
+ *           PartialReqReceived if either proxy or server blocks on a partly 
+ *                              read request.
+ *           FullReqReceived if all requests have been read completely.
  */
-static apr_status_t runServerLoop(MockHTTP *mh, int *partial)
+static apr_status_t runServerLoop(MockHTTP *mh, loopRequestState_t *reqState)
 {
     apr_status_t status = APR_EGENERAL;
 
-    *partial = 0;
+    *reqState = NoReqsReceived;
     do {
         if (mh->proxyCtx) {
             status = _mhRunServerLoop(mh->proxyCtx);
-            *partial = mh->proxyCtx->partialRequest;
+            *reqState = mh->proxyCtx->reqState;
         }
         /* TODO: status? */
         if (mh->servCtx) {
             status = _mhRunServerLoop(mh->servCtx);
-            *partial |= mh->servCtx->partialRequest;
+            *reqState |= mh->servCtx->reqState;
         }
     } while (status == APR_SUCCESS);
 
@@ -161,7 +163,7 @@ static apr_status_t runServerLoop(MockHTTP *mh, int *partial)
 
 mhError_t mhRunServerLoop(MockHTTP *mh)
 {
-    int dummy;
+    loopRequestState_t dummy;
     apr_status_t status = runServerLoop(mh, &dummy);
 
     if (status == MH_STATUS_WAITING)
@@ -175,15 +177,20 @@ mhError_t mhRunServerLoop(MockHTTP *mh)
 
 mhError_t mhRunServerLoopCompleteRequests(MockHTTP *mh)
 {
-    int partial = 0;
+    loopRequestState_t reqState = NoReqsReceived;
     apr_status_t status = APR_EGENERAL;
     apr_time_t finish_time = apr_time_now() + apr_time_from_sec(15);
 
-    do {
-        status = runServerLoop(mh, &partial);
-    } while (status == APR_EAGAIN &&
-             (apr_time_now() <= finish_time) &&
-             partial);
+    while (1) {
+        status = runServerLoop(mh, &reqState);
+
+        if (status != APR_EAGAIN)
+            break;
+        if (apr_time_now() > finish_time)
+            break;
+        if (reqState == FullReqReceived)
+            break;
+    };
 
     if (status == APR_EAGAIN)
         return MOCKHTTP_TIMEOUT;
