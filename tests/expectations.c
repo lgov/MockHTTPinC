@@ -74,6 +74,31 @@ static void test_urlmatcher(CuTest *tc)
     req = _mhInitRequest(mh->pool);
     req->url = "/index.html";
     CuAssertIntEquals(tc, mp->matcher(mh->pool, mp, req), YES);
+
+    req = _mhInitRequest(mh->pool);
+    req->url = "/index2.html";
+    CuAssertIntEquals(tc, mp->matcher(mh->pool, mp, req), NO);
+}
+
+static void test_urlnotmatcher(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+    mhRequestMatcher_t *rm;
+    mhMatchingPattern_t *mp;
+    mhRequest_t *req;
+
+    rm = mhGivenRequest(mh, "GET");
+    mp = mhMatchURLNotEqualTo(mh, "/index2.html");
+    CuAssertPtrNotNull(tc, mp);
+
+    /* Create a fake request and check that the matcher works */
+    req = _mhInitRequest(mh->pool);
+    req->url = "/index.html";
+    CuAssertIntEquals(tc, mp->matcher(mh->pool, mp, req), YES);
+
+    req = _mhInitRequest(mh->pool);
+    req->url = "/index2.html";
+    CuAssertIntEquals(tc, mp->matcher(mh->pool, mp, req), NO);
 }
 
 static void test_methodmatcher(CuTest *tc)
@@ -1521,6 +1546,7 @@ CuSuite *testMockWithHTTPserver(void)
 
     SUITE_ADD_TEST(suite, test_mock_init);
     SUITE_ADD_TEST(suite, test_urlmatcher);
+    SUITE_ADD_TEST(suite, test_urlnotmatcher);
     SUITE_ADD_TEST(suite, test_methodmatcher);
     SUITE_ADD_TEST(suite, test_matchrequest);
 #if 0

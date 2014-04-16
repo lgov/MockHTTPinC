@@ -206,9 +206,13 @@ typedef enum mhThreading_t {
                 __rm = mhGivenRequest(__mh, method, __VA_ARGS__, NULL);\
                 mhPushRequest(__servctx, __rm);
 
-/* Match the request's URL */
-#define     URLEqualTo(x)\
-                mhMatchURLEqualTo(__mh, (x))
+/* Match the request's URL equal to EXP */
+#define     URLEqualTo(exp)\
+                mhMatchURLEqualTo(__mh, (exp))
+
+/* Match the request's URL not equal to EXP */
+#define     URLNotEqualTo(exp)\
+                mhMatchURLNotEqualTo(__mh, (exp))
 
 /* Match the request's body, ignoring transfer encoding (e.g. chunked) */
 #define     BodyEqualTo(x)\
@@ -222,7 +226,7 @@ typedef enum mhThreading_t {
 #define     HeaderEqualTo(h, v)\
                 mhMatchHeaderEqualTo(__mh, (h), (v))
 
-/* Match a request with the specified header not set */
+/* Match a request with the specified header set */
 #define     HeaderSet(h)\
                 mhMatchHeaderNotEqualTo(__mh, (h), NULL)
 
@@ -497,6 +501,8 @@ mhRequestMatcher_t *mhGivenRequest(MockHTTP *mh, const char *method, ...);
 /* Request matching functions */
 mhMatchingPattern_t *mhMatchURLEqualTo(const MockHTTP *mh,
                                        const char *expected);
+mhMatchingPattern_t *mhMatchURLNotEqualTo(const MockHTTP *mh,
+                                          const char *expected);
 mhMatchingPattern_t *mhMatchMethodEqualTo(const MockHTTP *mh,
                                           const char *expected);
 mhMatchingPattern_t *mhMatchBodyEqualTo(const MockHTTP *mh,

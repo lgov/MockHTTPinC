@@ -267,6 +267,25 @@ mhMatchURLEqualTo(const MockHTTP *mh, const char *expected)
     return mp;
 }
 
+static bool url_not_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+                            const mhRequest_t *req)
+{
+    return !str_matcher(mp, req->url);
+}
+
+mhMatchingPattern_t *
+mhMatchURLNotEqualTo(const MockHTTP *mh, const char *expected)
+{
+    apr_pool_t *pool = mh->pool;
+
+    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
+    mp->baton = apr_pstrdup(pool, expected);
+    mp->matcher = url_not_matcher;
+    mp->describe_key = "URL not equal to";
+    mp->describe_value = expected;
+    return mp;
+}
+
 static bool body_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
                          const mhRequest_t *req)
 {
