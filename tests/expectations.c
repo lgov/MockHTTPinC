@@ -422,21 +422,21 @@ static void test_verify_all_reqs_received_in_order_more(CuTest *tc)
         clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendRequest(ctx, "GET", "/index1.html", hdrs, "1");
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
         sendRequest(ctx, "POST", "/index2.html", hdrs, "2");
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
         sendRequest(ctx, "GET", "/index3.html", hdrs, "3");
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
         sendRequest(ctx, "POST", "/index4.html", hdrs, "4");
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
         sendRequest(ctx, "GET", "/index5.html", hdrs, "5");
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
         sendRequest(ctx, "POST", "/index6.html", hdrs, "6");
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
         sendRequest(ctx, "GET", "/index7.html", hdrs, "7");
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
         sendRequest(ctx, "POST", "/index8.html", hdrs, "8");
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
     }
 
     Verify(mh)
@@ -616,16 +616,16 @@ static void test_string_exact_match(CuTest *tc)
         clientCtx_t *ctx = initClient(mhServerPortNr(mh));
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendChunkedRequest(ctx, "GET", "/index1.html", hdrs, "chunk10", NULL);
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
         sendChunkedRequest(ctx, "GET", "/index2.html", hdrs, "chunk2", NULL);
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
         sendChunkedRequest(ctx, "GET", "/index3.html", hdrs, "chunk3", "chunk40",
                            NULL);
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
         sendChunkedRequest(ctx, "GET", "/index4.html", hdrs, "body50", NULL);
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
         sendChunkedRequest(ctx, "GET", "/index5.html", hdrs, "body6", NULL);
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
     }
 
     Verify(mh)
