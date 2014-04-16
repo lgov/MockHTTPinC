@@ -222,6 +222,10 @@ typedef enum mhThreading_t {
 #define     HeaderEqualTo(h, v)\
                 mhMatchHeaderEqualTo(__mh, (h), (v))
 
+/* Match a request with the specified header not set */
+#define     HeaderSet(h)\
+                mhMatchHeaderNotEqualTo(__mh, (h), NULL)
+
 /* Match a request header's value. */
 #define     HeaderNotEqualTo(h, v)\
                 mhMatchHeaderNotEqualTo(__mh, (h), (v))
