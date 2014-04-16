@@ -1009,6 +1009,29 @@ static int verifyAllRequestsReceived(const MockHTTP *mh, const mhServCtx_t *ctx,
         }
 
         if (matched == NO) {
+            apr_pool_t *tmppool;
+            apr_pool_create(&tmppool, mh->pool);
+            appendErrMessage(mh, "ERROR: No rule matched this request!\n");
+            appendErrMessage(mh, "====================================\n");
+            /* log all rules (yes this can be a long list) */
+            for (j = 0 ; j < ctx->reqMatchers->nelts; j++) {
+                const ReqMatcherRespPair_t *pair;
+
+                pair = APR_ARRAY_IDX(ctx->reqMatchers, j, ReqMatcherRespPair_t *);
+
+                if (breakOnNotOnce && isArrayElement(used, pair))
+                    continue; /* skip this match if request matched before */
+                appendErrMessage(mh, "Expected request(s) with:\n");
+                appendErrMessage(mh, serializeRequestMatcher(tmppool, pair->rm, req));
+                if (j + 1 < ctx->reqMatchers->nelts)
+                    appendErrMessage(mh, "        ------------------------\n");
+            }
+            appendErrMessage(mh, "---------------------------------\n");
+            appendErrMessage(mh, "Actual request:\n");
+            appendErrMessage(mh, serializeRequest(tmppool, req));
+            appendErrMessage(mh, "=================================\n");
+            apr_pool_destroy(tmppool);
+
             result = NO;
             break;
         }
