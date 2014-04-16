@@ -66,6 +66,11 @@ typedef enum mhSSLProtocol_t {
     mhProtoTLSv12 = 0x10,
 } mhSSLProtocol_t;
 
+typedef enum mhThreading_t {
+    mhThreadMain,
+    mhThreadSeparate,
+} mhThreading_t;
+
 /* Note: the variadic macro's used here require C99. */
 /* TODO: we can provide xxx1(x), xxx2(x,y)... macro's for C89 compilers */
 
@@ -110,6 +115,17 @@ typedef enum mhSSLProtocol_t {
 /* Set the maximum number of requests per connection. Default is unlimited */
 #define     WithMaxKeepAliveRequests(maxRequests)\
                 mhSetServerMaxRequestsPerConn(__servctx, maxRequests)
+
+/* Runs the mock server and proxy in separate threads, use this when testing a
+   blocking http client library */
+#define     InSeparateThread\
+                mhSetServerThreading(__servctx, mhThreadSeparate)
+
+/* Runs the mock server and proxy in the main thread, use this when testing a 
+   non-blocking http client library.
+   This is the default. */
+#define     InMainThread\
+                mhSetServerThreading(__servctx, mhThreadMain)
 
 /* Finalize MockHTTP library initialization */
 #define EndInit\
@@ -462,6 +478,7 @@ mhServCtx_t *mhGetProxyCtx(MockHTTP *mh);
 int mhSetServerID(mhServCtx_t *ctx, const char *serverID);
 int mhSetServerPort(mhServCtx_t *ctx, unsigned int port);
 int mhSetServerType(mhServCtx_t *ctx, mhServerType_t type);
+int mhSetServerThreading(mhServCtx_t *ctx, mhThreading_t threading);
 int mhSetServerMaxRequestsPerConn(mhServCtx_t *ctx, unsigned int maxRequests);
 int mhSetServerCertPrefix(mhServCtx_t *ctx, const char *prefix);
 int mhSetServerCertKeyFile(mhServCtx_t *ctx, const char *keyFile);

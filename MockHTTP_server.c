@@ -228,9 +228,11 @@ initServCtx(const MockHTTP *mh, const char *hostname, apr_port_t port)
     ctx->reqMatchers = apr_array_make(pool, 5, sizeof(ReqMatcherRespPair_t *));
     ctx->incompleteReqMatchers = apr_array_make(pool, 5,
                                                sizeof(ReqMatcherRespPair_t *));
+    /* Default settings */
     ctx->mode = ModeServer;
     ctx->clientCert = mhCCVerifyNone;
     ctx->protocols = mhProtoUnspecified;
+    ctx->threading = mhThreadMain;
 
     apr_pool_cleanup_register(pool, ctx,
                               cleanupServer,
@@ -244,15 +246,17 @@ static mhError_t startServer(mhServCtx_t *ctx)
     apr_thread_t *thread;
 
     /* TODO: second thread doesn't work. */
-    if (0) { /* second thread */
+    if (ctx->threading == mhThreadSeparate) { /* second thread */
         /* Setup a non-blocking TCP server in a separate thread */
         apr_thread_create(&thread, NULL, start_thread, ctx, ctx->pool);
-    } else {
+    } else if (ctx->threading == mhThreadMain) {
         apr_status_t status;
         /* Setup a non-blocking TCP server */
         status = setupTCPServer(ctx, NO);
         if (status)
             return MOCKHTTP_SETUP_FAILED;
+    } else {
+        return MOCKHTTP_SETUP_FAILED;
     }
 
     return MOCKHTTP_NO_ERROR;
@@ -1188,6 +1192,12 @@ int mhSetServerType(mhServCtx_t *ctx, mhServerType_t type)
             /* TODO: error in test configuration. */
             break;
     }
+    return YES;
+}
+
+int mhSetServerThreading(mhServCtx_t *ctx, mhThreading_t threading)
+{
+    ctx->threading = threading;
     return YES;
 }
 

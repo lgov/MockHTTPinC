@@ -104,6 +104,7 @@ struct mhServCtx_t {
     apr_socket_t *proxyskt;    /* Socket for conn proxy <-> server */
     const char *proxyhost;     /* Proxy host:port */
     mhServerType_t type;
+    mhThreading_t threading;
     loopRequestState_t reqState;  /* 1 if a request is in progress, 0 if
                                   no req received yet or read completely. */
     unsigned int maxRequests;  /* Max. nr of reqs per connection. */
