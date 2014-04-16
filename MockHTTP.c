@@ -852,16 +852,22 @@ static char *serializeArrayOfIovecs(apr_pool_t *pool,
     return str;
 }
 
-static const char *serializeRawBody(apr_pool_t *pool, const mhRequest_t *req)
+static const char *formatBody(apr_pool_t *pool, int indent, const char *body)
 {
-    char *body = serializeArrayOfIovecs(pool, req->body);
     const char *newbody = "";
     char *nextkv, *line;
     for ( ; (line = apr_strtok(body, "\n", &nextkv)) != NULL; body = NULL) {
-        newbody = apr_psprintf(pool, "%s%s\n%s", newbody, line,
-                               *nextkv != '\0' ? "                |" : "");
+        newbody = apr_psprintf(pool, "%s%s\n%*s", newbody, line,
+                               indent, *nextkv != '\0' ? "|" : "");
     }
     return newbody;
+}
+
+static const char *
+serializeRawBody(apr_pool_t *pool, int indent, const mhRequest_t *req)
+{
+    char *body = serializeArrayOfIovecs(pool, req->body);
+    return formatBody(pool, indent, body);
 }
 
 static const char *serializeRequest(apr_pool_t *pool, const mhRequest_t *req)
@@ -878,7 +884,7 @@ static const char *serializeRequest(apr_pool_t *pool, const mhRequest_t *req)
                        serializeHeaders(pool, req, "                 "),
                        req->bodyLen,
                        req->chunked ? "Chunked Body" : "        Body",
-                       serializeRawBody(pool, req));
+                       serializeRawBody(pool, 17, req));
     return str;
 }
 
@@ -895,9 +901,19 @@ serializeRequestMatcher(apr_pool_t *pool, const mhRequestMatcher_t *rm,
 
         mp = APR_ARRAY_IDX(rm->matchers, i, mhMatchingPattern_t *);
         matches = mp->matcher(pool, mp, req);
-        str = apr_psprintf(pool, "%s%25s: %s%s\n", str,
-                           mp->describe_key, mp->describe_value,
-                           matches ? "" : "   <--- rule failed!");
+
+        if (strstr(mp->describe_key, "body") != NULL) {
+            /* format the expected request body */
+            str = apr_psprintf(pool, "%s%25s:|%s%s\n", str,
+                               mp->describe_key,
+                               formatBody(pool, 27, mp->describe_value),
+                               matches ? "" : "   <--- rule failed!");
+
+        } else {
+            str = apr_psprintf(pool, "%s%25s: %s%s\n", str,
+                               mp->describe_key, mp->describe_value,
+                               matches ? "" : "   <--- rule failed!");
+        }
     }
     return str;
 }
