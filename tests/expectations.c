@@ -658,11 +658,9 @@ static void test_verify_req_header(CuTest *tc)
         apr_hash_set(hdrs, "Authorization", APR_HASH_KEY_STRING,
                      "TW9ja0hUVFA6TW9ja0hUVFBwd2Q=");
         sendChunkedRequest(ctx, "GET", "/index1.html", hdrs, "1", NULL);
-        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
         sendChunkedRequest(ctx, "GET", "/index2.html", hdrs, "2", NULL);
-        mhRunServerLoop(mh); /* run 2 times, should be sufficient. */
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
     }
 
     Verify(mh)
