@@ -101,18 +101,18 @@ static void * APR_THREAD_FUNC start_thread(apr_thread_t *tid, void *baton)
 static apr_status_t cleanupServer(void *baton)
 {
     mhServCtx_t *ctx = baton;
-    apr_status_t status;
+    apr_status_t status = APR_SUCCESS;
 
     /*    apr_thread_exit(tid, APR_SUCCESS);*/
     if (ctx->pollset)
         apr_pollset_destroy(ctx->pollset);
     if (ctx->skt)
-        STATUSERR(apr_socket_close(ctx->skt));
+        status = apr_socket_close(ctx->skt);
 
     ctx->skt = NULL;
     ctx->pollset = NULL;
 
-    return APR_SUCCESS;
+    return status;
 }
 
 static apr_status_t socketWrite(_mhClientCtx_t *cctx, const char *data,
