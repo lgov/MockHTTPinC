@@ -73,11 +73,11 @@ static void test_urlmatcher(CuTest *tc)
     /* Create a fake request and check that the matcher works */
     req = _mhInitRequest(mh->pool);
     req->url = "/index.html";
-    CuAssertIntEquals(tc, mp->matcher(mh->pool, mp, req), YES);
+    CuAssertIntEquals(tc, mp->matcher(mp, req), YES);
 
     req = _mhInitRequest(mh->pool);
     req->url = "/index2.html";
-    CuAssertIntEquals(tc, mp->matcher(mh->pool, mp, req), NO);
+    CuAssertIntEquals(tc, mp->matcher(mp, req), NO);
 }
 
 static void test_urlnotmatcher(CuTest *tc)
@@ -94,11 +94,11 @@ static void test_urlnotmatcher(CuTest *tc)
     /* Create a fake request and check that the matcher works */
     req = _mhInitRequest(mh->pool);
     req->url = "/index.html";
-    CuAssertIntEquals(tc, mp->matcher(mh->pool, mp, req), YES);
+    CuAssertIntEquals(tc, mp->matcher(mp, req), YES);
 
     req = _mhInitRequest(mh->pool);
     req->url = "/index2.html";
-    CuAssertIntEquals(tc, mp->matcher(mh->pool, mp, req), NO);
+    CuAssertIntEquals(tc, mp->matcher(mp, req), NO);
 }
 
 static void test_methodmatcher(CuTest *tc)
@@ -115,7 +115,7 @@ static void test_methodmatcher(CuTest *tc)
     /* Create a fake request and check that the matcher works */
     req = _mhInitRequest(mh->pool);
     req->method = "get";
-    CuAssertIntEquals(tc, mp->matcher(mh->pool, mp, req), YES);
+    CuAssertIntEquals(tc, mp->matcher(mp, req), YES);
 }
 
 static void test_matchrequest(CuTest *tc)

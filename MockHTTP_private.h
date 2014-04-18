@@ -182,7 +182,7 @@ typedef struct builder_t {
 } builder_t;
 
 
-typedef bool (*reqmatchfunc_t)(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
+typedef bool (*reqmatchfunc_t)(const mhReqMatcherBldr_t *mp,
                                const mhRequest_t *req);
 
 struct mhRequestMatcher_t {
@@ -203,7 +203,7 @@ struct mhReqMatcherBldr_t {
     bool match_incomplete; /* Don't wait for full valid requests */
 };
 
-typedef bool (*connmatchfunc_t)(apr_pool_t *pool, const mhConnMatcherBldr_t *cmb,
+typedef bool (*connmatchfunc_t)(const mhConnMatcherBldr_t *cmb,
                                 const _mhClientCtx_t *cctx);
 
 struct mhConnMatcherBldr_t {
@@ -214,9 +214,8 @@ struct mhConnMatcherBldr_t {
     const char *describe_value;
 };
 
-typedef bool
-(*serversetupfunc_t)(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
-                     mhServCtx_t *ctx);
+typedef bool (*serversetupfunc_t)(const mhServerSetupBldr_t *ssb,
+                                  mhServCtx_t *ctx);
 
 struct mhServerSetupBldr_t {
     builder_t builder;
@@ -244,9 +243,9 @@ mhRequest_t *_mhInitRequest(apr_pool_t *pool);
 
 bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm,
                             const mhRequest_t *req);
-bool _mhClientcertcn_matcher(apr_pool_t *pool, const mhConnMatcherBldr_t *mp,
+bool _mhClientcertcn_matcher(const mhConnMatcherBldr_t *mp,
                              const _mhClientCtx_t *cctx);
-bool _mhClientcert_valid_matcher(apr_pool_t *pool, const mhConnMatcherBldr_t *mp,
+bool _mhClientcert_valid_matcher(const mhConnMatcherBldr_t *mp,
                                  const _mhClientCtx_t *cctx);
 _mhClientCtx_t *_mhGetClientCtx(mhServCtx_t *serv_ctx);
 

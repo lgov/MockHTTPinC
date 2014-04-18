@@ -1135,7 +1135,7 @@ void mhConfigServer(mhServCtx_t *serv_ctx, ...)
         if (ssb == NULL)
             break;
         /* TODO: error if ssb isn't of type BuilderTypeServerSetup */
-        ssb->serversetup(serv_ctx->pool, ssb, serv_ctx);
+        ssb->serversetup(ssb, serv_ctx);
     }
     va_end(argp);
 
@@ -1166,8 +1166,7 @@ static mhServerSetupBldr_t *createServerSetupBldr(apr_pool_t *pool)
     return ssb;
 }
 
-static bool set_server_id(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
-                          mhServCtx_t *ctx)
+static bool set_server_id(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
     ctx->serverID = ssb->baton;
     return YES;
@@ -1183,8 +1182,7 @@ mhServerSetupBldr_t *mhSetServerID(mhServCtx_t *ctx, const char *serverID)
 }
 
 static bool
-set_server_maxreqs_per_conn(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
-                            mhServCtx_t *ctx)
+set_server_maxreqs_per_conn(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
     ctx->maxRequests = ssb->ibaton;
     return YES;
@@ -1210,8 +1208,7 @@ unsigned int mhProxyPortNr(const MockHTTP *mh)
     return mh->proxyCtx->port;
 }
 
-static bool set_server_port(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
-                            mhServCtx_t *ctx)
+static bool set_server_port(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
     ctx->port = ssb->ibaton;
     return YES;
@@ -1226,8 +1223,7 @@ mhServerSetupBldr_t *mhSetServerPort(mhServCtx_t *ctx, unsigned int port)
     return ssb;
 }
 
-static bool set_server_type(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
-                            mhServCtx_t *ctx)
+static bool set_server_type(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
     mhServerType_t type = ssb->ibaton;
 
@@ -1261,8 +1257,7 @@ mhServerSetupBldr_t *mhSetServerType(mhServCtx_t *ctx, mhServerType_t type)
 }
 
 static bool
-set_server_threading(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
-                     mhServCtx_t *ctx)
+set_server_threading(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
     ctx->threading = ssb->ibaton;
     return YES;
@@ -1279,8 +1274,7 @@ mhSetServerThreading(mhServCtx_t *ctx, mhThreading_t threading)
 }
 
 static bool
-set_server_cert_prefix(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
-                       mhServCtx_t *ctx)
+set_server_cert_prefix(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
     ctx->certFilesPrefix = ssb->baton;
     return YES;
@@ -1297,8 +1291,7 @@ mhSetServerCertPrefix(mhServCtx_t *ctx, const char *prefix)
 }
 
 static bool
-set_server_key_file(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
-                    mhServCtx_t *ctx)
+set_server_key_file(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
     const char *keyFile = ssb->baton;
     if (ctx->certFilesPrefix) {
@@ -1321,8 +1314,7 @@ mhSetServerCertKeyFile(mhServCtx_t *ctx, const char *keyFile)
 }
 
 static bool
-add_server_cert_files(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
-                      mhServCtx_t *ctx)
+add_server_cert_files(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
     int i;
     const apr_array_header_t *certFiles = ssb->baton;
@@ -1389,8 +1381,7 @@ mhAddServerCertFileArray(mhServCtx_t *ctx, const char **certFiles)
 }
 
 static bool
-set_server_request_client_cert(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
-                              mhServCtx_t *ctx)
+set_server_request_client_cert(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
     ctx->clientCert = ssb->ibaton;
     return YES;
@@ -1407,8 +1398,7 @@ mhSetServerRequestClientCert(mhServCtx_t *ctx, mhClientCertVerification_t v)
 }
 
 static bool
-add_server_ssl_protocol(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
-                        mhServCtx_t *ctx)
+add_server_ssl_protocol(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
     ctx->protocols |= ssb->ibaton;
     return YES;
@@ -1810,7 +1800,7 @@ static void appendSSLErrMessage(const MockHTTP *mh, long result)
     ERR_print_errors_fp(stderr);
 }
 
-bool _mhClientcert_valid_matcher(apr_pool_t *pool, const mhConnMatcherBldr_t *mp,
+bool _mhClientcert_valid_matcher(const mhConnMatcherBldr_t *mp,
                                  const _mhClientCtx_t *cctx)
 {
     sslCtx_t *ssl_ctx = cctx->ssl_ctx;
@@ -1832,7 +1822,7 @@ bool _mhClientcert_valid_matcher(apr_pool_t *pool, const mhConnMatcherBldr_t *mp
     return NO;
 }
 
-bool _mhClientcertcn_matcher(apr_pool_t *pool, const mhConnMatcherBldr_t *mp,
+bool _mhClientcertcn_matcher(const mhConnMatcherBldr_t *mp,
                              const _mhClientCtx_t *cctx)
 {
     sslCtx_t *ssl_ctx = cctx->ssl_ctx;
