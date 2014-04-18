@@ -858,14 +858,23 @@ static char *serializeArrayOfIovecs(apr_pool_t *pool,
     return str;
 }
 
-static const char *formatBody(apr_pool_t *pool, int indent, const char *body)
+static const char *formatBody(apr_pool_t *outpool, int indent, const char *body)
 {
     const char *newbody = "";
-    char *nextkv, *line;
-    for ( ; (line = apr_strtok(body, "\n", &nextkv)) != NULL; body = NULL) {
-        newbody = apr_psprintf(pool, "%s%s\n%*s", newbody, line,
+    char *nextkv, *line, *tmpbody;
+    apr_pool_t *tmppool;
+
+    /* Need a copy cuz we're going to write NUL characters into the string.  */
+    apr_pool_create(&tmppool, outpool);
+    tmpbody = apr_pstrdup(tmppool, body);
+
+    for ( ; (line = apr_strtok(tmpbody, "\n", &nextkv)) != NULL; tmpbody = NULL)
+    {
+        newbody = apr_psprintf(outpool, "%s%s\n%*s", newbody, line,
                                indent, *nextkv != '\0' ? "|" : "");
     }
+    apr_pool_destroy(tmppool);
+
     return newbody;
 }
 
