@@ -1264,7 +1264,7 @@ int mhAddSSLProtocol(mhServCtx_t *ctx, mhSSLProtocol_t proto)
 
 mhServCtx_t *mhNewProxy(MockHTTP *mh)
 {
-    mh->proxyCtx = initServCtx(mh, "localhost", DefaultSrvPort);
+    mh->proxyCtx = initServCtx(mh, "localhost", DefaultProxyPort);
     mh->proxyCtx->type = mhGenericProxy;
     return mh->proxyCtx;
 }
