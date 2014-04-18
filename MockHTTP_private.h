@@ -52,9 +52,9 @@ static const bool NO = 0;
 
 typedef struct _mhClientCtx_t _mhClientCtx_t;
 
-typedef bool (*reqmatchfunc_t)(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+typedef bool (*reqmatchfunc_t)(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
                                const mhRequest_t *req);
-typedef bool (*connmatchfunc_t)(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+typedef bool (*connmatchfunc_t)(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
                                 const _mhClientCtx_t *cctx);
 
 typedef enum expectation_t {
@@ -169,15 +169,29 @@ struct mhResponse_t {
     mhRequest_t *req;  /* mhResponse_t instance is reply to req */
 };
 
+
+/* Builder structures for server setup, request matching and response creation */
+typedef enum builderType_t {
+    BuilderTypeReqMatcher,
+    BuilderTypeServerSetup,
+    BuilderTypeResponse,
+} builderType_t;
+
+typedef struct builder_t {
+    unsigned int magic;
+    builderType_t type;
+} builder_t;
+
 struct mhRequestMatcher_t {
     apr_pool_t *pool;
 
     const char *method;
-    apr_array_header_t *matchers; /* array of mhMatchingPattern_t *'s. */
+    apr_array_header_t *matchers; /* array of mhReqMatcherBldr_t *'s. */
     bool incomplete;
 };
 
-struct mhMatchingPattern_t {
+struct mhReqMatcherBldr_t {
+    builder_t builder;
     const void *baton; /* use this for an expected string */
     const void *baton2;
     reqmatchfunc_t matcher;
@@ -195,9 +209,9 @@ mhRequest_t *_mhInitRequest(apr_pool_t *pool);
 
 bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm,
                             const mhRequest_t *req);
-bool _mhClientcertcn_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+bool _mhClientcertcn_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
                              const _mhClientCtx_t *cctx);
-bool _mhClientcert_valid_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+bool _mhClientcert_valid_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
                                  const _mhClientCtx_t *cctx);
 _mhClientCtx_t *_mhGetClientCtx(mhServCtx_t *serv_ctx);
 

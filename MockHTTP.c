@@ -205,7 +205,7 @@ mhError_t mhRunServerLoopCompleteRequests(MockHTTP *mh)
 /* request received by the MockHTTP server.                                   */
 /******************************************************************************/
 static bool
-chunks_matcher(const mhMatchingPattern_t *mp, apr_array_header_t *chunks)
+chunks_matcher(const mhReqMatcherBldr_t *mp, apr_array_header_t *chunks)
 {
     const char *ptr, *expected = mp->baton;
     int i;
@@ -231,7 +231,7 @@ chunks_matcher(const mhMatchingPattern_t *mp, apr_array_header_t *chunks)
     return YES;
 }
 
-static bool str_matcher(const mhMatchingPattern_t *mp, const char *actual)
+static bool str_matcher(const mhReqMatcherBldr_t *mp, const char *actual)
 {
     const char *expected = mp->baton;
 
@@ -248,18 +248,26 @@ static bool str_matcher(const mhMatchingPattern_t *mp, const char *actual)
     return NO;
 }
 
-static bool url_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+static bool url_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
                         const mhRequest_t *req)
 {
     return str_matcher(mp, req->url);
 }
 
-mhMatchingPattern_t *
+mhReqMatcherBldr_t *createReqMatcherBldr(apr_pool_t *pool)
+{
+    mhReqMatcherBldr_t *mp = apr_pcalloc(pool, sizeof(mhReqMatcherBldr_t));
+    mp->builder.magic = 0x4D484244; /* MHBD */
+    mp->builder.type = BuilderTypeReqMatcher;
+    return mp;
+}
+
+mhReqMatcherBldr_t *
 mhMatchURLEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
+    mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
     mp->matcher = url_matcher;
     mp->describe_key = "URL equal to";
@@ -267,18 +275,18 @@ mhMatchURLEqualTo(const MockHTTP *mh, const char *expected)
     return mp;
 }
 
-static bool url_not_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+static bool url_not_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
                             const mhRequest_t *req)
 {
     return !str_matcher(mp, req->url);
 }
 
-mhMatchingPattern_t *
+mhReqMatcherBldr_t *
 mhMatchURLNotEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
+    mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
     mp->matcher = url_not_matcher;
     mp->describe_key = "URL not equal to";
@@ -286,7 +294,7 @@ mhMatchURLNotEqualTo(const MockHTTP *mh, const char *expected)
     return mp;
 }
 
-static bool body_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+static bool body_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
                          const mhRequest_t *req)
 {
     /* ignore chunked or not chunked */
@@ -297,12 +305,12 @@ static bool body_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
     }
 }
 
-mhMatchingPattern_t *
+mhReqMatcherBldr_t *
 mhMatchBodyEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
+    mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
     mp->matcher = body_matcher;
     mp->describe_key = "Body equal to";
@@ -310,18 +318,18 @@ mhMatchBodyEqualTo(const MockHTTP *mh, const char *expected)
     return mp;
 }
 
-static bool raw_body_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+static bool raw_body_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
                              const mhRequest_t *req)
 {
     return chunks_matcher(mp, req->body);
 }
 
-mhMatchingPattern_t *
+mhReqMatcherBldr_t *
 mhMatchRawBodyEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
+    mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
     mp->matcher = raw_body_matcher;
     mp->describe_key = "Raw body equal to";
@@ -329,12 +337,12 @@ mhMatchRawBodyEqualTo(const MockHTTP *mh, const char *expected)
     return mp;
 }
 
-mhMatchingPattern_t *
+mhReqMatcherBldr_t *
 mhMatchIncompleteBodyEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
+    mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
     mp->matcher = body_matcher;
     mp->match_incomplete = TRUE;
@@ -344,7 +352,7 @@ mhMatchIncompleteBodyEqualTo(const MockHTTP *mh, const char *expected)
 }
 
 static bool
-body_notchunked_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+body_notchunked_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
                         const mhRequest_t *req)
 {
     if (req->chunked == YES)
@@ -352,12 +360,12 @@ body_notchunked_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
     return chunks_matcher(mp, req->body);
 }
 
-mhMatchingPattern_t *
+mhReqMatcherBldr_t *
 mhMatchBodyNotChunkedEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
+    mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
     mp->matcher = body_notchunked_matcher;
     mp->describe_key = "Body not chunked equal to";
@@ -366,7 +374,7 @@ mhMatchBodyNotChunkedEqualTo(const MockHTTP *mh, const char *expected)
 }
 
 static bool
-chunked_body_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+chunked_body_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
                      const mhRequest_t *req)
 {
     if (req->chunked == NO)
@@ -375,12 +383,12 @@ chunked_body_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
     return chunks_matcher(mp, req->chunks);
 }
 
-mhMatchingPattern_t *
+mhReqMatcherBldr_t *
 mhMatchChunkedBodyEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
+    mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
     mp->matcher = chunked_body_matcher;
     mp->describe_key = "Chunked body equal to";
@@ -389,7 +397,7 @@ mhMatchChunkedBodyEqualTo(const MockHTTP *mh, const char *expected)
 }
 
 static bool chunked_body_chunks_matcher(apr_pool_t *pool,
-                                        const mhMatchingPattern_t *mp,
+                                        const mhReqMatcherBldr_t *mp,
                                         const mhRequest_t *req)
 {
     const apr_array_header_t *chunks;
@@ -418,12 +426,12 @@ static bool chunked_body_chunks_matcher(apr_pool_t *pool,
     return YES;
 }
 
-mhMatchingPattern_t *
+mhReqMatcherBldr_t *
 mhMatchChunkedBodyChunksEqualTo(const MockHTTP *mh, ...)
 {
     apr_pool_t *pool = mh->pool;
     apr_array_header_t *chunks;
-    mhMatchingPattern_t *mp;
+    mhReqMatcherBldr_t *mp;
     va_list argp;
 
     chunks = apr_array_make(pool, 5, sizeof(struct iovec));
@@ -438,7 +446,7 @@ mhMatchChunkedBodyChunksEqualTo(const MockHTTP *mh, ...)
     }
     va_end(argp);
 
-    mp = apr_palloc(pool, sizeof(mhMatchingPattern_t));
+    mp = apr_palloc(pool, sizeof(mhReqMatcherBldr_t));
     mp->baton = chunks;
     mp->matcher = chunked_body_chunks_matcher;
     mp->describe_key = "Chunked body with chunks";
@@ -447,19 +455,19 @@ mhMatchChunkedBodyChunksEqualTo(const MockHTTP *mh, ...)
 }
 
 static bool
-header_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+header_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
                const mhRequest_t *req)
 {
     const char *actual = getHeader(pool, req->hdrs, mp->baton2);
     return str_matcher(mp, actual);
 }
 
-mhMatchingPattern_t *
+mhReqMatcherBldr_t *
 mhMatchHeaderEqualTo(const MockHTTP *mh, const char *hdr, const char *value)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
+    mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, value);
     mp->baton2 = apr_pstrdup(pool, hdr);
     mp->matcher = header_matcher;
@@ -469,19 +477,19 @@ mhMatchHeaderEqualTo(const MockHTTP *mh, const char *hdr, const char *value)
 }
 
 static bool
-header_not_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+header_not_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
                    const mhRequest_t *req)
 {
     const char *actual = getHeader(pool, req->hdrs, mp->baton2);
     return !str_matcher(mp, actual);
 }
 
-mhMatchingPattern_t *
+mhReqMatcherBldr_t *
 mhMatchHeaderNotEqualTo(const MockHTTP *mh, const char *hdr, const char *value)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
+    mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, value);
     mp->baton2 = apr_pstrdup(pool, hdr);
     mp->matcher = header_not_matcher;
@@ -490,7 +498,7 @@ mhMatchHeaderNotEqualTo(const MockHTTP *mh, const char *hdr, const char *value)
     return mp;
 }
 
-static bool method_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+static bool method_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
                            const mhRequest_t *req)
 {
     const char *expected = mp->baton;
@@ -501,12 +509,12 @@ static bool method_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
     return NO;
 }
 
-mhMatchingPattern_t *
+mhReqMatcherBldr_t *
 mhMatchMethodEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
+    mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
     mp->matcher = method_matcher;
     mp->describe_key = "Method equal to";
@@ -522,13 +530,13 @@ constructRequestMatcher(const MockHTTP *mh, const char *method, va_list argp)
     mhRequestMatcher_t *rm = apr_pcalloc(pool, sizeof(mhRequestMatcher_t));
     rm->pool = pool;
     rm->method = apr_pstrdup(pool, method);
-    rm->matchers = apr_array_make(pool, 5, sizeof(mhMatchingPattern_t *));
+    rm->matchers = apr_array_make(pool, 5, sizeof(mhReqMatcherBldr_t *));
 
     while (1) {
-        mhMatchingPattern_t *mp;
-        mp = va_arg(argp, mhMatchingPattern_t *);
+        mhReqMatcherBldr_t *mp;
+        mp = va_arg(argp, mhReqMatcherBldr_t *);
         if (mp == NULL) break;
-        *((mhMatchingPattern_t **)apr_array_push(rm->matchers)) = mp;
+        *((mhReqMatcherBldr_t **)apr_array_push(rm->matchers)) = mp;
     }
     return rm;
 }
@@ -558,9 +566,9 @@ _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, const mhRequest_t *req)
     apr_pool_create(&match_pool, rm->pool);
 
     for (i = 0 ; i < rm->matchers->nelts; i++) {
-        const mhMatchingPattern_t *mp;
+        const mhReqMatcherBldr_t *mp;
 
-        mp = APR_ARRAY_IDX(rm->matchers, i, mhMatchingPattern_t *);
+        mp = APR_ARRAY_IDX(rm->matchers, i, mhReqMatcherBldr_t *);
         if (mp->matcher(match_pool, mp, req) == NO)
             return NO;
     }
@@ -581,13 +589,13 @@ constructConnectionMatcher(const MockHTTP *mh, va_list argp)
 
     mhConnectionMatcher_t *cm = apr_pcalloc(pool, sizeof(mhRequestMatcher_t));
     cm->pool = pool;
-    cm->matchers = apr_array_make(pool, 5, sizeof(mhMatchingPattern_t *));
+    cm->matchers = apr_array_make(pool, 5, sizeof(mhReqMatcherBldr_t *));
 
     while (1) {
-        mhMatchingPattern_t *mp;
-        mp = va_arg(argp, mhMatchingPattern_t *);
+        mhReqMatcherBldr_t *mp;
+        mp = va_arg(argp, mhReqMatcherBldr_t *);
         if (mp == NULL) break;
-        *((mhMatchingPattern_t **)apr_array_push(cm->matchers)) = mp;
+        *((mhReqMatcherBldr_t **)apr_array_push(cm->matchers)) = mp;
     }
     return cm;
 }
@@ -605,12 +613,12 @@ void mhGivenConnSetup(MockHTTP *mh, ...)
     mh->connMatcher = cm;
 }
 
-mhMatchingPattern_t *
+mhReqMatcherBldr_t *
 mhMatchClientCertCNEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
+    mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
     mp->connmatcher = _mhClientcertcn_matcher;
     mp->describe_key = "Client Certificate CN equal to";
@@ -618,11 +626,11 @@ mhMatchClientCertCNEqualTo(const MockHTTP *mh, const char *expected)
     return mp;
 }
 
-mhMatchingPattern_t *mhMatchClientCertValid(const MockHTTP *mh)
+mhReqMatcherBldr_t *mhMatchClientCertValid(const MockHTTP *mh)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhMatchingPattern_t *mp = apr_pcalloc(pool, sizeof(mhMatchingPattern_t));
+    mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->connmatcher = _mhClientcert_valid_matcher;
     mp->describe_key = "Client Certificate";
     mp->describe_value = "valid";
@@ -896,10 +904,10 @@ serializeRequestMatcher(apr_pool_t *pool, const mhRequestMatcher_t *rm,
     int i;
 
     for (i = 0 ; i < rm->matchers->nelts; i++) {
-        const mhMatchingPattern_t *mp;
+        const mhReqMatcherBldr_t *mp;
         bool matches;
 
-        mp = APR_ARRAY_IDX(rm->matchers, i, mhMatchingPattern_t *);
+        mp = APR_ARRAY_IDX(rm->matchers, i, mhReqMatcherBldr_t *);
         matches = mp->matcher(pool, mp, req);
 
         if (strstr(mp->describe_key, "body") != NULL) {
@@ -1114,9 +1122,9 @@ int mhVerifyConnectionSetupOk(const MockHTTP *mh)
     apr_pool_create(&match_pool, cm->pool);
 
     for (i = 0 ; i < cm->matchers->nelts; i++) {
-        const mhMatchingPattern_t *mp;
+        const mhReqMatcherBldr_t *mp;
 
-        mp = APR_ARRAY_IDX(cm->matchers, i, mhMatchingPattern_t *);
+        mp = APR_ARRAY_IDX(cm->matchers, i, mhReqMatcherBldr_t *);
         if (mp->connmatcher(match_pool, mp, cctx) == NO)
             return NO;
     }

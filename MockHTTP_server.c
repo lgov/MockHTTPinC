@@ -753,9 +753,9 @@ void mhPushRequest(mhServCtx_t *ctx, mhRequestMatcher_t *rm)
     pair->action = mhActionInitiateNone;
 
     for (i = 0 ; i < rm->matchers->nelts; i++) {
-        const mhMatchingPattern_t *mp;
+        const mhReqMatcherBldr_t *mp;
 
-        mp = APR_ARRAY_IDX(rm->matchers, i, mhMatchingPattern_t *);
+        mp = APR_ARRAY_IDX(rm->matchers, i, mhReqMatcherBldr_t *);
         if (mp->match_incomplete == YES) {
             rm->incomplete = YES;
             break;
@@ -1649,7 +1649,7 @@ static void appendSSLErrMessage(const MockHTTP *mh, long result)
     ERR_print_errors_fp(stderr);
 }
 
-bool _mhClientcert_valid_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+bool _mhClientcert_valid_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
                                  const _mhClientCtx_t *cctx)
 {
     sslCtx_t *ssl_ctx = cctx->ssl_ctx;
@@ -1671,7 +1671,7 @@ bool _mhClientcert_valid_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp
     return NO;
 }
 
-bool _mhClientcertcn_matcher(apr_pool_t *pool, const mhMatchingPattern_t *mp,
+bool _mhClientcertcn_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
                              const _mhClientCtx_t *cctx)
 {
     sslCtx_t *ssl_ctx = cctx->ssl_ctx;

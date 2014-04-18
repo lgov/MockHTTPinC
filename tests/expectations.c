@@ -63,7 +63,7 @@ static void test_urlmatcher(CuTest *tc)
 {
     MockHTTP *mh = tc->testBaton;
     mhRequestMatcher_t *rm;
-    mhMatchingPattern_t *mp;
+    mhReqMatcherBldr_t *mp;
     mhRequest_t *req;
 
     rm = mhGivenRequest(mh, "GET");
@@ -84,7 +84,7 @@ static void test_urlnotmatcher(CuTest *tc)
 {
     MockHTTP *mh = tc->testBaton;
     mhRequestMatcher_t *rm;
-    mhMatchingPattern_t *mp;
+    mhReqMatcherBldr_t *mp;
     mhRequest_t *req;
 
     rm = mhGivenRequest(mh, "GET");
@@ -105,7 +105,7 @@ static void test_methodmatcher(CuTest *tc)
 {
     MockHTTP *mh = tc->testBaton;
     mhRequestMatcher_t *rm;
-    mhMatchingPattern_t *mp;
+    mhReqMatcherBldr_t *mp;
     mhRequest_t *req;
 
     mp = mhMatchMethodEqualTo(mh, "get");

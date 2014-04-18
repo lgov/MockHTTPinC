@@ -388,7 +388,7 @@ typedef enum mhThreading_t {
             }
 
 typedef struct MockHTTP MockHTTP;
-typedef struct mhMatchingPattern_t mhMatchingPattern_t;
+typedef struct mhReqMatcherBldr_t mhReqMatcherBldr_t;
 typedef struct mhMapping_t mhMapping_t;
 typedef struct mhRequest_t mhRequest_t;
 typedef struct mhRequestMatcher_t mhRequestMatcher_t;
@@ -499,33 +499,33 @@ int mhAddSSLProtocol(mhServCtx_t *ctx, mhSSLProtocol_t proto);
 mhRequestMatcher_t *mhGivenRequest(MockHTTP *mh, const char *method, ...);
 
 /* Request matching functions */
-mhMatchingPattern_t *mhMatchURLEqualTo(const MockHTTP *mh,
+mhReqMatcherBldr_t *mhMatchURLEqualTo(const MockHTTP *mh,
                                        const char *expected);
-mhMatchingPattern_t *mhMatchURLNotEqualTo(const MockHTTP *mh,
+mhReqMatcherBldr_t *mhMatchURLNotEqualTo(const MockHTTP *mh,
                                           const char *expected);
-mhMatchingPattern_t *mhMatchMethodEqualTo(const MockHTTP *mh,
+mhReqMatcherBldr_t *mhMatchMethodEqualTo(const MockHTTP *mh,
                                           const char *expected);
-mhMatchingPattern_t *mhMatchBodyEqualTo(const MockHTTP *mh,
+mhReqMatcherBldr_t *mhMatchBodyEqualTo(const MockHTTP *mh,
                                         const char *expected);
-mhMatchingPattern_t *mhMatchRawBodyEqualTo(const MockHTTP *mh,
+mhReqMatcherBldr_t *mhMatchRawBodyEqualTo(const MockHTTP *mh,
                                            const char *expected);
-mhMatchingPattern_t *mhMatchIncompleteBodyEqualTo(const MockHTTP *mh,
+mhReqMatcherBldr_t *mhMatchIncompleteBodyEqualTo(const MockHTTP *mh,
                                                   const char *expected);
 /* Network level matching functions, for testing of http libraries */
-mhMatchingPattern_t *mhMatchBodyNotChunkedEqualTo(const MockHTTP *mh,
+mhReqMatcherBldr_t *mhMatchBodyNotChunkedEqualTo(const MockHTTP *mh,
                                                   const char *expected);
-mhMatchingPattern_t *mhMatchChunkedBodyEqualTo(const MockHTTP *mh,
+mhReqMatcherBldr_t *mhMatchChunkedBodyEqualTo(const MockHTTP *mh,
                                                const char *expected);
-mhMatchingPattern_t *mhMatchChunkedBodyChunksEqualTo(const MockHTTP *mh, ...);
-mhMatchingPattern_t *mhMatchHeaderEqualTo(const MockHTTP *mh,
+mhReqMatcherBldr_t *mhMatchChunkedBodyChunksEqualTo(const MockHTTP *mh, ...);
+mhReqMatcherBldr_t *mhMatchHeaderEqualTo(const MockHTTP *mh,
                                           const char *hdr, const char *value);
-mhMatchingPattern_t *mhMatchHeaderNotEqualTo(const MockHTTP *mh,
+mhReqMatcherBldr_t *mhMatchHeaderNotEqualTo(const MockHTTP *mh,
                                              const char *hdr, const char *value);
 
 void mhGivenConnSetup(MockHTTP *mh, ...);
-mhMatchingPattern_t *mhMatchClientCertCNEqualTo(const MockHTTP *mh,
+mhReqMatcherBldr_t *mhMatchClientCertCNEqualTo(const MockHTTP *mh,
                                                 const char *expected);
-mhMatchingPattern_t *mhMatchClientCertValid(const MockHTTP *mh);
+mhReqMatcherBldr_t *mhMatchClientCertValid(const MockHTTP *mh);
 
 /* Response functions */
 typedef void (* respbuilder_t)(mhResponse_t *resp);
