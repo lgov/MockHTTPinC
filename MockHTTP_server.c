@@ -1389,7 +1389,7 @@ mhAddServerCertFileArray(mhServCtx_t *ctx, const char **certFiles)
 }
 
 static bool
-set_server_request_client_cet(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
+set_server_request_client_cert(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
                               mhServCtx_t *ctx)
 {
     ctx->clientCert = ssb->ibaton;
@@ -1402,7 +1402,7 @@ mhSetServerRequestClientCert(mhServCtx_t *ctx, mhClientCertVerification_t v)
     apr_pool_t *pool = ctx->pool;
     mhServerSetupBldr_t *ssb = createServerSetupBldr(pool);
     ssb->ibaton = v;
-    ssb->serversetup = set_server_request_client_cet;
+    ssb->serversetup = set_server_request_client_cert;
     return ssb;
 }
 
