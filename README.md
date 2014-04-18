@@ -20,7 +20,7 @@ MockHTTPinC does not come with or mandate the use of a specific unit test framew
 
 
 MockHTTPinC is currently used by the serf project (See the [project page at google code](http://serf.googlecode.com) ). Serf is a high performance http client library, the MockHTTPinC project was originally started to test all of its features. 
-As a consequence, the current feature set of MockHTTPinC is focussed on low-level testing (the http client library) and not so on higher-level tester (the application using the http client library). This will improve in the future.
+As a consequence, the current feature set of MockHTTPinC is focussed on low-level testing (the http client library) and not so on higher-level testing (the application using the http client library). This will improve in the future.
 
 Getting started
 ---------------
