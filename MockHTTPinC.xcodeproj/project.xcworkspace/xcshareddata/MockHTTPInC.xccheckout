@@ -5,36 +5,36 @@
 	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
 	<false/>
 	<key>IDESourceControlProjectIdentifier</key>
-	<string>A9884769-98E0-4CE2-B981-257E9A2BC451</string>
+	<string>9A96991F-8225-4DDB-B483-5F1E559A84E5</string>
 	<key>IDESourceControlProjectName</key>
-	<string>MockHTTPInC</string>
+	<string>MockHttpInC</string>
 	<key>IDESourceControlProjectOriginsDictionary</key>
 	<dict>
-		<key>4A070CE7-371D-4B58-A1F3-1F254316DEC3</key>
-		<string>https://github.com/lgov/MockHTTPInC.git</string>
+		<key>83C10F3E-9CCC-4893-A46D-EEC39E8E98CF</key>
+		<string>https://github.com/lgov/MockHTTPinC.git</string>
 	</dict>
 	<key>IDESourceControlProjectPath</key>
-	<string>MockHTTPInC.xcodeproj/project.xcworkspace</string>
+	<string>MockHttpInC.xcodeproj/project.xcworkspace</string>
 	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
 	<dict>
-		<key>4A070CE7-371D-4B58-A1F3-1F254316DEC3</key>
+		<key>83C10F3E-9CCC-4893-A46D-EEC39E8E98CF</key>
 		<string>../..</string>
 	</dict>
 	<key>IDESourceControlProjectURL</key>
-	<string>https://github.com/lgov/MockHTTPInC.git</string>
+	<string>https://github.com/lgov/MockHTTPinC.git</string>
 	<key>IDESourceControlProjectVersion</key>
 	<integer>110</integer>
 	<key>IDESourceControlProjectWCCIdentifier</key>
-	<string>4A070CE7-371D-4B58-A1F3-1F254316DEC3</string>
+	<string>83C10F3E-9CCC-4893-A46D-EEC39E8E98CF</string>
 	<key>IDESourceControlProjectWCConfigurations</key>
 	<array>
 		<dict>
 			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
 			<string>public.vcs.git</string>
 			<key>IDESourceControlWCCIdentifierKey</key>
-			<string>4A070CE7-371D-4B58-A1F3-1F254316DEC3</string>
+			<string>83C10F3E-9CCC-4893-A46D-EEC39E8E98CF</string>
 			<key>IDESourceControlWCCName</key>
-			<string>MockHTTPInC</string>
+			<string>MockHTTPinC</string>
 		</dict>
 	</array>
 </dict>
