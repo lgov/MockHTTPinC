@@ -397,6 +397,7 @@ typedef struct mhRespBuilder_t mhRespBuilder_t;
 typedef struct mhServCtx_t mhServCtx_t;
 typedef struct mhServerBuilder_t mhServerBuilder_t;
 typedef struct mhConnMatcherBldr_t mhConnMatcherBldr_t;
+typedef struct mhServerSetupBldr_t mhServerSetupBldr_t;
 
 typedef unsigned long mhError_t;
 
@@ -483,17 +484,22 @@ void mhConfigServer(mhServCtx_t *ctx, ...);
 void mhStartServer(mhServCtx_t *ctx);
 mhServCtx_t *mhGetServerCtx(MockHTTP *mh);
 mhServCtx_t *mhGetProxyCtx(MockHTTP *mh);
-int mhSetServerID(mhServCtx_t *ctx, const char *serverID);
-int mhSetServerPort(mhServCtx_t *ctx, unsigned int port);
-int mhSetServerType(mhServCtx_t *ctx, mhServerType_t type);
-int mhSetServerThreading(mhServCtx_t *ctx, mhThreading_t threading);
-int mhSetServerMaxRequestsPerConn(mhServCtx_t *ctx, unsigned int maxRequests);
-int mhSetServerCertPrefix(mhServCtx_t *ctx, const char *prefix);
-int mhSetServerCertKeyFile(mhServCtx_t *ctx, const char *keyFile);
-int mhAddServerCertFiles(mhServCtx_t *ctx, ...);
-int mhAddServerCertFileArray(mhServCtx_t *ctx, const char **certFiles);
-int mhSetServerRequestClientCert(mhServCtx_t *ctx, mhClientCertVerification_t v);
-int mhAddSSLProtocol(mhServCtx_t *ctx, mhSSLProtocol_t proto);
+mhServerSetupBldr_t *mhSetServerID(mhServCtx_t *ctx, const char *serverID);
+mhServerSetupBldr_t *mhSetServerPort(mhServCtx_t *ctx, unsigned int port);
+mhServerSetupBldr_t *mhSetServerType(mhServCtx_t *ctx, mhServerType_t type);
+mhServerSetupBldr_t *mhSetServerThreading(mhServCtx_t *ctx,
+                                          mhThreading_t threading);
+mhServerSetupBldr_t *mhSetServerMaxRequestsPerConn(mhServCtx_t *ctx,
+                                                   unsigned int maxRequests);
+mhServerSetupBldr_t *mhSetServerCertPrefix(mhServCtx_t *ctx, const char *prefix);
+mhServerSetupBldr_t *mhSetServerCertKeyFile(mhServCtx_t *ctx,
+                                            const char *keyFile);
+mhServerSetupBldr_t *mhAddServerCertFiles(mhServCtx_t *ctx, ...);
+mhServerSetupBldr_t *mhAddServerCertFileArray(mhServCtx_t *ctx,
+                                              const char **certFiles);
+mhServerSetupBldr_t *mhSetServerRequestClientCert(mhServCtx_t *ctx,
+                                                  mhClientCertVerification_t v);
+mhServerSetupBldr_t *mhAddSSLProtocol(mhServCtx_t *ctx, mhSSLProtocol_t proto);
 
 /* Define request stubs */
 mhRequestMatcher_t *mhGivenRequest(MockHTTP *mh, const char *method, ...);

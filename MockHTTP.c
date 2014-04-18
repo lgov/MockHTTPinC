@@ -28,8 +28,6 @@ static char *serializeArrayOfIovecs(apr_pool_t *pool,
 static mhResponse_t *initResponse(MockHTTP *mh);
 
 
-static const unsigned int MagicKey = 0x4D484244; /* MHBD */
-
 /* private functions */
 static const char *toLower(apr_pool_t *pool, const char *str)
 {
@@ -540,6 +538,7 @@ constructRequestMatcher(const MockHTTP *mh, const char *method, va_list argp)
         mhReqMatcherBldr_t *mp;
         mp = va_arg(argp, mhReqMatcherBldr_t *);
         if (mp == NULL) break;
+        /* TODO: error if mp isn't of type BuilderTypeReqMatcher */
         *((mhReqMatcherBldr_t **)apr_array_push(rm->matchers)) = mp;
     }
     return rm;

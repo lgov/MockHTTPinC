@@ -52,11 +52,6 @@ static const bool NO = 0;
 
 typedef struct _mhClientCtx_t _mhClientCtx_t;
 
-typedef bool (*reqmatchfunc_t)(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
-                               const mhRequest_t *req);
-typedef bool (*connmatchfunc_t)(apr_pool_t *pool, const mhConnMatcherBldr_t *cmb,
-                                const _mhClientCtx_t *cctx);
-
 typedef enum expectation_t {
     RequestsReceivedOnce    = 0x00000001,
     RequestsReceivedInOrder = 0x00000002,
@@ -171,6 +166,8 @@ struct mhResponse_t {
 
 
 /* Builder structures for server setup, request matching and response creation */
+static const unsigned int MagicKey = 0x4D484244; /* MHBD */
+
 typedef enum builderType_t {
     BuilderTypeReqMatcher,
     BuilderTypeConnMatcher,
@@ -178,10 +175,15 @@ typedef enum builderType_t {
     BuilderTypeResponse,
 } builderType_t;
 
+
 typedef struct builder_t {
     unsigned int magic;
     builderType_t type;
 } builder_t;
+
+
+typedef bool (*reqmatchfunc_t)(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
+                               const mhRequest_t *req);
 
 struct mhRequestMatcher_t {
     apr_pool_t *pool;
@@ -201,12 +203,26 @@ struct mhReqMatcherBldr_t {
     bool match_incomplete; /* Don't wait for full valid requests */
 };
 
+typedef bool (*connmatchfunc_t)(apr_pool_t *pool, const mhConnMatcherBldr_t *cmb,
+                                const _mhClientCtx_t *cctx);
+
 struct mhConnMatcherBldr_t {
     builder_t builder;
     const void *baton;
     connmatchfunc_t connmatcher;
     const char *describe_key;
     const char *describe_value;
+};
+
+typedef bool
+(*serversetupfunc_t)(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
+                     mhServCtx_t *ctx);
+
+struct mhServerSetupBldr_t {
+    builder_t builder;
+    const void *baton;
+    unsigned int ibaton;
+    serversetupfunc_t serversetup;
 };
 
 const char *getHeader(apr_pool_t *pool, apr_table_t *hdrs, const char *hdr);

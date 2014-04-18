@@ -1125,10 +1125,23 @@ mhServCtx_t *mhNewServer(MockHTTP *mh)
 
 void mhConfigServer(mhServCtx_t *serv_ctx, ...)
 {
+    va_list argp;
+
     if (serv_ctx->protocols == mhProtoUnspecified) {
         serv_ctx->protocols = mhProtoAllSecure;
     }
-    /* No more config to do here, has been done during parameter evaluation */
+
+    /* Build the server configuration */
+    va_start(argp, serv_ctx);
+    while (1) {
+        mhServerSetupBldr_t *ssb;
+        ssb = va_arg(argp, mhServerSetupBldr_t *);
+        if (ssb == NULL)
+            return;
+        /* TODO: error if ssb isn't of type BuilderTypeServerSetup */
+        ssb->serversetup(serv_ctx->pool, ssb, serv_ctx);
+    }
+    va_end(argp);
 }
 
 void mhStartServer(mhServCtx_t *serv_ctx)
@@ -1145,16 +1158,46 @@ void mhStartServer(mhServCtx_t *serv_ctx)
     /* TODO: store error message */
 }
 
-int mhSetServerID(mhServCtx_t *ctx, const char *serverID)
+static mhServerSetupBldr_t *createServerSetupBldr(apr_pool_t *pool)
 {
-    ctx->serverID = serverID;
+    mhServerSetupBldr_t *ssb = apr_pcalloc(pool, sizeof(mhServerSetupBldr_t));
+    ssb->builder.magic = MagicKey;
+    ssb->builder.type = BuilderTypeServerSetup;
+    return ssb;
+}
+
+static bool set_server_id(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
+                          mhServCtx_t *ctx)
+{
+    ctx->serverID = ssb->baton;
     return YES;
 }
 
-int mhSetServerMaxRequestsPerConn(mhServCtx_t *ctx, unsigned int maxRequests)
+mhServerSetupBldr_t *mhSetServerID(mhServCtx_t *ctx, const char *serverID)
 {
-    ctx->maxRequests = maxRequests;
+    apr_pool_t *pool = ctx->pool;
+    mhServerSetupBldr_t *ssb = createServerSetupBldr(pool);
+    ssb->baton = apr_pstrdup(pool, serverID);
+    ssb->serversetup = set_server_id;
+    return ssb;
+}
+
+static bool
+set_server_maxreqs_per_conn(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
+                            mhServCtx_t *ctx)
+{
+    ctx->maxRequests = ssb->ibaton;
     return YES;
+}
+
+mhServerSetupBldr_t *
+mhSetServerMaxRequestsPerConn(mhServCtx_t *ctx, unsigned int maxRequests)
+{
+    apr_pool_t *pool = ctx->pool;
+    mhServerSetupBldr_t *ssb = createServerSetupBldr(pool);
+    ssb->ibaton = maxRequests;
+    ssb->serversetup = set_server_maxreqs_per_conn;
+    return ssb;
 }
 
 unsigned int mhServerPortNr(const MockHTTP *mh)
@@ -1167,14 +1210,27 @@ unsigned int mhProxyPortNr(const MockHTTP *mh)
     return mh->proxyCtx->port;
 }
 
-int mhSetServerPort(mhServCtx_t *ctx, unsigned int port)
+static bool set_server_port(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
+                            mhServCtx_t *ctx)
 {
-    ctx->port = port;
+    ctx->port = ssb->ibaton;
     return YES;
 }
 
-int mhSetServerType(mhServCtx_t *ctx, mhServerType_t type)
+mhServerSetupBldr_t *mhSetServerPort(mhServCtx_t *ctx, unsigned int port)
 {
+    apr_pool_t *pool = ctx->pool;
+    mhServerSetupBldr_t *ssb = createServerSetupBldr(pool);
+    ssb->ibaton = port;
+    ssb->serversetup = set_server_port;
+    return ssb;
+}
+
+static bool set_server_type(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
+                            mhServCtx_t *ctx)
+{
+    mhServerType_t type = ssb->ibaton;
+
     switch (ctx->type) {
         case mhGenericServer:
             if (type == mhHTTP)
@@ -1195,20 +1251,56 @@ int mhSetServerType(mhServCtx_t *ctx, mhServerType_t type)
     return YES;
 }
 
-int mhSetServerThreading(mhServCtx_t *ctx, mhThreading_t threading)
+mhServerSetupBldr_t *mhSetServerType(mhServCtx_t *ctx, mhServerType_t type)
 {
-    ctx->threading = threading;
+    apr_pool_t *pool = ctx->pool;
+    mhServerSetupBldr_t *ssb = createServerSetupBldr(pool);
+    ssb->ibaton = type;
+    ssb->serversetup = set_server_type;
+    return ssb;
+}
+
+static bool
+set_server_threading(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
+                     mhServCtx_t *ctx)
+{
+    ctx->threading = ssb->ibaton;
     return YES;
 }
 
-int mhSetServerCertPrefix(mhServCtx_t *ctx, const char *prefix)
+mhServerSetupBldr_t *
+mhSetServerThreading(mhServCtx_t *ctx, mhThreading_t threading)
 {
-    ctx->certFilesPrefix = prefix;
+    apr_pool_t *pool = ctx->pool;
+    mhServerSetupBldr_t *ssb = createServerSetupBldr(pool);
+    ssb->ibaton = threading;
+    ssb->serversetup = set_server_threading;
+    return ssb;
+}
+
+static bool
+set_server_cert_prefix(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
+                       mhServCtx_t *ctx)
+{
+    ctx->certFilesPrefix = ssb->baton;
     return YES;
 }
 
-int mhSetServerCertKeyFile(mhServCtx_t *ctx, const char *keyFile)
+mhServerSetupBldr_t *
+mhSetServerCertPrefix(mhServCtx_t *ctx, const char *prefix)
 {
+    apr_pool_t *pool = ctx->pool;
+    mhServerSetupBldr_t *ssb = createServerSetupBldr(pool);
+    ssb->baton = apr_pstrdup(pool, prefix);
+    ssb->serversetup = set_server_cert_prefix;
+    return ssb;
+}
+
+static bool
+set_server_key_file(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
+                    mhServCtx_t *ctx)
+{
+    const char *keyFile = ssb->baton;
     if (ctx->certFilesPrefix) {
         ctx->keyFile = apr_pstrcat(ctx->pool, ctx->certFilesPrefix, "/",
                                    keyFile, NULL);
@@ -1218,48 +1310,117 @@ int mhSetServerCertKeyFile(mhServCtx_t *ctx, const char *keyFile)
     return YES;
 }
 
-int mhAddServerCertFiles(mhServCtx_t *ctx, ...)
+mhServerSetupBldr_t *
+mhSetServerCertKeyFile(mhServCtx_t *ctx, const char *keyFile)
 {
-    va_list argp;
+    apr_pool_t *pool = ctx->pool;
+    mhServerSetupBldr_t *ssb = createServerSetupBldr(pool);
+    ssb->baton = apr_pstrdup(pool, keyFile);
+    ssb->serversetup = set_server_key_file;
+    return ssb;
+}
+
+static bool
+add_server_cert_files(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
+                      mhServCtx_t *ctx)
+{
+    int i;
+    const apr_array_header_t *certFiles = ssb->baton;
 
     if (!ctx->certFiles)
         ctx->certFiles = apr_array_make(ctx->pool, 5, sizeof(const char *));
-    va_start(argp, ctx);
-    while (1) {
-        const char *certFile = va_arg(argp, const char *);
-        if (certFile == NULL)
-            break;
+
+    /* Copy over the cert file paths, add prefix */
+    for (i = 0; i < certFiles->nelts; i++) {
+        const char *certFile = APR_ARRAY_IDX(certFiles, i, const char *);
+
         if (ctx->certFilesPrefix)
             certFile = apr_pstrcat(ctx->pool, ctx->certFilesPrefix, "/",
                                    certFile, NULL);
         *((const char **)apr_array_push(ctx->certFiles)) = certFile;
     }
-    va_end(argp);
     return YES;
 }
 
-int mhAddServerCertFileArray(mhServCtx_t *ctx, const char **certFiles)
+mhServerSetupBldr_t *
+mhAddServerCertFiles(mhServCtx_t *ctx, ...)
 {
+    apr_pool_t *pool = ctx->pool;
+    mhServerSetupBldr_t *ssb = createServerSetupBldr(pool);
+    va_list argp;
+    apr_array_header_t *certFiles;
+
+    certFiles = apr_array_make(ctx->pool, 5, sizeof(const char *));
+
+    va_start(argp, ctx);
+    while (1) {
+        const char *certFile = va_arg(argp, const char *);
+        if (certFile == NULL)
+            break;
+        *((const char **)apr_array_push(certFiles)) = apr_pstrdup(pool, certFile);
+    }
+    va_end(argp);
+
+    ssb->baton = certFiles;
+    ssb->serversetup = add_server_cert_files;
+
+    return ssb;
+}
+
+mhServerSetupBldr_t *
+mhAddServerCertFileArray(mhServCtx_t *ctx, const char **certFiles)
+{
+    apr_pool_t *pool = ctx->pool;
+    mhServerSetupBldr_t *ssb = createServerSetupBldr(pool);
+    apr_array_header_t *certFileAry;
     const char *certFile;
     int i = 0;
 
+    certFileAry = apr_array_make(ctx->pool, 5, sizeof(const char *));
+
     do {
         certFile = certFiles[i++];
-        mhAddServerCertFiles(ctx, certFile, NULL);
+        *((const char **)apr_array_push(certFileAry)) = apr_pstrdup(pool,
+                                                                    certFile);
     } while (certFiles[i] != NULL);
+    ssb->baton = certFiles;
+    ssb->serversetup = add_server_cert_files;
+    return ssb;
+}
+
+static bool
+set_server_request_client_cet(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
+                              mhServCtx_t *ctx)
+{
+    ctx->clientCert = ssb->ibaton;
     return YES;
 }
 
-int mhSetServerRequestClientCert(mhServCtx_t *ctx, mhClientCertVerification_t v)
+mhServerSetupBldr_t *
+mhSetServerRequestClientCert(mhServCtx_t *ctx, mhClientCertVerification_t v)
 {
-    ctx->clientCert = v;
+    apr_pool_t *pool = ctx->pool;
+    mhServerSetupBldr_t *ssb = createServerSetupBldr(pool);
+    ssb->ibaton = v;
+    ssb->serversetup = set_server_request_client_cet;
+    return ssb;
+}
+
+static bool
+add_server_ssl_protocol(apr_pool_t *pool, const mhServerSetupBldr_t *ssb,
+                        mhServCtx_t *ctx)
+{
+    ctx->protocols |= ssb->ibaton;
     return YES;
 }
 
-int mhAddSSLProtocol(mhServCtx_t *ctx, mhSSLProtocol_t proto)
+mhServerSetupBldr_t *mhAddSSLProtocol(mhServCtx_t *ctx, mhSSLProtocol_t proto)
 {
-    ctx->protocols |= proto;
-    return YES;
+    apr_pool_t *pool = ctx->pool;
+    mhServerSetupBldr_t *ssb = createServerSetupBldr(pool);
+    ssb->ibaton = proto;
+    ssb->serversetup = add_server_ssl_protocol;
+    return ssb;
 }
 
 mhServCtx_t *mhNewProxy(MockHTTP *mh)
