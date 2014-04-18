@@ -75,3 +75,25 @@ In these examples we will use the CuTest framework (https://github.com/asimjalis
         CuAssert(tc, ErrorMessage, VerifyAllRequestsReceivedInOrder);
       EndVerify
     }
+
+
+
+Documentation
+-------------
+
+More documentation is available in [docs/apidocs.md](docs/apidocs.md).
+
+
+
+License
+-------
+
+The MockHTTPinC project is distributed under the Apache License, version 2.0.
+
+
+
+Contributions
+-------------
+I welcome any contributions that improve this project: bug reports, documentation fixes, code, more tests etc. If you are thinking of using MockHTTPinC in your project and have questions or want to discuss improvements just send me an email.
+
+Note: all code contributions should be made available under the Apache License, version 2.0.
