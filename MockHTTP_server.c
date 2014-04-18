@@ -1127,10 +1127,6 @@ void mhConfigServer(mhServCtx_t *serv_ctx, ...)
 {
     va_list argp;
 
-    if (serv_ctx->protocols == mhProtoUnspecified) {
-        serv_ctx->protocols = mhProtoAllSecure;
-    }
-
     /* Build the server configuration */
     va_start(argp, serv_ctx);
     while (1) {
@@ -1142,6 +1138,11 @@ void mhConfigServer(mhServCtx_t *serv_ctx, ...)
         ssb->serversetup(serv_ctx->pool, ssb, serv_ctx);
     }
     va_end(argp);
+
+
+    if (serv_ctx->protocols == mhProtoUnspecified) {
+        serv_ctx->protocols = mhProtoAllSecure;
+    }
 }
 
 void mhStartServer(mhServCtx_t *serv_ctx)
