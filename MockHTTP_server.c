@@ -1383,7 +1383,7 @@ mhAddServerCertFileArray(mhServCtx_t *ctx, const char **certFiles)
         *((const char **)apr_array_push(certFileAry)) = apr_pstrdup(pool,
                                                                     certFile);
     } while (certFiles[i] != NULL);
-    ssb->baton = certFiles;
+    ssb->baton = certFileAry;
     ssb->serversetup = add_server_cert_files;
     return ssb;
 }
