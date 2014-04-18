@@ -388,16 +388,15 @@ typedef enum mhThreading_t {
             }
 
 typedef struct MockHTTP MockHTTP;
-typedef struct mhReqMatcherBldr_t mhReqMatcherBldr_t;
 typedef struct mhMapping_t mhMapping_t;
 typedef struct mhRequest_t mhRequest_t;
 typedef struct mhRequestMatcher_t mhRequestMatcher_t;
 typedef struct mhResponse_t mhResponse_t;
-typedef struct mhRespBuilder_t mhRespBuilder_t;
 typedef struct mhServCtx_t mhServCtx_t;
-typedef struct mhServerBuilder_t mhServerBuilder_t;
+typedef struct mhReqMatcherBldr_t mhReqMatcherBldr_t;
 typedef struct mhConnMatcherBldr_t mhConnMatcherBldr_t;
 typedef struct mhServerSetupBldr_t mhServerSetupBldr_t;
+typedef struct mhResponseBldr_t mhResponseBldr_t;
 
 typedef unsigned long mhError_t;
 
@@ -533,9 +532,6 @@ mhConnMatcherBldr_t *mhMatchClientCertCNEqualTo(const MockHTTP *mh,
                                                 const char *expected);
 mhConnMatcherBldr_t *mhMatchClientCertValid(const MockHTTP *mh);
 
-/* Response functions */
-typedef void (* respbuilder_t)(mhResponse_t *resp);
-
 mhResponse_t *mhNewResponseForRequest(MockHTTP *mh, mhServCtx_t *ctx,
                                       mhRequestMatcher_t *rm);
 void mhConfigResponse(mhResponse_t *resp, ...);
@@ -543,14 +539,14 @@ mhResponse_t *mhNewDefaultResponse(MockHTTP *mh);
 void mhNewActionForRequest(mhServCtx_t *ctx, mhRequestMatcher_t *rm,
                            mhAction_t action);
 
-respbuilder_t mhRespSetCode(mhResponse_t *resp, unsigned int status);
-respbuilder_t mhRespSetBody(mhResponse_t *resp, const char *body);
-respbuilder_t mhRespSetChunkedBody(mhResponse_t *resp, ...);
-respbuilder_t mhRespAddHeader(mhResponse_t *resp, const char *header,
-                                 const char *value);
-respbuilder_t mhRespSetConnCloseHdr(mhResponse_t *resp);
-respbuilder_t mhRespSetUseRequestBody(mhResponse_t *resp);
-respbuilder_t mhRespSetRawData(mhResponse_t *resp, const char *raw_data);
+mhResponseBldr_t *mhRespSetCode(mhResponse_t *resp, unsigned int status);
+mhResponseBldr_t *mhRespSetBody(mhResponse_t *resp, const char *body);
+mhResponseBldr_t *mhRespSetChunkedBody(mhResponse_t *resp, ...);
+mhResponseBldr_t *mhRespAddHeader(mhResponse_t *resp, const char *header,
+                                  const char *value);
+mhResponseBldr_t *mhRespSetConnCloseHdr(mhResponse_t *resp);
+mhResponseBldr_t *mhRespSetUseRequestBody(mhResponse_t *resp);
+mhResponseBldr_t *mhRespSetRawData(mhResponse_t *resp, const char *raw_data);
 
 /* Define request/response pairs */
 void mhPushRequest(mhServCtx_t *ctx, mhRequestMatcher_t *rm);

@@ -466,12 +466,12 @@ static void test_verify_req_chunked_body(CuTest *tc)
         apr_hash_t *hdrs = apr_hash_make(mh->pool);
         sendChunkedRequest(ctx, "GET", "/index0.html", hdrs,
                            "chunk0", "chunk1", NULL);
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
         sendChunkedRequest(ctx, "GET", "/index1.html", hdrs, "1", NULL);
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
         sendChunkedRequest(ctx, "GET", "/index2.html", hdrs,
                            "chunk1", "chunk2", NULL);
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
     }
 
     Verify(mh)

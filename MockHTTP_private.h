@@ -157,7 +157,7 @@ struct mhResponse_t {
     apr_size_t bodyLen;
     bool chunked;
     /* array of iovec strings that form the dechunked body */
-    apr_array_header_t *chunks;
+    const apr_array_header_t *chunks;
     const char *raw_data;
     apr_array_header_t *builders;
     bool closeConn;
@@ -223,6 +223,17 @@ struct mhServerSetupBldr_t {
     const void *baton;
     unsigned int ibaton;
     serversetupfunc_t serversetup;
+};
+
+
+typedef bool (* respbuilderfunc_t)(const mhResponseBldr_t *rb,
+                                   mhResponse_t *resp);
+
+struct mhResponseBldr_t {
+    builder_t builder;
+    const void *baton;
+    unsigned int ibaton;
+    respbuilderfunc_t respbuilder;
 };
 
 const char *getHeader(apr_pool_t *pool, apr_table_t *hdrs, const char *hdr);

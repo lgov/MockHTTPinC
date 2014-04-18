@@ -646,7 +646,7 @@ static mhResponse_t *initResponse(MockHTTP *mh)
     resp->code = 200;
     resp->body = apr_array_make(pool, 5, sizeof(struct iovec));
     resp->hdrs = apr_table_make(pool, 5);
-    resp->builders = apr_array_make(pool, 5, sizeof(mhRespBuilder_t *));
+    resp->builders = apr_array_make(pool, 5, sizeof(mhResponseBldr_t *));
     return resp;
 }
 
@@ -696,8 +696,6 @@ mhResponse_t *mhNewDefaultResponse(MockHTTP *mh)
     return mh->defResponse;
 }
 
-static void noop(mhResponse_t *resp) { }
-
 void mhConfigResponse(mhResponse_t *resp, ...)
 {
     va_list argp;
@@ -705,23 +703,43 @@ void mhConfigResponse(mhResponse_t *resp, ...)
        is received, e.g. WithRequestBody. */
     va_start(argp, resp);
     while (1) {
-        respbuilder_t builder;
-        builder = va_arg(argp, respbuilder_t);
-        if (builder == NULL) break;
-        *((respbuilder_t *)apr_array_push(resp->builders)) = builder;
+        mhResponseBldr_t *rb;
+        rb = va_arg(argp, mhResponseBldr_t *);
+        if (rb == NULL)
+            break;
+        *((mhResponseBldr_t **)apr_array_push(resp->builders)) = rb;
     }
     va_end(argp);
 }
 
-respbuilder_t mhRespSetCode(mhResponse_t *resp, unsigned int code)
+static mhResponseBldr_t *createResponseBldr(apr_pool_t *pool)
 {
-    resp->code = code;
-    return noop;
+    mhResponseBldr_t *rb = apr_pcalloc(pool, sizeof(mhResponseBldr_t));
+    rb->builder.magic = MagicKey;
+    rb->builder.type = BuilderTypeResponse;
+    return rb;
 }
 
-respbuilder_t mhRespSetBody(mhResponse_t *resp, const char *body)
+static bool resp_set_code(const mhResponseBldr_t *rb, mhResponse_t *resp)
+{
+    resp->code = rb->ibaton;
+    return YES;
+}
+
+mhResponseBldr_t *mhRespSetCode(mhResponse_t *resp, unsigned int code)
+{
+    apr_pool_t *pool = resp->pool;
+    mhResponseBldr_t *rb = createResponseBldr(pool);
+    rb->respbuilder = resp_set_code;
+    rb->ibaton = code;
+    return rb;
+}
+
+static bool resp_set_body(const mhResponseBldr_t *rb, mhResponse_t *resp)
 {
     struct iovec vec;
+    const char *body = rb->baton;
+
     vec.iov_base = (void *)body;
     vec.iov_len = strlen(body);
     *((struct iovec *)apr_array_push(resp->body)) = vec;
@@ -729,13 +747,35 @@ respbuilder_t mhRespSetBody(mhResponse_t *resp, const char *body)
     resp->chunked = NO;
     setHeader(resp->hdrs, "Content-Length",
               apr_itoa(resp->pool, resp->bodyLen));
-    return noop;
+    return YES;
 }
 
-respbuilder_t mhRespSetChunkedBody(mhResponse_t *resp, ...)
+mhResponseBldr_t *mhRespSetBody(mhResponse_t *resp, const char *body)
+{
+    apr_pool_t *pool = resp->pool;
+    mhResponseBldr_t *rb = createResponseBldr(pool);
+    rb->respbuilder = resp_set_body;
+    rb->baton = apr_pstrdup(pool, body);
+    return rb;
+}
+
+
+static bool
+resp_set_chunked_body(const mhResponseBldr_t *rb, mhResponse_t *resp)
+{
+    resp->chunks = rb->baton;
+    setHeader(resp->hdrs, "Transfer-Encoding", "chunked");
+    resp->chunked = YES;
+    return YES;
+}
+
+mhResponseBldr_t *mhRespSetChunkedBody(mhResponse_t *resp, ...)
 {
     apr_array_header_t *chunks;
     va_list argp;
+
+    apr_pool_t *pool = resp->pool;
+    mhResponseBldr_t *rb = createResponseBldr(pool);
 
     chunks = apr_array_make(resp->pool, 5, sizeof(struct iovec));
     va_start(argp, resp);
@@ -748,27 +788,65 @@ respbuilder_t mhRespSetChunkedBody(mhResponse_t *resp, ...)
         *((struct iovec *)apr_array_push(chunks)) = vec;
     }
     va_end(argp);
-    resp->chunks = chunks;
-    setHeader(resp->hdrs, "Transfer-Encoding", "chunked");
-    resp->chunked = YES;
-    return noop;
+
+    rb->baton = chunks;
+    rb->respbuilder = resp_set_chunked_body;
+    return rb;
 }
 
-respbuilder_t mhRespAddHeader(mhResponse_t *resp, const char *header,
-                              const char *value)
+static bool
+resp_add_header(const mhResponseBldr_t *rb, mhResponse_t *resp)
 {
-    setHeader(resp->hdrs, header, value);
-    return noop;
+    apr_hash_index_t *hi;
+    apr_hash_t *hdrs;
+    apr_pool_t *tmppool;
+
+    apr_pool_create(&tmppool, resp->pool);
+    /* get rid of const for call to apr_hash_first */
+    hdrs = apr_hash_copy(tmppool, rb->baton);
+    for (hi = apr_hash_first(tmppool, hdrs); hi; hi = apr_hash_next(hi)) {
+        void *val;
+        const void *key;
+        apr_ssize_t klen;
+        apr_hash_this(hi, &key, &klen, &val);
+
+        setHeader(resp->hdrs, (const char *)key, (const char *)val);
+    }
+    apr_pool_destroy(tmppool);
+
+    return YES;
 }
 
-respbuilder_t mhRespSetConnCloseHdr(mhResponse_t *resp)
+mhResponseBldr_t *mhRespAddHeader(mhResponse_t *resp, const char *header,
+                                  const char *value)
+{
+    apr_pool_t *pool = resp->pool;
+    mhResponseBldr_t *rb = createResponseBldr(pool);
+    apr_hash_t *hdrs = apr_hash_make(resp->pool);
+    apr_hash_set(hdrs, header, APR_HASH_KEY_STRING, value);
+    rb->baton = hdrs;
+    rb->respbuilder = resp_add_header;
+    return rb;
+}
+
+static bool
+resp_set_close_conn_header(const mhResponseBldr_t *rb, mhResponse_t *resp)
 {
     setHeader(resp->hdrs, "Connection", "close");
     resp->closeConn = YES;
-    return noop;
+    return YES;
 }
 
-static void respUseRequestBody(mhResponse_t *resp)
+mhResponseBldr_t *mhRespSetConnCloseHdr(mhResponse_t *resp)
+{
+    apr_pool_t *pool = resp->pool;
+    mhResponseBldr_t *rb = createResponseBldr(pool);
+    rb->respbuilder = resp_set_close_conn_header;
+    return rb;
+}
+
+static bool
+resp_use_request_body(const mhResponseBldr_t *rb, mhResponse_t *resp)
 {
     mhRequest_t *req = resp->req;
     if (req->chunked) {
@@ -782,17 +860,30 @@ static void respUseRequestBody(mhResponse_t *resp)
         setHeader(resp->hdrs, "Content-Length",
                   apr_itoa(resp->pool, resp->bodyLen));
     }
+    return YES;
 }
 
-respbuilder_t mhRespSetUseRequestBody(mhResponse_t *resp)
+mhResponseBldr_t *mhRespSetUseRequestBody(mhResponse_t *resp)
 {
-    return respUseRequestBody;
+    apr_pool_t *pool = resp->pool;
+    mhResponseBldr_t *rb = createResponseBldr(pool);
+    rb->respbuilder = resp_use_request_body;
+    return rb;
 }
 
-respbuilder_t mhRespSetRawData(mhResponse_t *resp, const char *raw_data)
+bool resp_set_raw_data(const mhResponseBldr_t *rb, mhResponse_t *resp)
 {
-    resp->raw_data = raw_data;
-    return noop;
+    resp->raw_data = rb->baton;
+    return YES;
+}
+
+mhResponseBldr_t *mhRespSetRawData(mhResponse_t *resp, const char *raw_data)
+{
+    apr_pool_t *pool = resp->pool;
+    mhResponseBldr_t *rb = createResponseBldr(pool);
+    rb->respbuilder = resp_set_raw_data;
+    rb->baton = apr_pstrdup(pool, raw_data);
+    return rb;
 }
 
 void _mhBuildResponse(mhResponse_t *resp)
@@ -802,10 +893,10 @@ void _mhBuildResponse(mhResponse_t *resp)
         return;
     resp->built = YES;
     for (i = 0 ; i < resp->builders->nelts; i++) {
-        respbuilder_t builder;
+        mhResponseBldr_t *rb;
 
-        builder = APR_ARRAY_IDX(resp->builders, i, respbuilder_t);
-        builder(resp);
+        rb = APR_ARRAY_IDX(resp->builders, i, mhResponseBldr_t *);
+        rb->respbuilder(rb, resp);
     }
 }
 
