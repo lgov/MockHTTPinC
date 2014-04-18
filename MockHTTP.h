@@ -71,6 +71,14 @@ typedef enum mhThreading_t {
     mhThreadSeparate,
 } mhThreading_t;
 
+
+/******************************************************************************
+ * MockHTTPinC API                                                            *
+ * ---------------                                                            *
+ * This is the main API of the MockHTTPinC library. Most if the API consists  *
+ * of macro's providing a fluent-like API (as much as that's possible in C).  *
+ ******************************************************************************/
+
 /* Note: the variadic macro's used here require C99. */
 /* TODO: we can provide xxx1(x), xxx2(x,y)... macro's for C89 compilers */
 
@@ -387,19 +395,6 @@ typedef enum mhThreading_t {
 #define EndVerify\
             }
 
-typedef struct MockHTTP MockHTTP;
-typedef struct mhMapping_t mhMapping_t;
-typedef struct mhRequest_t mhRequest_t;
-typedef struct mhRequestMatcher_t mhRequestMatcher_t;
-typedef struct mhResponse_t mhResponse_t;
-typedef struct mhServCtx_t mhServCtx_t;
-typedef struct mhReqMatcherBldr_t mhReqMatcherBldr_t;
-typedef struct mhConnMatcherBldr_t mhConnMatcherBldr_t;
-typedef struct mhServerSetupBldr_t mhServerSetupBldr_t;
-typedef struct mhResponseBldr_t mhResponseBldr_t;
-
-typedef unsigned long mhError_t;
-
 typedef struct mhStats_t {
     /* Number of requests received and read by the server. This does not include
        pipelined requests that were received after the server closed the socket.
@@ -414,6 +409,8 @@ typedef struct mhStats_t {
     unsigned int requestsMatched;
 } mhStats_t;
 
+typedef unsigned long mhError_t;
+
 /* Everything ok */
 #define MOCKHTTP_NO_ERROR 0
 /* Responses pending in queueu but can't be sent now */
@@ -424,6 +421,8 @@ typedef struct mhStats_t {
 #define MOCKHTTP_SETUP_FAILED 100
 /* There was a problem while running a test */
 #define MOCKHTTP_TEST_FAILED 101
+
+typedef struct MockHTTP MockHTTP;
 
 /**
  * Initialize a MockHTTP context.
@@ -471,6 +470,25 @@ unsigned int mhServerPortNr(const MockHTTP *mh);
  * Get the actual port number on which the proxy is listening.
  */
 unsigned int mhProxyPortNr(const MockHTTP *mh);
+
+
+
+/******************************************************************************
+ * Semi-public API                                                            *
+ * ---------------                                                            *
+ * These are the functions that are used by the public API macro's.           *
+ * While they're tecnically part of the API (they have to be because we use   *
+ * macro's), we've made no effort to make them easy to use.                   *
+ ******************************************************************************/
+
+typedef struct mhRequest_t mhRequest_t;
+typedef struct mhRequestMatcher_t mhRequestMatcher_t;
+typedef struct mhResponse_t mhResponse_t;
+typedef struct mhServCtx_t mhServCtx_t;
+typedef struct mhReqMatcherBldr_t mhReqMatcherBldr_t;
+typedef struct mhConnMatcherBldr_t mhConnMatcherBldr_t;
+typedef struct mhServerSetupBldr_t mhServerSetupBldr_t;
+typedef struct mhResponseBldr_t mhResponseBldr_t;
 
 /**
    The following functions should not be used directly, as they can be quite
