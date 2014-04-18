@@ -1133,12 +1133,11 @@ void mhConfigServer(mhServCtx_t *serv_ctx, ...)
         mhServerSetupBldr_t *ssb;
         ssb = va_arg(argp, mhServerSetupBldr_t *);
         if (ssb == NULL)
-            return;
+            break;
         /* TODO: error if ssb isn't of type BuilderTypeServerSetup */
         ssb->serversetup(serv_ctx->pool, ssb, serv_ctx);
     }
     va_end(argp);
-
 
     if (serv_ctx->protocols == mhProtoUnspecified) {
         serv_ctx->protocols = mhProtoAllSecure;
