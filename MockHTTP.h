@@ -396,7 +396,7 @@ typedef struct mhResponse_t mhResponse_t;
 typedef struct mhRespBuilder_t mhRespBuilder_t;
 typedef struct mhServCtx_t mhServCtx_t;
 typedef struct mhServerBuilder_t mhServerBuilder_t;
-typedef struct mhRequestMatcher_t mhConnectionMatcher_t; /* TODO */
+typedef struct mhConnMatcherBldr_t mhConnMatcherBldr_t;
 
 typedef unsigned long mhError_t;
 
@@ -523,9 +523,9 @@ mhReqMatcherBldr_t *mhMatchHeaderNotEqualTo(const MockHTTP *mh,
                                              const char *hdr, const char *value);
 
 void mhGivenConnSetup(MockHTTP *mh, ...);
-mhReqMatcherBldr_t *mhMatchClientCertCNEqualTo(const MockHTTP *mh,
+mhConnMatcherBldr_t *mhMatchClientCertCNEqualTo(const MockHTTP *mh,
                                                 const char *expected);
-mhReqMatcherBldr_t *mhMatchClientCertValid(const MockHTTP *mh);
+mhConnMatcherBldr_t *mhMatchClientCertValid(const MockHTTP *mh);
 
 /* Response functions */
 typedef void (* respbuilder_t)(mhResponse_t *resp);

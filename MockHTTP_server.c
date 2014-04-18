@@ -1649,7 +1649,7 @@ static void appendSSLErrMessage(const MockHTTP *mh, long result)
     ERR_print_errors_fp(stderr);
 }
 
-bool _mhClientcert_valid_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
+bool _mhClientcert_valid_matcher(apr_pool_t *pool, const mhConnMatcherBldr_t *mp,
                                  const _mhClientCtx_t *cctx)
 {
     sslCtx_t *ssl_ctx = cctx->ssl_ctx;
@@ -1671,7 +1671,7 @@ bool _mhClientcert_valid_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
     return NO;
 }
 
-bool _mhClientcertcn_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
+bool _mhClientcertcn_matcher(apr_pool_t *pool, const mhConnMatcherBldr_t *mp,
                              const _mhClientCtx_t *cctx)
 {
     sslCtx_t *ssl_ctx = cctx->ssl_ctx;

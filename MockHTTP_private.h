@@ -54,7 +54,7 @@ typedef struct _mhClientCtx_t _mhClientCtx_t;
 
 typedef bool (*reqmatchfunc_t)(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
                                const mhRequest_t *req);
-typedef bool (*connmatchfunc_t)(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
+typedef bool (*connmatchfunc_t)(apr_pool_t *pool, const mhConnMatcherBldr_t *cmb,
                                 const _mhClientCtx_t *cctx);
 
 typedef enum expectation_t {
@@ -70,7 +70,7 @@ struct MockHTTP {
     mhStats_t *verifyStats;             /* Statistics gathered by the server */
     mhResponse_t *defResponse;          /* Default req matched response */
     mhResponse_t *defErrorResponse;     /* Default req not matched response */
-    mhConnectionMatcher_t *connMatcher; /* Connection-level matching */
+    apr_array_header_t *connMatchers;   /* array of mhConnMatcherBldr_t *'s */
     mhServCtx_t *proxyCtx;
 };
 
@@ -173,6 +173,7 @@ struct mhResponse_t {
 /* Builder structures for server setup, request matching and response creation */
 typedef enum builderType_t {
     BuilderTypeReqMatcher,
+    BuilderTypeConnMatcher,
     BuilderTypeServerSetup,
     BuilderTypeResponse,
 } builderType_t;
@@ -195,10 +196,17 @@ struct mhReqMatcherBldr_t {
     const void *baton; /* use this for an expected string */
     const void *baton2;
     reqmatchfunc_t matcher;
-    connmatchfunc_t connmatcher;
     const char *describe_key;
     const char *describe_value;
     bool match_incomplete; /* Don't wait for full valid requests */
+};
+
+struct mhConnMatcherBldr_t {
+    builder_t builder;
+    const void *baton;
+    connmatchfunc_t connmatcher;
+    const char *describe_key;
+    const char *describe_value;
 };
 
 const char *getHeader(apr_pool_t *pool, apr_table_t *hdrs, const char *hdr);
@@ -209,9 +217,9 @@ mhRequest_t *_mhInitRequest(apr_pool_t *pool);
 
 bool _mhRequestMatcherMatch(const mhRequestMatcher_t *rm,
                             const mhRequest_t *req);
-bool _mhClientcertcn_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
+bool _mhClientcertcn_matcher(apr_pool_t *pool, const mhConnMatcherBldr_t *mp,
                              const _mhClientCtx_t *cctx);
-bool _mhClientcert_valid_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
+bool _mhClientcert_valid_matcher(apr_pool_t *pool, const mhConnMatcherBldr_t *mp,
                                  const _mhClientCtx_t *cctx);
 _mhClientCtx_t *_mhGetClientCtx(mhServCtx_t *serv_ctx);
 

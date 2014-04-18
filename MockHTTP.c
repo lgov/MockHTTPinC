@@ -27,6 +27,9 @@ static char *serializeArrayOfIovecs(apr_pool_t *pool,
                                     apr_array_header_t *blocks);
 static mhResponse_t *initResponse(MockHTTP *mh);
 
+
+static const unsigned int MagicKey = 0x4D484244; /* MHBD */
+
 /* private functions */
 static const char *toLower(apr_pool_t *pool, const char *str)
 {
@@ -204,6 +207,15 @@ mhError_t mhRunServerLoopCompleteRequests(MockHTTP *mh)
 /* Requests matchers: define criteria to match different aspects of a HTTP    */
 /* request received by the MockHTTP server.                                   */
 /******************************************************************************/
+
+static mhReqMatcherBldr_t *createReqMatcherBldr(apr_pool_t *pool)
+{
+    mhReqMatcherBldr_t *mp = apr_pcalloc(pool, sizeof(mhReqMatcherBldr_t));
+    mp->builder.magic = MagicKey;
+    mp->builder.type = BuilderTypeReqMatcher;
+    return mp;
+}
+
 static bool
 chunks_matcher(const mhReqMatcherBldr_t *mp, apr_array_header_t *chunks)
 {
@@ -252,14 +264,6 @@ static bool url_matcher(apr_pool_t *pool, const mhReqMatcherBldr_t *mp,
                         const mhRequest_t *req)
 {
     return str_matcher(mp, req->url);
-}
-
-mhReqMatcherBldr_t *createReqMatcherBldr(apr_pool_t *pool)
-{
-    mhReqMatcherBldr_t *mp = apr_pcalloc(pool, sizeof(mhReqMatcherBldr_t));
-    mp->builder.magic = 0x4D484244; /* MHBD */
-    mp->builder.type = BuilderTypeReqMatcher;
-    return mp;
 }
 
 mhReqMatcherBldr_t *
@@ -578,47 +582,41 @@ _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, const mhRequest_t *req)
 }
 
 /******************************************************************************/
-/* Connection-leven matchers: define criteria to match different aspects of a */
+/* Connection-level matchers: define criteria to match different aspects of a */
 /* HTTP or HTTPS connection.                                                  */
 /******************************************************************************/
 
-static mhConnectionMatcher_t *
-constructConnectionMatcher(const MockHTTP *mh, va_list argp)
+static mhConnMatcherBldr_t *createConnMatcherBldr(apr_pool_t *pool)
 {
-    apr_pool_t *pool = mh->pool;
-
-    mhConnectionMatcher_t *cm = apr_pcalloc(pool, sizeof(mhRequestMatcher_t));
-    cm->pool = pool;
-    cm->matchers = apr_array_make(pool, 5, sizeof(mhReqMatcherBldr_t *));
-
-    while (1) {
-        mhReqMatcherBldr_t *mp;
-        mp = va_arg(argp, mhReqMatcherBldr_t *);
-        if (mp == NULL) break;
-        *((mhReqMatcherBldr_t **)apr_array_push(cm->matchers)) = mp;
-    }
-    return cm;
+    mhConnMatcherBldr_t *mp = apr_pcalloc(pool, sizeof(mhConnMatcherBldr_t));
+    mp->builder.magic = MagicKey;
+    mp->builder.type = BuilderTypeConnMatcher;
+    return mp;
 }
 
-/* Stores a mhConnectionMatcher_t * in the MockHTTP context */
+/* Stores a mhConnMatcherBldr_t * in the MockHTTP context */
 void mhGivenConnSetup(MockHTTP *mh, ...)
 {
     va_list argp;
-    mhConnectionMatcher_t *cm;
+    mhConnMatcherBldr_t *cmb;
+
+    mh->connMatchers = apr_array_make(mh->pool, 5,
+                                      sizeof(mhConnMatcherBldr_t *));
 
     va_start(argp, mh);
-    cm = constructConnectionMatcher(mh, argp);
+    cmb = va_arg(argp, mhConnMatcherBldr_t *);
+    if (cmb == NULL)
+        return;
+    *((mhConnMatcherBldr_t **)apr_array_push(mh->connMatchers)) = cmb;
     va_end(argp);
-
-    mh->connMatcher = cm;
 }
 
-mhReqMatcherBldr_t *
+mhConnMatcherBldr_t *
 mhMatchClientCertCNEqualTo(const MockHTTP *mh, const char *expected)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
+    mhConnMatcherBldr_t *mp = createConnMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
     mp->connmatcher = _mhClientcertcn_matcher;
     mp->describe_key = "Client Certificate CN equal to";
@@ -626,11 +624,11 @@ mhMatchClientCertCNEqualTo(const MockHTTP *mh, const char *expected)
     return mp;
 }
 
-mhReqMatcherBldr_t *mhMatchClientCertValid(const MockHTTP *mh)
+mhConnMatcherBldr_t *mhMatchClientCertValid(const MockHTTP *mh)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
+    mhConnMatcherBldr_t *mp = createConnMatcherBldr(pool);
     mp->connmatcher = _mhClientcert_valid_matcher;
     mp->describe_key = "Client Certificate";
     mp->describe_value = "valid";
@@ -1116,16 +1114,15 @@ int mhVerifyConnectionSetupOk(const MockHTTP *mh)
 {
     int i;
     apr_pool_t *match_pool;
-    mhConnectionMatcher_t *cm = mh->connMatcher;
     _mhClientCtx_t *cctx = _mhGetClientCtx(mh->servCtx); /* TODO: one conn? */
 
-    apr_pool_create(&match_pool, cm->pool);
+    apr_pool_create(&match_pool, mh->pool);
 
-    for (i = 0 ; i < cm->matchers->nelts; i++) {
-        const mhReqMatcherBldr_t *mp;
+    for (i = 0 ; i < mh->connMatchers->nelts; i++) {
+        const mhConnMatcherBldr_t *cmb;
 
-        mp = APR_ARRAY_IDX(cm->matchers, i, mhReqMatcherBldr_t *);
-        if (mp->connmatcher(match_pool, mp, cctx) == NO)
+        cmb = APR_ARRAY_IDX(mh->connMatchers, i, mhConnMatcherBldr_t *);
+        if (cmb->connmatcher(match_pool, cmb, cctx) == NO)
             return NO;
     }
     apr_pool_destroy(match_pool);
