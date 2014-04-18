@@ -460,7 +460,7 @@ mhError_t mhRunServerLoopCompleteRequests(MockHTTP *mh);
  * MOCKHTTP_TIMEOUT  maximum timeout exceeded when waiting for a complete 
  *                   request
  */
-mhError_t mhRunServerLoopOneRequest(MockHTTP *mh);
+mhError_t mhRunServerLoop(MockHTTP *mh);
 
 /**
  * Get the actual port number on which the server is listening.
