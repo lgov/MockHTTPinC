@@ -337,7 +337,7 @@ typedef enum mhThreading_t {
 
 
 #define     OnConditionThat(condition, builder)\
-                mhSetOnConditionThat(_mh, condition, builder)
+                mhSetOnConditionThat(condition, builder)
 
 
 /* Set expectations for a series of requests */

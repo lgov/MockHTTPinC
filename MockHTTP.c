@@ -610,8 +610,8 @@ void mhGivenConnSetup(MockHTTP *mh, ...)
                                       sizeof(mhConnMatcherBldr_t *));
 
     va_start(argp, mh);
-    cmb = va_arg(argp, mhConnMatcherBldr_t *);
     while (1) {
+        cmb = va_arg(argp, mhConnMatcherBldr_t *);
         if (cmb == NULL)
             break;
         if (cmb->builder.type == BuilderTypeNone)
@@ -620,8 +620,8 @@ void mhGivenConnSetup(MockHTTP *mh, ...)
             _mhErrorUnexpectedBuilder(mh, cmb, BuilderTypeConnMatcher);
             break;
         }
+        *((mhConnMatcherBldr_t **)apr_array_push(mh->connMatchers)) = cmb;
     }
-    *((mhConnMatcherBldr_t **)apr_array_push(mh->connMatchers)) = cmb;
     va_end(argp);
 }
 
