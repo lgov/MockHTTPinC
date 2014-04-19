@@ -923,7 +923,7 @@ static void test_default_response(CuTest *tc)
         apr_status_t status;
 
         sendRequest(ctx, "GET", "/index1.html", hdrs, "body1");
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
         do {
             int curpos = 0;
             status = receiveResponse(ctx, &buf, &len);
@@ -933,7 +933,7 @@ static void test_default_response(CuTest *tc)
 
         sendChunkedRequest(ctx, "GET", "/index2.html", hdrs, "chunk1", "chunk2",
                            NULL);
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
         do {
             int curpos = 0;
             status = receiveResponse(ctx, &buf, &len);

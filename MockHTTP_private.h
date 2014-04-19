@@ -150,6 +150,7 @@ struct mhRequest_t {
 
 struct mhResponse_t {
     apr_pool_t *pool;
+    const MockHTTP *mh;
     bool built;
     unsigned int code;
     apr_table_t *hdrs;
@@ -173,6 +174,7 @@ typedef enum builderType_t {
     BuilderTypeConnMatcher,
     BuilderTypeServerSetup,
     BuilderTypeResponse,
+    BuilderTypeNone,           /* A noop builder */
 } builderType_t;
 
 
@@ -251,6 +253,9 @@ _mhClientCtx_t *_mhGetClientCtx(mhServCtx_t *serv_ctx);
 
 /* Build a response */
 void _mhBuildResponse(mhResponse_t *resp);
+
+void _mhErrorUnexpectedBuilder(const MockHTTP *mh, void *actual,
+                               builderType_t expected);
 
 /* Test servers */
 apr_status_t _mhRunServerLoop(mhServCtx_t *ctx);

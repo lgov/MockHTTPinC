@@ -1134,7 +1134,12 @@ void mhConfigServer(mhServCtx_t *serv_ctx, ...)
         ssb = va_arg(argp, mhServerSetupBldr_t *);
         if (ssb == NULL)
             break;
-        /* TODO: error if ssb isn't of type BuilderTypeServerSetup */
+        if (ssb->builder.type == BuilderTypeNone)
+            continue;
+        if (ssb->builder.type != BuilderTypeServerSetup) {
+            _mhErrorUnexpectedBuilder(serv_ctx->mh, ssb, BuilderTypeServerSetup);
+            break;
+        }
         ssb->serversetup(ssb, serv_ctx);
     }
     va_end(argp);

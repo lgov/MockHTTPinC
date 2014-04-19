@@ -335,6 +335,11 @@ typedef enum mhThreading_t {
                 __resp = NULL; __rm = NULL; __mh = NULL;\
             }
 
+
+#define     OnConditionThat(condition, builder)\
+                mhSetOnConditionThat(_mh, condition, builder)
+
+
 /* Set expectations for a series of requests */
 #define   Expect
 
@@ -394,6 +399,7 @@ typedef enum mhThreading_t {
 /* End of test result verification section */
 #define EndVerify\
             }
+
 
 typedef struct mhStats_t {
     /* Number of requests received and read by the server. This does not include
@@ -565,6 +571,8 @@ mhResponseBldr_t *mhRespAddHeader(mhResponse_t *resp, const char *header,
 mhResponseBldr_t *mhRespSetConnCloseHdr(mhResponse_t *resp);
 mhResponseBldr_t *mhRespSetUseRequestBody(mhResponse_t *resp);
 mhResponseBldr_t *mhRespSetRawData(mhResponse_t *resp, const char *raw_data);
+
+const void *mhSetOnConditionThat(int condition, void *builder);
 
 /* Define request/response pairs */
 void mhPushRequest(mhServCtx_t *ctx, mhRequestMatcher_t *rm);

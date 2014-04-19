@@ -199,7 +199,15 @@ mhError_t mhRunServerLoopCompleteRequests(MockHTTP *mh)
     return status;
 }
 
-/* Define expectations*/
+static const builder_t NoopBuilder = { MagicKey, BuilderTypeNone };
+
+const void *mhSetOnConditionThat(int condition, void *builder)
+{
+    if (condition)
+        return builder;
+
+    return &NoopBuilder;
+}
 
 /******************************************************************************/
 /* Requests matchers: define criteria to match different aspects of a HTTP    */
@@ -532,11 +540,17 @@ constructRequestMatcher(const MockHTTP *mh, const char *method, va_list argp)
     rm->matchers = apr_array_make(pool, 5, sizeof(mhReqMatcherBldr_t *));
 
     while (1) {
-        mhReqMatcherBldr_t *mp;
-        mp = va_arg(argp, mhReqMatcherBldr_t *);
-        if (mp == NULL) break;
-        /* TODO: error if mp isn't of type BuilderTypeReqMatcher */
-        *((mhReqMatcherBldr_t **)apr_array_push(rm->matchers)) = mp;
+        mhReqMatcherBldr_t *rmb;
+        rmb = va_arg(argp, mhReqMatcherBldr_t *);
+        if (rmb == NULL)
+            break;
+        if (rmb->builder.type == BuilderTypeNone)
+            continue;
+        if (rmb->builder.type != BuilderTypeReqMatcher) {
+            _mhErrorUnexpectedBuilder(mh, rmb, BuilderTypeReqMatcher);
+            break;
+        }
+        *((mhReqMatcherBldr_t **)apr_array_push(rm->matchers)) = rmb;
     }
     return rm;
 }
@@ -597,8 +611,16 @@ void mhGivenConnSetup(MockHTTP *mh, ...)
 
     va_start(argp, mh);
     cmb = va_arg(argp, mhConnMatcherBldr_t *);
-    if (cmb == NULL)
-        return;
+    while (1) {
+        if (cmb == NULL)
+            break;
+        if (cmb->builder.type == BuilderTypeNone)
+            continue;
+        if (cmb->builder.type != BuilderTypeConnMatcher) {
+            _mhErrorUnexpectedBuilder(mh, cmb, BuilderTypeConnMatcher);
+            break;
+        }
+    }
     *((mhConnMatcherBldr_t **)apr_array_push(mh->connMatchers)) = cmb;
     va_end(argp);
 }
@@ -636,6 +658,7 @@ static mhResponse_t *initResponse(MockHTTP *mh)
 
     mhResponse_t *resp = apr_pcalloc(pool, sizeof(mhResponse_t));
     resp->pool = pool;
+    resp->mh = mh;
     resp->code = 200;
     resp->body = apr_array_make(pool, 5, sizeof(struct iovec));
     resp->hdrs = apr_table_make(pool, 5);
@@ -700,6 +723,13 @@ void mhConfigResponse(mhResponse_t *resp, ...)
         rb = va_arg(argp, mhResponseBldr_t *);
         if (rb == NULL)
             break;
+        if (rb->builder.type == BuilderTypeNone)
+            continue;
+        if (rb->builder.type != BuilderTypeResponse) {
+            _mhErrorUnexpectedBuilder(resp->mh, rb, BuilderTypeResponse);
+            break;
+        }
+
         *((mhResponseBldr_t **)apr_array_push(resp->builders)) = rb;
     }
     va_end(argp);
@@ -1220,6 +1250,33 @@ int mhVerifyConnectionSetupOk(const MockHTTP *mh)
     apr_pool_destroy(match_pool);
 
     return YES;
+}
+
+static const char *buildertype_to_string(builderType_t type)
+{
+    switch (type) {
+        case BuilderTypeReqMatcher:
+            return "Request Matcher";
+        case BuilderTypeConnMatcher:
+            return "Connection Matcher";
+        case BuilderTypeResponse:
+            return "Response Builder";
+        case BuilderTypeServerSetup:
+            return "Server Setup";
+        default:
+            break;
+    }
+    return "<unknown type>";
+}
+
+void _mhErrorUnexpectedBuilder(const MockHTTP *mh, void *actual,
+                               builderType_t expected)
+{
+    builder_t *builder = actual;
+    appendErrMessage(mh, "A builder of type %s was provided, where a builder of "
+                         " type %s was expected!",
+                     buildertype_to_string(builder->type),
+                     buildertype_to_string(expected));
 }
 
 static void log_time(void)
