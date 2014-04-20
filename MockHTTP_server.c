@@ -1034,6 +1034,7 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
 
         switch (ctx->mode) {
           case ModeServer:
+          case ModeProxy:
             /* Read partial or full requests */
             STATUSREADERR(readRequest(cctx, &cctx->req));
 
@@ -1113,11 +1114,10 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                 }
             }
             break;
-          case ModeProxy:
           case ModeTunnel:
-                /* We should never get here. */
-                abort();
-                break;
+            /* Forward raw data */
+            STATUSREADERR(readData(cctx));
+            break;
           default:
             break;
         }
