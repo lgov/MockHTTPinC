@@ -32,16 +32,15 @@
 #endif
 #endif
 
+/* Forward declarations */
 static apr_status_t initSSLCtx(_mhClientCtx_t *cctx);
+static apr_status_t setupTCPServer(mhServCtx_t *ctx, bool blocking);
 static apr_status_t sslHandshake(_mhClientCtx_t *cctx);
 static apr_status_t sslSocketWrite(_mhClientCtx_t *cctx, const char *data,
                                    apr_size_t *len);
 static apr_status_t sslSocketRead(_mhClientCtx_t *cctx, char *data,
                                   apr_size_t *len);
 static apr_status_t renegotiateSSLSession(_mhClientCtx_t *cctx);
-
-static const int DefaultSrvPort =   30080;
-static const int DefaultProxyPort = 38080;
 
 typedef apr_status_t (*handshake_func_t)(_mhClientCtx_t *cctx);
 typedef apr_status_t (*reset_conn_func_t)(_mhClientCtx_t *cctx);
@@ -52,7 +51,12 @@ typedef apr_status_t (*receive_func_t)(_mhClientCtx_t *cctx, char *data,
 
 typedef struct sslCtx_t sslCtx_t;
 
+static const int DefaultSrvPort =   30080;
+static const int DefaultProxyPort = 38080;
+
+/* Buffer size for incoming and outgoing data */
 #define BUFSIZE 32768
+
 struct _mhClientCtx_t {
     apr_pool_t *pool;
     apr_socket_t *skt;
@@ -83,8 +87,9 @@ struct _mhClientCtx_t {
     mhClientCertVerification_t clientCert;
 };
 
-static apr_status_t setupTCPServer(mhServCtx_t *ctx, bool blocking);
-
+/**
+ * Start up a server in a separate thread.
+ */
 static void * APR_THREAD_FUNC start_thread(apr_thread_t *tid, void *baton)
 {
     mhServCtx_t *ctx = baton;
@@ -98,6 +103,9 @@ static void * APR_THREAD_FUNC start_thread(apr_thread_t *tid, void *baton)
     return NULL;
 }
 
+/**
+ * Callback called when the mhServCtx_t pool is destroyed. 
+ */
 static apr_status_t cleanupServer(void *baton)
 {
     mhServCtx_t *ctx = baton;
@@ -115,18 +123,29 @@ static apr_status_t cleanupServer(void *baton)
     return status;
 }
 
+/**
+ * Callback, writes DATA of length LEN to the socket stored in CCTX.
+ */
 static apr_status_t socketWrite(_mhClientCtx_t *cctx, const char *data,
                                 apr_size_t *len)
 {
     return apr_socket_send(cctx->skt, data, len);
 }
 
+/**
+ * Callback, reads data from the socket stored in CCTX and stores it in DATA,
+ * the available bytes will be stored in *LEN.
+ */
 static apr_status_t socketRead(_mhClientCtx_t *cctx, char *data,
                                apr_size_t *len)
 {
     return apr_socket_recv(cctx->skt, data, len);
 }
 
+/**
+ * Sets up a listener on the socket stored in CTX.
+ * TODO: blocking
+ */
 static apr_status_t setupTCPServer(mhServCtx_t *ctx, bool blocking)
 {
     apr_sockaddr_t *serv_addr;
@@ -147,7 +166,7 @@ static apr_status_t setupTCPServer(mhServCtx_t *ctx, bool blocking)
         STATUSERR(apr_socket_timeout_set(ctx->skt, 0));
         STATUSERR(apr_socket_opt_set(ctx->skt, APR_SO_REUSEADDR, 1));
 
-        /* TODO: try the next port until bind succeeds */
+        /* Try the next port until bind succeeds */
         status = apr_socket_bind(ctx->skt, serv_addr);
         if (status == EADDRINUSE) {
             ctx->port++;
@@ -166,6 +185,7 @@ static apr_status_t setupTCPServer(mhServCtx_t *ctx, bool blocking)
     STATUSERR(apr_pollset_create(&ctx->pollset, 32, pool, 0));
 #endif
 
+    /* Listen for POLLIN events on this socket */
     {
         apr_pollfd_t pfd = { 0 };
 
@@ -179,7 +199,10 @@ static apr_status_t setupTCPServer(mhServCtx_t *ctx, bool blocking)
     return APR_SUCCESS;
 }
 
-/* connect to the server (url in form localhost:30080) */
+/**
+ * Opens a non-blocking connection to a remote server at URL (in form 
+ * localhost:30080).
+ */
 static apr_status_t connectToServer(mhServCtx_t *ctx, const char *url)
 {
     apr_sockaddr_t *address;
@@ -213,7 +236,9 @@ static apr_status_t connectToServer(mhServCtx_t *ctx, const char *url)
     return status;
 }
 
-static const int MaxReqRespQueueSize = 50;
+/**
+ * Initialize the server context.
+ */
 static mhServCtx_t *
 initServCtx(const MockHTTP *mh, const char *hostname, apr_port_t port)
 {
@@ -241,31 +266,13 @@ initServCtx(const MockHTTP *mh, const char *hostname, apr_port_t port)
     return ctx;
 }
 
-static mhError_t startServer(mhServCtx_t *ctx)
-{
-    apr_thread_t *thread;
-
-    /* TODO: second thread doesn't work. */
-    if (ctx->threading == mhThreadSeparate) { /* second thread */
-        /* Setup a non-blocking TCP server in a separate thread */
-        apr_thread_create(&thread, NULL, start_thread, ctx, ctx->pool);
-    } else if (ctx->threading == mhThreadMain) {
-        apr_status_t status;
-        /* Setup a non-blocking TCP server */
-        status = setupTCPServer(ctx, NO);
-        if (status)
-            return MOCKHTTP_SETUP_FAILED;
-    } else {
-        return MOCKHTTP_SETUP_FAILED;
-    }
-
-    return MOCKHTTP_NO_ERROR;
-}
-
 /******************************************************************************/
 /* Parse a request structure from incoming data                               */
 /******************************************************************************/
 
+/**
+ * Initialize a mhRequest_t object
+ */
 mhRequest_t *_mhInitRequest(apr_pool_t *pool)
 {
     mhRequest_t *req = apr_pcalloc(pool, sizeof(mhRequest_t));
@@ -277,8 +284,11 @@ mhRequest_t *_mhInitRequest(apr_pool_t *pool)
     return req;
 }
 
-/* *len will be non-0 if a line ending with CRLF was found. buf will be copied
-   in mem allocatod from cctx->pool, cctx->buf ptrs will be moved. */
+/**
+ * Read a complete line from the buffer in CCTX.
+ * *LEN will be non-0 if a line ending with CRLF was found. BUF will be copied
+ * in mem allocatod from cctx->pool, cctx->buf ptrs will be moved.
+ */
 static void readLine(_mhClientCtx_t *cctx, const char **buf, apr_size_t *len)
 {
     const char *ptr = cctx->buf;
@@ -302,8 +312,16 @@ static void readLine(_mhClientCtx_t *cctx, const char **buf, apr_size_t *len)
 #define FAIL_ON_EOL(ptr)\
     if (*ptr == '\0') return APR_EGENERAL; /* TODO: error code */
 
-/* APR_EAGAIN if no line ready, APR_SUCCESS + done = YES if request line parsed */
-static apr_status_t readReqLine(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
+/**
+ * Reads the request line from the buffer in CCTX, REQ will be updated
+ * with the info read from the request line.
+ *
+ * Returns APR_EAGAIN if the request line isn't completely available,
+ *         APR_SUCCESS + *DONE = YES if request line parsed.
+ *         error in case the request line couldn't be parsed successfully
+ */
+static apr_status_t
+readReqLine(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
 {
     const char *start, *ptr, *version;
     const char *buf;
@@ -339,9 +357,17 @@ static apr_status_t readReqLine(_mhClientCtx_t *cctx, mhRequest_t *req, bool *do
     return APR_SUCCESS;
 }
 
-/* APR_EAGAIN if no line ready, APR_SUCCESS + done = YES when LAST header was
-   parsed */
-static apr_status_t readHeader(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
+/**
+ * Reads a HTTP header from the buffer in CCTX, header will be added to REQ.
+ *
+ * Returns APR_EAGAIN if a header line isn't completely available.
+ *         APR_SUCCESS if a header line was successfully parsed, maybe more
+ *                     are available.
+ *           + *DONE = YES when the last header was successfully parsed.
+ *         error in case the header line couldn't be parsed successfully
+ */
+static apr_status_t
+readHeader(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
 {
     const char *buf;
     apr_size_t len;
@@ -351,16 +377,22 @@ static apr_status_t readHeader(_mhClientCtx_t *cctx, mhRequest_t *req, bool *don
     readLine(cctx, &buf, &len);
     if (!len) return APR_EAGAIN;
 
+    /* Last header? */
     if (len == 2 && *buf == '\r' && *(buf+1) == '\n') {
         *done = YES;
         return APR_SUCCESS;
     } else {
         const char *start = buf, *ptr = buf;
         const char *hdr, *val;
+
+        /* Read header from a line in the form of 'Header: value' */
         while (*ptr != ':' && *ptr != '\r') ptr++;
         hdr = apr_pstrndup(cctx->pool, start, ptr-start);
 
+        /* skip blanks */
         ptr++; while (*ptr == ' ') ptr++; start = ptr;
+
+        /* Read value */
         while (*ptr != '\r') ptr++;
         val = apr_pstrndup(cctx->pool, start, ptr-start);
 
@@ -369,6 +401,10 @@ static apr_status_t readHeader(_mhClientCtx_t *cctx, mhRequest_t *req, bool *don
     return APR_SUCCESS;
 }
 
+/**
+ * Append a block of data in BUF of length LEN (not-'\0' terminated) to the 
+ * list in REQ. Data will be copied in the REQ->pool.
+ */
 static void
 storeRawDataBlock(mhRequest_t *req, const char *buf, apr_size_t len)
 {
@@ -379,8 +415,15 @@ storeRawDataBlock(mhRequest_t *req, const char *buf, apr_size_t len)
     req->bodyLen += len;
 }
 
-/* APR_EAGAIN if not all data is ready, APR_SUCCESS + done = YES if body
-   completely received. */
+/**
+ * Reads the unencoded (not chunked) body from the buffer in CCTX. The length
+ * of the body is determined by reading the "Content-Length" header in REQ.
+ * The body will be copied in REQ->pool and stored in REQ.
+ *
+ * Returns APR_EAGAIN if the body isn't completely available.
+ *         APR_SUCCESS + *DONE = YES when the whole body was read completely.
+ *         error in case the "Content-Length" header isn't set.
+ */
 static apr_status_t readBody(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
 {
     const char *clstr;
@@ -391,6 +434,7 @@ static apr_status_t readBody(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
     req->chunked = NO;
 
     clstr = getHeader(cctx->pool, req->hdrs, "Content-Length");
+    /* TODO: error if no Content-Length header */
     cl = atol(clstr);
 
     len = cl - req->bodyLen; /* remaining # of bytes */
@@ -415,6 +459,17 @@ static apr_status_t readBody(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
     return APR_SUCCESS;
 }
 
+/**
+ * Reads a chunk of the body from the buffer in CCTX. The length
+ * of the body is determined by reading the chunk header, length of current 
+ * chunk and partial read data will be stored in REQ->chunks.
+ * The chunk will be copied in REQ->pool and stored in REQ.
+ *
+ * Returns APR_EAGAIN if the chunk isn't completely available.
+ *         APR_SUCCESS if a chunk was read completely, maybe more are available.
+ *           + *DONE = YES when the last chunk and the trailer were read.
+ *         error in case of problems parsing the chunk header, length or trailer.
+ */
 static apr_status_t readChunk(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
 {
     const char *buf;
@@ -452,14 +507,17 @@ static apr_status_t readChunk(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done
             struct iovec *vec;
             apr_size_t chlen, curchunklen, len;
 
-            vec = &APR_ARRAY_IDX(req->chunks, req->chunks->nelts - 1, struct iovec);
+            vec = &APR_ARRAY_IDX(req->chunks, req->chunks->nelts - 1,
+                                 struct iovec);
             chlen = vec->iov_len;
+
+            /* already read some data of this chunk? */
             if (req->incomplete_chunk) {
                 const char *tmp;
-                curchunklen = strlen(vec->iov_base); /* already read some data */
+                curchunklen = strlen(vec->iov_base);
                 /* partial or full chunk? */
-                len = (cctx->buflen + curchunklen) >= chlen ? chlen - curchunklen :
-                                                              cctx->buflen;
+                len = (cctx->buflen + curchunklen) >= chlen ?
+                           chlen - curchunklen : cctx->buflen;
                 tmp = apr_pstrndup(req->pool, cctx->buf, len);
                 storeRawDataBlock(req, cctx->buf, len);
                 vec->iov_base = apr_pstrcat(req->pool, vec->iov_base, tmp, NULL);
@@ -471,16 +529,20 @@ static apr_status_t readChunk(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done
                 storeRawDataBlock(req, cctx->buf, len);
                 curchunklen = len;
             }
-            cctx->buflen -= len; /* eat (part of the) chunk */
+
+            /* eat (part of the) chunk */
+            cctx->buflen -= len;
             cctx->bufrem += len;
             memmove(cctx->buf, cctx->buf + len, cctx->buflen);
 
-            if (curchunklen < chlen) { /* More data is needed to read one chunk */
+            if (curchunklen < chlen) {
+                /* More data is needed to read one chunk */
                 req->incomplete_chunk = YES;
                 return APR_EAGAIN;
             }
             req->incomplete_chunk = NO;
             req->readState = ReadStateChunkedTrailer;
+
             /* fall through */
         }
         case ReadStateChunkedTrailer:
@@ -494,10 +556,12 @@ static apr_status_t readChunk(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done
                 return APR_EAGAIN;
             storeRawDataBlock(req, buf, len);
             if (len == 2 && *buf == '\r' && *(buf+1) == '\n') {
-                if (chlen == 0) { /* body ends with chunk of length 0 */
+                if (chlen == 0) {
+                    /* body ends with chunk of length 0 */
                     *done = YES;
                     req->readState = ReadStateDone;
-                    apr_array_pop(req->chunks); /* remove the 0-chunk */
+                    /* remove the 0-chunk from the request*/
+                    apr_array_pop(req->chunks);
                 } else {
                     req->readState = ReadStateChunked;
                 }
@@ -513,7 +577,16 @@ static apr_status_t readChunk(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done
     return APR_SUCCESS;
 }
 
-static apr_status_t readChunked(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
+/**
+ * Keeps reading chunks until no more data is available.
+ *
+ * Returns APR_EAGAIN if a chunk isn't completely available.
+ *         APR_SUCCESS + *DONE = YES when the last chunk and the trailer were 
+ *              read.
+ *         error in case of problems parsing the chunk header, length or trailer.
+ */
+static apr_status_t
+readChunked(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
 {
     apr_status_t status;
 
@@ -526,6 +599,9 @@ static apr_status_t readChunked(_mhClientCtx_t *cctx, mhRequest_t *req, bool *do
     return status;
 }
 
+/**
+ * Reads data from the socket and stores it in CCTX->buf.
+ */
 static apr_status_t readData(_mhClientCtx_t *cctx)
 {
     apr_status_t status;
@@ -542,9 +618,14 @@ static apr_status_t readData(_mhClientCtx_t *cctx)
     return status;
 }
 
-/* New request data was made available, read status line/hdrs/body (chunks).
-   APR_EAGAIN: wait for more data
-   APR_EOF: request received, or no more data available. */
+/**
+ * New request data is available, read status line/hdrs/body (chunks).
+ *
+ * Returns APR_EAGAIN: wait for more data
+ *         APR_EOF: request received, or no more data available.
+ *         MH_STATUS_INCOMPLETE_REQUEST: APR_EOF but the request wasn't received 
+ *             completely.
+ */
 static apr_status_t readRequest(_mhClientCtx_t *cctx, mhRequest_t **preq)
 {
     mhRequest_t *req = *preq;
@@ -610,6 +691,13 @@ static apr_status_t readRequest(_mhClientCtx_t *cctx, mhRequest_t **preq)
     return status;
 }
 
+/******************************************************************************/
+/* Send a response                                                            */
+/******************************************************************************/
+
+/**
+ * Translate a HTTP status code to a string representation.
+ */
 static const char *codeToString(unsigned int code)
 {
     switch(code) {
@@ -656,10 +744,6 @@ static const char *codeToString(unsigned int code)
         default: return "<not defined>";
     }
 }
-
-/******************************************************************************/
-/* Send a response                                                            */
-/******************************************************************************/
 
 static char *respToString(apr_pool_t *pool, mhResponse_t *resp)
 {
@@ -1149,16 +1233,27 @@ void mhConfigServer(mhServCtx_t *serv_ctx, ...)
     }
 }
 
-void mhStartServer(mhServCtx_t *serv_ctx)
+void mhStartServer(mhServCtx_t *ctx)
 {
+    apr_thread_t *thread;
+    mhError_t err = MOCKHTTP_NO_ERROR;
     apr_status_t status;
-    mhError_t err;
 
-    status = startServer(serv_ctx);
-    if (status == MH_STATUS_WAITING)
-        err = MOCKHTTP_WAITING;
-
-    err = MOCKHTTP_SETUP_FAILED;
+    /* TODO: second thread doesn't work. */
+    if (ctx->threading == mhThreadSeparate) {
+        /* Setup a non-blocking TCP server in a separate thread */
+        apr_thread_create(&thread, NULL, start_thread, ctx, ctx->pool);
+        err = MOCKHTTP_SETUP_FAILED;
+    } else if (ctx->threading == mhThreadMain) {
+        /* Setup a non-blocking TCP server */
+        status = setupTCPServer(ctx, NO);
+        if (status == MH_STATUS_WAITING)
+            err = MOCKHTTP_WAITING;
+        else if (status)
+            err = MOCKHTTP_SETUP_FAILED;
+    } else {
+        err = MOCKHTTP_SETUP_FAILED;
+    }
 
     /* TODO: store error message */
 }
