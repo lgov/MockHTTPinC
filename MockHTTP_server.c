@@ -1770,6 +1770,9 @@ static int pem_passwd_cb(char *buf, int size, int rwflag, void *userdata)
     return strlen(buf);
 }
 
+/**
+ * OpenSSL BIO callback. Creates a new BIO structure.
+ */
 static int bio_apr_socket_create(BIO *bio)
 {
     bio->shutdown = 1;
@@ -1780,6 +1783,9 @@ static int bio_apr_socket_create(BIO *bio)
     return 1;
 }
 
+/**
+ * OpenSSL BIO callback. Cleans up the BIO structure.
+ */
 static int bio_apr_socket_destroy(BIO *bio)
 {
     /* Did we already free this? */
@@ -1790,6 +1796,9 @@ static int bio_apr_socket_destroy(BIO *bio)
     return 1;
 }
 
+/**
+ * OpenSSL BIO callback.
+ */
 static long bio_apr_socket_ctrl(BIO *bio, int cmd, long num, void *ptr)
 {
     long ret = 1;
@@ -1809,7 +1818,9 @@ static long bio_apr_socket_ctrl(BIO *bio, int cmd, long num, void *ptr)
     return ret;
 }
 
-/* Returns the amount read. */
+/**
+ * OpenSSL BIO callback. Reads data from a socket, returns the amount read.
+ */
 static int bio_apr_socket_read(BIO *bio, char *in, int inlen)
 {
     apr_size_t len = inlen;
@@ -1838,7 +1849,9 @@ static int bio_apr_socket_read(BIO *bio, char *in, int inlen)
     return len;
 }
 
-/* Returns the amount written. */
+/**
+ * OpenSSL BIO callback. Write data to a socket, returns the amount written.
+ */
 static int bio_apr_socket_write(BIO *bio, const char *in, int inlen)
 {
     apr_size_t len = inlen;
@@ -1872,10 +1885,16 @@ static BIO_METHOD bio_apr_socket_method = {
 #endif
 };
 
+/**
+ * Action: renegotiates a SSL session on client socket CCTX.
+ * Returns APR_SUCCESS if the renegotiation handshake was successfull
+ *         error if not.
+ */
 static apr_status_t renegotiateSSLSession(_mhClientCtx_t *cctx)
 {
     sslCtx_t *ssl_ctx = cctx->ssl_ctx;
 
+    /* TODO: check for APR_EAGAIN situation */
     if (!SSL_renegotiate(ssl_ctx->ssl))
         return APR_EGENERAL;     /* TODO: log error */
     if (!SSL_do_handshake(ssl_ctx->ssl))
@@ -1886,6 +1905,9 @@ static apr_status_t renegotiateSSLSession(_mhClientCtx_t *cctx)
     return APR_SUCCESS;
 }
 
+/**
+ * Pool cleanup callback, cleans up the OpenSSL structures
+ */
 static apr_status_t cleanupSSL(void *baton)
 {
     _mhClientCtx_t *cctx = baton;
@@ -2116,6 +2138,15 @@ static void appendSSLErrMessage(const MockHTTP *mh, long result)
     ERR_print_errors_fp(stderr);
 }
 
+/******************************************************************************/
+/* Connection-level matchers: define criteria to match different aspects of a */
+/* HTTP or HTTPS connection.                                                  */
+/******************************************************************************/
+
+/**
+ * Builder callback, verifies if the client certificate is valid (its issuer
+ * is in the provided list of trusted certificates).
+ */
 bool _mhClientcert_valid_matcher(const mhConnMatcherBldr_t *mp,
                                  const _mhClientCtx_t *cctx)
 {
@@ -2138,6 +2169,10 @@ bool _mhClientcert_valid_matcher(const mhConnMatcherBldr_t *mp,
     return NO;
 }
 
+/**
+ * Builder callback, verifies if the client certificate CN equals a certain
+ * string.
+ */
 bool _mhClientcertcn_matcher(const mhConnMatcherBldr_t *mp,
                              const _mhClientCtx_t *cctx)
 {
