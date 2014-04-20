@@ -1281,6 +1281,9 @@ mhServCtx_t *mhNewServer(MockHTTP *mh)
     return mh->servCtx;
 }
 
+/**
+ * Creates a new proxy server on localhost and on the default proxy port.
+ */
 mhServCtx_t *mhNewProxy(MockHTTP *mh)
 {
     mh->proxyCtx = initServCtx(mh, "localhost", DefaultProxyPort);
@@ -1288,6 +1291,9 @@ mhServCtx_t *mhNewProxy(MockHTTP *mh)
     return mh->proxyCtx;
 }
 
+/**
+ * Returns the server context associated with id SERVERID.
+ */
 mhServCtx_t *mhFindServerByID(MockHTTP *mh, const char *serverID)
 {
     if (mh->servCtx && mh->servCtx->serverID &&
@@ -1391,6 +1397,10 @@ static bool set_server_id(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
     return YES;
 }
 
+
+/**
+ * Create a builder of type mhServerSetupBldr_t, sets the server id
+ */
 mhServerSetupBldr_t *mhSetServerID(mhServCtx_t *ctx, const char *serverID)
 {
     apr_pool_t *pool = ctx->pool;
@@ -1411,6 +1421,10 @@ set_server_maxreqs_per_conn(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
     return YES;
 }
 
+/**
+ * Create a builder of type mhServerSetupBldr_t, sets the number of maximum 
+ * requests per connection.
+ */
 mhServerSetupBldr_t *
 mhSetServerMaxRequestsPerConn(mhServCtx_t *ctx, unsigned int maxRequests)
 {
@@ -1440,6 +1454,9 @@ static bool set_server_port(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
     return YES;
 }
 
+/**
+ * Create a builder of type mhServerSetupBldr_t, sets the server port
+ */
 mhServerSetupBldr_t *mhSetServerPort(mhServCtx_t *ctx, unsigned int port)
 {
     apr_pool_t *pool = ctx->pool;
@@ -1476,6 +1493,9 @@ static bool set_server_type(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
     return YES;
 }
 
+/**
+ * Create a builder of type mhServerSetupBldr_t, sets the server type
+ */
 mhServerSetupBldr_t *mhSetServerType(mhServCtx_t *ctx, mhServerType_t type)
 {
     apr_pool_t *pool = ctx->pool;
@@ -1495,6 +1515,10 @@ set_server_threading(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
     return YES;
 }
 
+
+/**
+ * Create a builder of type mhServerSetupBldr_t, sets the server threading mode.
+ */
 mhServerSetupBldr_t *
 mhSetServerThreading(mhServCtx_t *ctx, mhThreading_t threading)
 {
@@ -1515,6 +1539,10 @@ set_server_cert_prefix(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
     return YES;
 }
 
+
+/**
+ * Create a builder of type mhServerSetupBldr_t, sets the prefix for cert paths.
+ */
 mhServerSetupBldr_t *
 mhSetServerCertPrefix(mhServCtx_t *ctx, const char *prefix)
 {
@@ -1541,6 +1569,10 @@ set_server_key_file(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
     return YES;
 }
 
+
+/**
+ * Create a builder of type mhServerSetupBldr_t, sets the private key file.
+ */
 mhServerSetupBldr_t *
 mhSetServerCertKeyFile(mhServCtx_t *ctx, const char *keyFile)
 {
@@ -1562,6 +1594,10 @@ set_server_key_passphrase(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
     return YES;
 }
 
+
+/**
+ * Create a builder of type mhServerSetupBldr_t, sets the private key passphrase.
+ */
 mhServerSetupBldr_t *
 mhSetServerCertKeyPassPhrase(mhServCtx_t *ctx, const char *passphrase)
 {
@@ -1596,6 +1632,10 @@ add_server_cert_files(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
     return YES;
 }
 
+
+/**
+ * Create a builder of type mhServerSetupBldr_t, adds certificates.
+ */
 mhServerSetupBldr_t *
 mhAddServerCertFiles(mhServCtx_t *ctx, ...)
 {
@@ -1621,6 +1661,10 @@ mhAddServerCertFiles(mhServCtx_t *ctx, ...)
     return ssb;
 }
 
+
+/**
+ * Create a builder of type mhServerSetupBldr_t, adds an array of certificates.
+ */
 mhServerSetupBldr_t *
 mhAddServerCertFileArray(mhServCtx_t *ctx, const char **certFiles)
 {
@@ -1643,7 +1687,7 @@ mhAddServerCertFileArray(mhServCtx_t *ctx, const char **certFiles)
 }
 
 /**
- * Builder callback, sets if server CTX should request client certificates.
+ * Builder callback, sets how server CTX should request client certificates.
  */
 static bool
 set_server_request_client_cert(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
@@ -1652,6 +1696,11 @@ set_server_request_client_cert(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
     return YES;
 }
 
+
+/**
+ * Create a builder of type mhServerSetupBldr_t, sets how the server should
+ * request client certificates.
+ */
 mhServerSetupBldr_t *
 mhSetServerRequestClientCert(mhServCtx_t *ctx, mhClientCertVerification_t v)
 {
@@ -1672,6 +1721,9 @@ add_server_ssl_protocol(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
     return YES;
 }
 
+/**
+ * Create a builder of type mhServerSetupBldr_t, adds allowed SSL/TLS version.
+ */
 mhServerSetupBldr_t *mhAddSSLProtocol(mhServCtx_t *ctx, mhSSLProtocol_t proto)
 {
     apr_pool_t *pool = ctx->pool;
