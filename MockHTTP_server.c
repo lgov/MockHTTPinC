@@ -1709,6 +1709,10 @@ static int init_done = 0;
 static int pem_passwd_cb(char *buf, int size, int rwflag, void *userdata)
 {
     _mhClientCtx_t *cctx = userdata;
+
+    if (!cctx->passphrase)
+        return 0;
+
     strncpy(buf, cctx->passphrase, size);
     buf[size - 1] = '\0';
     return strlen(buf);
@@ -1916,10 +1920,11 @@ static apr_status_t initSSLCtx(_mhClientCtx_t *cctx)
             /* ignore result */
         }
 
-        if (cctx->passphrase) {
-            SSL_CTX_set_default_passwd_cb(ssl_ctx->ctx, pem_passwd_cb);
-            SSL_CTX_set_default_passwd_cb_userdata(ssl_ctx->ctx, cctx);
-        }
+        /* Always set this callback, even if no passphrase is set. Otherwise
+           OpenSSL will prompt the user to provide a passphrase if one is 
+           needed. */
+        SSL_CTX_set_default_passwd_cb(ssl_ctx->ctx, pem_passwd_cb);
+        SSL_CTX_set_default_passwd_cb_userdata(ssl_ctx->ctx, cctx);
         if (SSL_CTX_use_PrivateKey_file(ssl_ctx->ctx, cctx->keyFile,
                                         SSL_FILETYPE_PEM) != 1) {
             _mhLog(MH_VERBOSE, cctx->skt,
