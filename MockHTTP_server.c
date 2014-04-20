@@ -1900,6 +1900,9 @@ static apr_status_t cleanupSSL(void *baton)
     return APR_SUCCESS;
 }
 
+/**
+ * OpenSSL callback, accepts the client certificate.
+ */
 static int validateClientCertificate(int preverify_ok, X509_STORE_CTX *ctx)
 {
     SSL *ssl = X509_STORE_CTX_get_ex_data(ctx,
@@ -1912,6 +1915,9 @@ static int validateClientCertificate(int preverify_ok, X509_STORE_CTX *ctx)
     return 1;
 }
 
+/**
+ * Inits the OpenSSL SSL structure.
+ */
 static apr_status_t initSSL(_mhClientCtx_t *cctx)
 {
     sslCtx_t *ssl_ctx = cctx->ssl_ctx;
@@ -1924,6 +1930,9 @@ static apr_status_t initSSL(_mhClientCtx_t *cctx)
     return APR_SUCCESS;
 }
 
+/**
+ * Inits the OpenSSL context.
+ */
 static apr_status_t initSSLCtx(_mhClientCtx_t *cctx)
 {
     sslCtx_t *ssl_ctx = apr_pcalloc(cctx->pool, sizeof(*ssl_ctx));
@@ -2038,6 +2047,9 @@ static apr_status_t initSSLCtx(_mhClientCtx_t *cctx)
     return APR_SUCCESS;
 }
 
+/**
+ * Callback, encrypts data of length LEN in buffer DATA and writes to the socket.
+ */
 static apr_status_t
 sslSocketWrite(_mhClientCtx_t *cctx, const char *data, apr_size_t *len)
 {
@@ -2057,6 +2069,10 @@ sslSocketWrite(_mhClientCtx_t *cctx, const char *data, apr_size_t *len)
     return APR_EGENERAL;
 }
 
+/**
+ * Callback, reads data and decrypt it. Decrypted buffer of length LEN is
+ * returned in DATA.
+ */
 static apr_status_t
 sslSocketRead(_mhClientCtx_t *cctx, char *data, apr_size_t *len)
 {
@@ -2154,12 +2170,16 @@ bool _mhClientcertcn_matcher(const mhConnMatcherBldr_t *mp,
     }
 }
 
-
+/**
+ * Performs the SSL handshake, can be called multiple times.
+ * Returns APR_EAGAIN when handshake in progress.
+ *         APR_SUCCESS when handshake finished
+ *         error in case of error during handshake.
+ */
 static apr_status_t sslHandshake(_mhClientCtx_t *cctx)
 {
     sslCtx_t *ssl_ctx = cctx->ssl_ctx;
     int result;
-
 
     if (ssl_ctx->renegotiate) {
         if (!SSL_do_handshake(ssl_ctx->ssl))
@@ -2197,7 +2217,7 @@ static apr_status_t sslHandshake(_mhClientCtx_t *cctx)
     return APR_EGENERAL;
 }
 
-#else /* OpenSSL not available => empty implementations */
+#else /* TODO: OpenSSL not available => empty implementations */
 
 #endif
 
