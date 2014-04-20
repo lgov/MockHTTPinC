@@ -936,6 +936,11 @@ static mhResponse_t *cloneResponse(apr_pool_t *pool, mhResponse_t *resp)
     return clone;
 }
 
+
+/******************************************************************************/
+/* Process socket events                                                      */
+/******************************************************************************/
+
 /**
  * Process events on connection proxy <-> server, reads all incoming data,
  * writes all outgoing data.
@@ -1133,11 +1138,19 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
     return status;
 }
 
+/**
+ * Temporary function: get the client of this server.
+ * TODO: a server should accept more than one client socket.
+ */
 _mhClientCtx_t *_mhGetClientCtx(mhServCtx_t *serv_ctx)
 {
     return serv_ctx->cctx;
 }
 
+/**
+ * Initialize the client context. This stores all info related to one client
+ * socket in the server.
+ */
 static _mhClientCtx_t *initClientCtx(apr_pool_t *pool, mhServCtx_t *serv_ctx,
                                      apr_socket_t *cskt, mhServerType_t type)
 {
@@ -1171,9 +1184,11 @@ static _mhClientCtx_t *initClientCtx(apr_pool_t *pool, mhServCtx_t *serv_ctx,
     return cctx;
 }
 
-/******************************************************************************/
-/* Process socket events                                                      */
-/******************************************************************************/
+/**
+ * Process all events on all sockets related to this server CTX, i.e. the server
+ * socket for incoming connections, the client socket(s) and the outgoing
+ * socket in case this server acts as a proxy.
+ */
 apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
 {
     apr_int32_t num;
@@ -1232,13 +1247,15 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
             /* one of the client sockets */
             _mhClientCtx_t *cctx = desc->client_data;
 
-            if (!cctx->skt) /* socket already closed? */
+            /* socket already closed? */
+            if (!cctx->skt)
                 continue;
 
             if (cctx->handshake) {
                 status = cctx->handshake(cctx);
-                if (status)     /* APR_SUCCESS -> handshake finished */
+                if (status)
                     continue;
+                /* APR_SUCCESS -> handshake finished */
             }
             STATUSREADERR(processServer(ctx, cctx, desc));
         }
@@ -1252,6 +1269,9 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
 /* Init HTTP server                                                           */
 /******************************************************************************/
 
+/**
+ * Creates a new server on localhost and on the default server port.
+ */
 mhServCtx_t *mhNewServer(MockHTTP *mh)
 {
     mh->servCtx = initServCtx(mh, "localhost", DefaultSrvPort);
@@ -1259,6 +1279,42 @@ mhServCtx_t *mhNewServer(MockHTTP *mh)
     return mh->servCtx;
 }
 
+mhServCtx_t *mhNewProxy(MockHTTP *mh)
+{
+    mh->proxyCtx = initServCtx(mh, "localhost", DefaultProxyPort);
+    mh->proxyCtx->type = mhGenericProxy;
+    return mh->proxyCtx;
+}
+
+mhServCtx_t *mhFindServerByID(MockHTTP *mh, const char *serverID)
+{
+    if (mh->servCtx && mh->servCtx->serverID &&
+        strcmp(mh->servCtx->serverID, serverID) == 0) {
+        return mh->servCtx;
+    }
+
+    if (mh->proxyCtx && mh->proxyCtx->serverID &&
+        strcmp(mh->proxyCtx->serverID, serverID) == 0) {
+        return mh->proxyCtx;
+    }
+    return NULL;
+}
+
+mhServCtx_t *mhGetServerCtx(MockHTTP *mh)
+{
+    return mh->servCtx;
+}
+
+mhServCtx_t *mhGetProxyCtx(MockHTTP *mh)
+{
+    return mh->proxyCtx;
+}
+
+/**
+ * Takes a list of builders of type mhServerSetupBldr_t *'s and executes them 
+ * one by one (in the order they are passed as arguments) to configure the
+ * server SERV_CTX.
+ */
 void mhConfigServer(mhServCtx_t *serv_ctx, ...)
 {
     va_list argp;
@@ -1285,6 +1341,9 @@ void mhConfigServer(mhServCtx_t *serv_ctx, ...)
     }
 }
 
+/**
+ * Starts the server CTX, makes it start listening for incoming connections.
+ */
 void mhStartServer(mhServCtx_t *ctx)
 {
     apr_thread_t *thread;
@@ -1310,6 +1369,9 @@ void mhStartServer(mhServCtx_t *ctx)
     /* TODO: store error message */
 }
 
+/**
+ * Factory function, creates a builder of type mhServerSetupBldr_t.
+ */
 static mhServerSetupBldr_t *createServerSetupBldr(apr_pool_t *pool)
 {
     mhServerSetupBldr_t *ssb = apr_pcalloc(pool, sizeof(mhServerSetupBldr_t));
@@ -1318,6 +1380,9 @@ static mhServerSetupBldr_t *createServerSetupBldr(apr_pool_t *pool)
     return ssb;
 }
 
+/**
+ * Builder callback, sets the server id on server CTX.
+ */
 static bool set_server_id(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
     ctx->serverID = ssb->baton;
@@ -1333,6 +1398,10 @@ mhServerSetupBldr_t *mhSetServerID(mhServCtx_t *ctx, const char *serverID)
     return ssb;
 }
 
+/**
+ * Builder callback, sets the number of maximum requests per connection on 
+ * server CTX.
+ */
 static bool
 set_server_maxreqs_per_conn(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
@@ -1360,6 +1429,9 @@ unsigned int mhProxyPortNr(const MockHTTP *mh)
     return mh->proxyCtx->port;
 }
 
+/**
+ * Builder callback, sets the port number on server CTX.
+ */
 static bool set_server_port(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
     ctx->port = ssb->ibaton;
@@ -1375,6 +1447,9 @@ mhServerSetupBldr_t *mhSetServerPort(mhServCtx_t *ctx, unsigned int port)
     return ssb;
 }
 
+/**
+ * Builder callback, sets the server type on server CTX.
+ */
 static bool set_server_type(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
     mhServerType_t type = ssb->ibaton;
@@ -1408,6 +1483,9 @@ mhServerSetupBldr_t *mhSetServerType(mhServCtx_t *ctx, mhServerType_t type)
     return ssb;
 }
 
+/**
+ * Builder callback, sets the server's threading mode on server CTX.
+ */
 static bool
 set_server_threading(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
@@ -1425,6 +1503,9 @@ mhSetServerThreading(mhServCtx_t *ctx, mhThreading_t threading)
     return ssb;
 }
 
+/**
+ * Builder callback, sets the prefix for certificate paths on server CTX.
+ */
 static bool
 set_server_cert_prefix(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
@@ -1442,6 +1523,9 @@ mhSetServerCertPrefix(mhServCtx_t *ctx, const char *prefix)
     return ssb;
 }
 
+/**
+ * Builder callback, sets the path of the server private key file on server CTX.
+ */
 static bool
 set_server_key_file(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
@@ -1465,6 +1549,9 @@ mhSetServerCertKeyFile(mhServCtx_t *ctx, const char *keyFile)
     return ssb;
 }
 
+/**
+ * Builder callback, adds a list of certificate files on server CTX.
+ */
 static bool
 add_server_cert_files(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
@@ -1532,6 +1619,9 @@ mhAddServerCertFileArray(mhServCtx_t *ctx, const char **certFiles)
     return ssb;
 }
 
+/**
+ * Builder callback, sets if server CTX should request client certificates.
+ */
 static bool
 set_server_request_client_cert(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
@@ -1549,6 +1639,9 @@ mhSetServerRequestClientCert(mhServCtx_t *ctx, mhClientCertVerification_t v)
     return ssb;
 }
 
+/**
+ * Builder callback, adds an allowed SSL/TLS version on server CTX.
+ */
 static bool
 add_server_ssl_protocol(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 {
@@ -1563,37 +1656,6 @@ mhServerSetupBldr_t *mhAddSSLProtocol(mhServCtx_t *ctx, mhSSLProtocol_t proto)
     ssb->ibaton = proto;
     ssb->serversetup = add_server_ssl_protocol;
     return ssb;
-}
-
-mhServCtx_t *mhNewProxy(MockHTTP *mh)
-{
-    mh->proxyCtx = initServCtx(mh, "localhost", DefaultProxyPort);
-    mh->proxyCtx->type = mhGenericProxy;
-    return mh->proxyCtx;
-}
-
-mhServCtx_t *mhFindServerByID(MockHTTP *mh, const char *serverID)
-{
-    if (mh->servCtx && mh->servCtx->serverID &&
-        strcmp(mh->servCtx->serverID, serverID) == 0) {
-        return mh->servCtx;
-    }
-
-    if (mh->proxyCtx && mh->proxyCtx->serverID &&
-        strcmp(mh->proxyCtx->serverID, serverID) == 0) {
-        return mh->proxyCtx;
-    }
-    return NULL;
-}
-
-mhServCtx_t *mhGetServerCtx(MockHTTP *mh)
-{
-    return mh->servCtx;
-}
-
-mhServCtx_t *mhGetProxyCtx(MockHTTP *mh)
-{
-    return mh->proxyCtx;
 }
 
 
