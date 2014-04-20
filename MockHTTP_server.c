@@ -1063,17 +1063,24 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                         resp = cloneResponse(ctx->pool, ctx->mh->defResponse);
                     }
 
-                    if (action == mhActionInitiateSSLTunnel) {
+                    switch (action) {
+                      case mhActionInitiateSSLTunnel:
                         _mhLog(MH_VERBOSE, cctx->skt, "Initiating SSL tunnel.\n");
                         ctx->mode = ModeTunnel;
                         ctx->proxyhost = apr_pstrdup(ctx->pool, cctx->req->url);
                         connectToServer(ctx, ctx->proxyhost);
-                    } else if (action == mhActionSSLRenegotiate) {
+                        break;
+                      case mhActionSSLRenegotiate:
                         _mhLog(MH_VERBOSE, cctx->skt, "Renegotiating SSL "
                                "session.\n");
                         renegotiateSSLSession(cctx);
-                    } else if (action == mhActionCloseConnection) {
-                        resp->closeConn = YES; /* close conn after response */
+                        break;
+                      case mhActionCloseConnection:
+                        /* close conn after response */
+                        resp->closeConn = YES;
+                        break;
+                      default:
+                        break;
                     }
                 } else {
                     ctx->mh->verifyStats->requestsNotMatched++;
