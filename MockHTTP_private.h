@@ -112,6 +112,7 @@ struct mhServCtx_t {
     /* HTTPS specific */
     const char *certFilesPrefix;
     const char *keyFile;
+    const char *passphrase;
     apr_array_header_t *certFiles;
     mhClientCertVerification_t clientCert;
     int protocols;              /* SSL protocol versions */

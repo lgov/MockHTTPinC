@@ -83,6 +83,7 @@ struct _mhClientCtx_t {
     handshake_func_t handshake;
     reset_conn_func_t reset;
     const char *keyFile;
+    const char *passphrase;
     apr_array_header_t *certFiles;
     mhClientCertVerification_t clientCert;
 };
@@ -1175,6 +1176,7 @@ static _mhClientCtx_t *initClientCtx(apr_pool_t *pool, mhServCtx_t *serv_ctx,
         cctx->read = sslSocketRead;
         cctx->send = sslSocketWrite;
         cctx->keyFile = serv_ctx->keyFile;
+        cctx->passphrase = serv_ctx->passphrase;
         cctx->certFiles = serv_ctx->certFiles;
         cctx->clientCert = serv_ctx->clientCert;
         cctx->protocols = serv_ctx->protocols;
@@ -1550,6 +1552,27 @@ mhSetServerCertKeyFile(mhServCtx_t *ctx, const char *keyFile)
 }
 
 /**
+ * Builder callback, sets the passphrase to be used to decrypt the private key 
+ * file on server CTX.
+ */
+static bool
+set_server_key_passphrase(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
+{
+    ctx->passphrase = ssb->baton;
+    return YES;
+}
+
+mhServerSetupBldr_t *
+mhSetServerCertKeyPassPhrase(mhServCtx_t *ctx, const char *passphrase)
+{
+    apr_pool_t *pool = ctx->pool;
+    mhServerSetupBldr_t *ssb = createServerSetupBldr(pool);
+    ssb->baton = apr_pstrdup(pool, passphrase);
+    ssb->serversetup = set_server_key_passphrase;
+    return ssb;
+}
+
+/**
  * Builder callback, adds a list of certificate files on server CTX.
  */
 static bool
@@ -1680,13 +1703,16 @@ struct sslCtx_t {
 
 static int init_done = 0;
 
+/**
+ * OpenSSL callback, returns the passphrase used to decrypt the private key.
+ */
 static int pem_passwd_cb(char *buf, int size, int rwflag, void *userdata)
 {
-    strncpy(buf, "serftest", size); /* TODO */
+    _mhClientCtx_t *cctx = userdata;
+    strncpy(buf, cctx->passphrase, size);
     buf[size - 1] = '\0';
     return strlen(buf);
 }
-
 
 static int bio_apr_socket_create(BIO *bio)
 {
@@ -1890,7 +1916,10 @@ static apr_status_t initSSLCtx(_mhClientCtx_t *cctx)
             /* ignore result */
         }
 
-        SSL_CTX_set_default_passwd_cb(ssl_ctx->ctx, pem_passwd_cb);
+        if (cctx->passphrase) {
+            SSL_CTX_set_default_passwd_cb(ssl_ctx->ctx, pem_passwd_cb);
+            SSL_CTX_set_default_passwd_cb_userdata(ssl_ctx->ctx, cctx);
+        }
         if (SSL_CTX_use_PrivateKey_file(ssl_ctx->ctx, cctx->keyFile,
                                         SSL_FILETYPE_PEM) != 1) {
             _mhLog(MH_VERBOSE, cctx->skt,
