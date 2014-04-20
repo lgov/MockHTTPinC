@@ -745,6 +745,9 @@ static const char *codeToString(unsigned int code)
     }
 }
 
+/**
+ * Serializes the response RESP to a '\0'-terminated string, allocated in POOL.
+ */
 static char *respToString(apr_pool_t *pool, mhResponse_t *resp)
 {
     char *str;
@@ -792,6 +795,10 @@ static char *respToString(apr_pool_t *pool, mhResponse_t *resp)
     return str;
 }
 
+/**
+ * Serializes the response RESP and writes it to the socket. Unwritten data will
+ * be stored in CCTX->respBody.
+ */
 static apr_status_t writeResponse(_mhClientCtx_t *cctx, mhResponse_t *resp)
 {
     apr_pool_t *pool = cctx->pool;
@@ -826,6 +833,13 @@ static apr_status_t writeResponse(_mhClientCtx_t *cctx, mhResponse_t *resp)
     return status;
 }
 
+/******************************************************************************/
+/* Match a request                                                            */
+/******************************************************************************/
+
+/**
+ * Stores a request matcher RM on the list of matchers for server CTX.
+ */
 void mhPushRequest(mhServCtx_t *ctx, mhRequestMatcher_t *rm)
 {
     ReqMatcherRespPair_t *pair;
@@ -852,6 +866,11 @@ void mhPushRequest(mhServCtx_t *ctx, mhRequestMatcher_t *rm)
         *((ReqMatcherRespPair_t **)apr_array_push(ctx->reqMatchers)) = pair;
 }
 
+/**
+ * Tries to match the request REQ with any of the request matchers MATCHERS.
+ * Returns NO if the request wasn't matched.
+ *         YES + *RESP + *ACTION if the request was matched successfully.
+ */
 static bool
 matchRequest(const _mhClientCtx_t *cctx, mhRequest_t *req, mhResponse_t **resp,
              mhAction_t *action, apr_array_header_t *matchers)
@@ -875,6 +894,12 @@ matchRequest(const _mhClientCtx_t *cctx, mhRequest_t *req, mhResponse_t **resp,
     return NO;
 }
 
+/**
+ * Tries to match a complete request REQ with the list of complete request
+ * matchers of server CTX.
+ * Returns NO if the request wasn't matched.
+ *         YES + *RESP + *ACTION if the request was matched successfully.
+ */
 static bool
 _mhMatchRequest(const mhServCtx_t *ctx, const _mhClientCtx_t *cctx,
                 mhRequest_t *req, mhResponse_t **resp, mhAction_t *action)
@@ -882,6 +907,12 @@ _mhMatchRequest(const mhServCtx_t *ctx, const _mhClientCtx_t *cctx,
     return matchRequest(cctx, req, resp, action, ctx->reqMatchers);
 }
 
+/**
+ * Tries to match an incomplete (partial) request REQ with the list of 
+ * incomplete request matchers of server CTX.
+ * Returns NO if the request wasn't matched.
+ *         YES + *RESP + *ACTION if the request was matched successfully.
+ */
 static bool
 _mhMatchIncompleteRequest(const mhServCtx_t *ctx, const _mhClientCtx_t *cctx,
                           mhRequest_t *req, mhResponse_t **resp,
@@ -890,6 +921,9 @@ _mhMatchIncompleteRequest(const mhServCtx_t *ctx, const _mhClientCtx_t *cctx,
     return matchRequest(cctx, req, resp, action, ctx->incompleteReqMatchers);
 }
 
+/**
+ * Deep copy of a response RESP to a new response allocated in POOL.
+ */
 static mhResponse_t *cloneResponse(apr_pool_t *pool, mhResponse_t *resp)
 {
     mhResponse_t *clone;
@@ -902,7 +936,11 @@ static mhResponse_t *cloneResponse(apr_pool_t *pool, mhResponse_t *resp)
     return clone;
 }
 
-/* Process events on connection proxy <-> server */
+/**
+ * Process events on connection proxy <-> server, reads all incoming data,
+ * writes all outgoing data.
+ * This only supports SSL TUNNEL mode at this time.
+ */
 static apr_status_t processProxy(mhServCtx_t *ctx, const apr_pollfd_t *desc)
 {
     apr_status_t status = APR_SUCCESS;
@@ -939,7 +977,11 @@ static apr_status_t processProxy(mhServCtx_t *ctx, const apr_pollfd_t *desc)
     return status;
 }
 
-/* Process events on connection client <-> proxy or client <-> server */
+/**
+ * Process events on connection client <-> proxy or client <-> server
+ * Reads all incoming data, tries to match complete and/or incomplete requests,
+ * and the writes responses back to the socket CCTX.
+ **/
 static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                                   const apr_pollfd_t *desc)
 {
@@ -992,16 +1034,17 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
 
         switch (ctx->mode) {
           case ModeServer:
-          case ModeProxy:             /* Read partial or full requests */
+            /* Read partial or full requests */
             STATUSREADERR(readRequest(cctx, &cctx->req));
 
             if (!cctx->req)
                 return status;
 
-            if (status == APR_EOF) {  /* complete request received */
+            if (status == APR_EOF) {
                 mhResponse_t *resp;
                 mhAction_t action;
 
+                /* complete request received */
                 ctx->mh->verifyStats->requestsReceived++;
                 cctx->reqsReceived++;
                 ctx->reqState = FullReqReceived;
@@ -1070,9 +1113,11 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                 }
             }
             break;
-          case ModeTunnel:            /* Forward raw data */
-            STATUSREADERR(readData(cctx));
-            break;
+          case ModeProxy:
+          case ModeTunnel:
+                /* We should never get here. */
+                abort();
+                break;
           default:
             break;
         }
