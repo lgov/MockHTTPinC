@@ -953,7 +953,7 @@ mhResponseBldr_t *mhRespSetUseRequestBody(mhResponse_t *resp)
     return rb;
 }
 
-bool resp_set_raw_data(const mhResponseBldr_t *rb, mhResponse_t *resp)
+static bool resp_set_raw_data(const mhResponseBldr_t *rb, mhResponse_t *resp)
 {
     resp->raw_data = rb->baton;
     return YES;
