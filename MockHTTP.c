@@ -504,8 +504,10 @@ static bool
 header_matcher(const mhReqMatcherBldr_t *mp, const mhRequest_t *req)
 {
     apr_pool_t *tmppool;
+    const char *actual;
+
     apr_pool_create(&tmppool, req->pool);
-    const char *actual = getHeader(tmppool, req->hdrs, mp->baton2);
+    actual = getHeader(tmppool, req->hdrs, mp->baton2);
     return str_matcher(mp, actual);
 }
 
@@ -533,8 +535,10 @@ static bool
 header_not_matcher(const mhReqMatcherBldr_t *mp, const mhRequest_t *req)
 {
     apr_pool_t *tmppool;
+    const char *actual;
+
     apr_pool_create(&tmppool, req->pool);
-    const char *actual = getHeader(tmppool, req->hdrs, mp->baton2);
+    actual = getHeader(tmppool, req->hdrs, mp->baton2);
     return !str_matcher(mp, actual);
 }
 
