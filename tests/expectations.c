@@ -66,7 +66,7 @@ static void test_urlmatcher(CuTest *tc)
     mhReqMatcherBldr_t *mp;
     mhRequest_t *req;
 
-    rm = mhGivenRequest(mh, "GET");
+    rm = mhGivenRequest(mh, "GET", NULL);
     mp = mhMatchURLEqualTo(mh, "/index.html");
     CuAssertPtrNotNull(tc, mp);
 
@@ -87,7 +87,7 @@ static void test_urlnotmatcher(CuTest *tc)
     mhReqMatcherBldr_t *mp;
     mhRequest_t *req;
 
-    rm = mhGivenRequest(mh, "GET");
+    rm = mhGivenRequest(mh, "GET", NULL);
     mp = mhMatchURLNotEqualTo(mh, "/index2.html");
     CuAssertPtrNotNull(tc, mp);
 
