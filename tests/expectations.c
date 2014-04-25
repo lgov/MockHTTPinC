@@ -1122,7 +1122,6 @@ static void test_init_httpserver(CuTest *tc)
     EndVerify
 }
 
-
 static void test_init_2httpservers(CuTest *tc)
 {
     MockHTTP *mh1, *mh2;
@@ -1164,6 +1163,52 @@ static void test_init_2httpservers(CuTest *tc)
       CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
     EndVerify
 
+}
+
+static void test_init_httpserver_2ndthread(CuTest *tc)
+{
+    MockHTTP *mh;
+
+    mh = mhInit();
+    InitMockServers(mh)
+      SetupServer(WithHTTP, WithPort(30080), InSeparateThread)
+    EndInit
+    tc->testBaton = mh; /* Ensure server gets cleaned up in testTeardown. */
+
+    Given(mh)
+      GETRequest(URLEqualTo("/index.html"))
+      POSTRequest(URLEqualTo("/index2.html"))
+    Expect
+      AllRequestsReceivedInOrder
+    EndGiven
+
+    /* system under test */
+    {
+        clientCtx_t *ctx = initClient(mhServerPortNr(mh));
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        char *buf;
+        apr_size_t len;
+        apr_status_t status;
+
+        sendRequest(ctx, "GET", "/index.html", hdrs, "1");
+        do {
+            int curpos = 0;
+
+            status = receiveResponse(ctx, &buf, &len);
+            curpos += len;
+        } while (status == APR_EAGAIN || status == APR_TIMEUP);
+
+        sendRequest(ctx, "POST", "/index2.html", hdrs, "1");
+        do {
+            int curpos = 0;
+            status = receiveResponse(ctx, &buf, &len);
+            curpos += len;
+        } while (status == APR_EAGAIN || status == APR_TIMEUP);
+    }
+
+    Verify(mh)
+      CuAssert(tc, ErrorMessage, VerifyAllExpectationsOk);
+    EndVerify
 }
 
 static void test_conn_close_handle_reqs_one_by_one(CuTest *tc)
@@ -1596,6 +1641,7 @@ CuSuite *testMockNoServer(void)
 #if 1
     SUITE_ADD_TEST(suite, test_init_httpserver);
     SUITE_ADD_TEST(suite, test_init_2httpservers);
+    SUITE_ADD_TEST(suite, test_init_httpserver_2ndthread);
  #ifdef MOCKHTTP_OPENSSL
 //    SUITE_ADD_TEST(suite, test_init_httpsserver);
  #endif
