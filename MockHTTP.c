@@ -498,7 +498,7 @@ mhMatchChunkedBodyChunksEqualTo(const MockHTTP *mh, ...)
     }
     va_end(argp);
 
-    mp = apr_palloc(pool, sizeof(mhReqMatcherBldr_t));
+    mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = chunks;
     mp->matcher = chunked_body_chunks_matcher;
     mp->describe_key = "Chunked body with chunks";
