@@ -123,9 +123,6 @@ MockHTTP *mhInit()
 
 void mhCleanup(MockHTTP *mh)
 {
-    mhServCtx_t *ctx;
-    apr_status_t status;
-
     if (!mh)
         return;
 

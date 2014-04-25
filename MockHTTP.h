@@ -334,7 +334,7 @@ typedef enum mhThreading_t {
 #define EndGiven\
                 /* Assign local variables to NULL to avoid 'variable unused' 
                    warnings. */\
-                __resp = NULL; __rm = NULL; __mh = NULL;\
+                (void)__resp; (void)__rm; (void)__mh;\
             }
 
 

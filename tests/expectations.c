@@ -67,6 +67,7 @@ static void test_urlmatcher(CuTest *tc)
     mhRequest_t *req;
 
     rm = mhGivenRequest(mh, "GET", NULL);
+    CuAssertPtrNotNull(tc, rm);
     mp = mhMatchURLEqualTo(mh, "/index.html");
     CuAssertPtrNotNull(tc, mp);
 
@@ -88,6 +89,7 @@ static void test_urlnotmatcher(CuTest *tc)
     mhRequest_t *req;
 
     rm = mhGivenRequest(mh, "GET", NULL);
+    CuAssertPtrNotNull(tc, rm);
     mp = mhMatchURLNotEqualTo(mh, "/index2.html");
     CuAssertPtrNotNull(tc, mp);
 
@@ -1146,12 +1148,14 @@ static void test_init_2httpservers(CuTest *tc)
 
     /* system under test */
     {
-        clientCtx_t *ctx1 = initClient(mhServerPortNr(mh1));
+        clientCtx_t *ctx1, *ctx2;
+
+        ctx1 = initClient(mhServerPortNr(mh1));
         apr_hash_t *hdrs = apr_hash_make(mh1->pool);
         sendRequest(ctx1, "GET", "/index.html", hdrs, "1");
         mhRunServerLoop(mh1);
 
-        clientCtx_t *ctx2 = initClient(mhServerPortNr(mh2));
+        ctx2 = initClient(mhServerPortNr(mh2));
         sendRequest(ctx2, "GET", "/index.html", hdrs, "2");
         mhRunServerLoop(mh2);
     }

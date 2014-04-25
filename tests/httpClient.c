@@ -69,9 +69,11 @@ apr_status_t connectToTCPServer(clientCtx_t *ctx)
 clientCtx_t *initClient(unsigned int port)
 {
     apr_pool_t *pool;
+    clientCtx_t *ctx;
+
     apr_pool_create(&pool, NULL);
 
-    clientCtx_t *ctx = apr_palloc(pool, sizeof(clientCtx_t));
+    ctx = apr_palloc(pool, sizeof(clientCtx_t));
     ctx->pool = pool;
     ctx->skt = NULL;
     ctx->port = port;
