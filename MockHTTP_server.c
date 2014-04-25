@@ -16,7 +16,6 @@
 /* This file includes code originally submitted to the Serf project, covered by
  * the Apache License, Version 2.0, copyright Justin Erenkrantz & Greg Stein.
  */
-#include <apr_thread_proc.h>
 #include <apr_strings.h>
 #include <apr_uri.h>
 
@@ -34,7 +33,6 @@
 
 /* Forward declarations */
 static apr_status_t initSSLCtx(_mhClientCtx_t *cctx);
-static apr_status_t setupTCPServer(mhServCtx_t *ctx, bool blocking);
 static apr_status_t sslHandshake(_mhClientCtx_t *cctx);
 static apr_status_t sslSocketWrite(_mhClientCtx_t *cctx, const char *data,
                                    apr_size_t *len);
@@ -91,16 +89,15 @@ struct _mhClientCtx_t {
 /**
  * Start up a server in a separate thread.
  */
-static void * APR_THREAD_FUNC start_thread(apr_thread_t *tid, void *baton)
+static void * APR_THREAD_FUNC run_thread(apr_thread_t *tid, void *baton)
 {
     mhServCtx_t *ctx = baton;
 
-    setupTCPServer(ctx, YES);
-
-    while (1) {
+    while (!ctx->cancelThread) {
         _mhRunServerLoop(ctx);
     }
 
+    apr_thread_exit(tid, APR_SUCCESS);
     return NULL;
 }
 
@@ -112,14 +109,21 @@ static apr_status_t cleanupServer(void *baton)
     mhServCtx_t *ctx = baton;
     apr_status_t status = APR_SUCCESS;
 
-    /*    apr_thread_exit(tid, APR_SUCCESS);*/
-    if (ctx->pollset)
-        apr_pollset_destroy(ctx->pollset);
-    if (ctx->skt)
-        status = apr_socket_close(ctx->skt);
+#ifdef APR_HAS_THREADS
+    if (ctx->threading == mhThreadSeparate && ctx->threadid) {
+        ctx->cancelThread = YES;
+        apr_thread_join(&status, ctx->threadid);
+    }
+#endif
 
-    ctx->skt = NULL;
-    ctx->pollset = NULL;
+    if (ctx->pollset) {
+        apr_pollset_destroy(ctx->pollset);
+        ctx->pollset = NULL;
+    }
+    if (ctx->skt) {
+        status = apr_socket_close(ctx->skt);
+        ctx->skt = NULL;
+    }
 
     return status;
 }
@@ -145,9 +149,8 @@ static apr_status_t socketRead(_mhClientCtx_t *cctx, char *data,
 
 /**
  * Sets up a listener on the socket stored in CTX.
- * TODO: blocking
  */
-static apr_status_t setupTCPServer(mhServCtx_t *ctx, bool blocking)
+static apr_status_t setupTCPServer(mhServCtx_t *ctx)
 {
     apr_sockaddr_t *serv_addr;
     apr_pool_t *pool = ctx->pool;
@@ -382,19 +385,22 @@ readHeader(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
     if (len == 2 && *buf == '\r' && *(buf+1) == '\n') {
         *done = YES;
         return APR_SUCCESS;
+    } if (len < 5) {
+        /* TODO: error handling. header line is too short */
+        return APR_EGENERAL;
     } else {
-        const char *start = buf, *ptr = buf;
+        const char *start = buf, *ptr = buf, *end = buf + len;
         const char *hdr, *val;
 
         /* Read header from a line in the form of 'Header: value' */
-        while (*ptr != ':' && *ptr != '\r') ptr++;
+        while (*ptr && ptr < end && *ptr != ':' && *ptr != '\r') ptr++;
         hdr = apr_pstrndup(cctx->pool, start, ptr-start);
 
-        /* skip blanks */
-        ptr++; while (*ptr == ' ') ptr++; start = ptr;
+        /* skip : and blanks */
+        ptr++; while (*ptr && ptr < end && *ptr == ' ') ptr++; start = ptr;
 
         /* Read value */
-        while (*ptr != '\r') ptr++;
+        while (*ptr && ptr < end && *ptr != '\r') ptr++;
         val = apr_pstrndup(cctx->pool, start, ptr-start);
 
         setHeader(req->hdrs, hdr, val);
@@ -1358,22 +1364,27 @@ void mhStartServer(mhServCtx_t *ctx)
     mhError_t err = MOCKHTTP_NO_ERROR;
     apr_status_t status;
 
-    /* TODO: second thread doesn't work. */
     if (ctx->threading == mhThreadSeparate) {
-        /* Setup a non-blocking TCP server in a separate thread */
-        apr_thread_create(&thread, NULL, start_thread, ctx, ctx->pool);
-        err = MOCKHTTP_SETUP_FAILED;
-    } else if (ctx->threading == mhThreadMain) {
+#if APR_HAS_THREADS
         /* Setup a non-blocking TCP server */
-        status = setupTCPServer(ctx, NO);
-        if (status == MH_STATUS_WAITING)
-            err = MOCKHTTP_WAITING;
-        else if (status)
-            err = MOCKHTTP_SETUP_FAILED;
+        status = setupTCPServer(ctx);
+        if (!status) {
+            status = apr_thread_create(&thread, NULL, run_thread,
+                                       ctx, ctx->pool);
+            if (!status)
+                ctx->threadid = thread;
+        }
+#else
+        status = APR_EGENERAL;
+#endif
     } else {
-        err = MOCKHTTP_SETUP_FAILED;
+        /* Setup a non-blocking TCP server */
+        status = setupTCPServer(ctx);
     }
 
+    if (status) {
+        err = MOCKHTTP_SETUP_FAILED;
+    }
     /* TODO: store error message */
 }
 

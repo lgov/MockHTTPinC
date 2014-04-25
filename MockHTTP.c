@@ -148,12 +148,12 @@ static apr_status_t runServerLoop(MockHTTP *mh, loopRequestState_t *reqState)
 
     *reqState = NoReqsReceived;
     do {
-        if (mh->proxyCtx) {
+        if (mh->proxyCtx && mh->proxyCtx->threading != mhThreadSeparate) {
             status = _mhRunServerLoop(mh->proxyCtx);
             *reqState = mh->proxyCtx->reqState;
         }
         /* TODO: status? */
-        if (mh->servCtx) {
+        if (mh->servCtx && mh->servCtx->threading != mhThreadSeparate) {
             status = _mhRunServerLoop(mh->servCtx);
             *reqState |= mh->servCtx->reqState;
         }

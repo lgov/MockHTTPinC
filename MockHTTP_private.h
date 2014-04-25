@@ -21,6 +21,7 @@
 #include <apr_tables.h>
 #include <apr_poll.h>
 #include <apr_time.h>
+#include <apr_thread_proc.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -100,6 +101,11 @@ struct mhServCtx_t {
     const char *proxyhost;     /* Proxy host:port */
     mhServerType_t type;
     mhThreading_t threading;
+#if APR_HAS_THREADS
+    bool cancelThread;         /* Variable used to signal that the thread should
+                                  be cancelled. */
+    apr_thread_t * threadid;
+#endif
     loopRequestState_t reqState;  /* 1 if a request is in progress, 0 if
                                   no req received yet or read completely. */
     unsigned int maxRequests;  /* Max. nr of reqs per connection. */
