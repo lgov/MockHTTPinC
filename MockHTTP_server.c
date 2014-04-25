@@ -109,12 +109,12 @@ static apr_status_t cleanupServer(void *baton)
     mhServCtx_t *ctx = baton;
     apr_status_t status = APR_SUCCESS;
 
-#ifdef APR_HAS_THREADS
-    if (ctx->threading == mhThreadSeparate && ctx->threadid) {
-        ctx->cancelThread = YES;
-        apr_thread_join(&status, ctx->threadid);
-    }
-#endif
+    /* If mhCleanup() wasn't called before pool cleanup, the server is still
+       running. Stop it here to avoid a crash, but this will result in a 
+       (currently unidentified) pool cleanup crash.
+       Conclusion: Always run mhCleanup() at the end of a test!
+     */
+    mhStopServer(ctx);
 
     if (ctx->pollset) {
         apr_pollset_destroy(ctx->pollset);
@@ -1387,6 +1387,18 @@ void mhStartServer(mhServCtx_t *ctx)
     }
     /* TODO: store error message */
 }
+
+void mhStopServer(mhServCtx_t *ctx)
+{
+    apr_status_t status;
+#ifdef APR_HAS_THREADS
+    if (ctx->threading == mhThreadSeparate && ctx->threadid) {
+        ctx->cancelThread = YES;
+        apr_thread_join(&status, ctx->threadid);
+    }
+#endif
+}
+
 
 /**
  * Factory function, creates a builder of type mhServerSetupBldr_t.

@@ -507,6 +507,7 @@ mhServCtx_t *mhNewProxy(MockHTTP *mh);
 mhServCtx_t *mhFindServerByID(MockHTTP *mh, const char *serverID);
 void mhConfigServer(mhServCtx_t *ctx, ...);
 void mhStartServer(mhServCtx_t *ctx);
+void mhStopServer(mhServCtx_t *ctx);
 mhServCtx_t *mhGetServerCtx(MockHTTP *mh);
 mhServCtx_t *mhGetProxyCtx(MockHTTP *mh);
 mhServerSetupBldr_t *mhSetServerID(mhServCtx_t *ctx, const char *serverID);
