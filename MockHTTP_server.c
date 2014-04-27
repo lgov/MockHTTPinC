@@ -254,14 +254,14 @@ initServCtx(const MockHTTP *mh, const char *hostname, apr_port_t port)
     ctx->hostname = apr_pstrdup(pool, hostname);
     ctx->port = port;
     ctx->reqsReceived = apr_array_make(pool, 5, sizeof(mhRequest_t *));
-    ctx->reqMatchers = apr_array_make(pool, 5, sizeof(ReqMatcherRespPair_t *));
-    ctx->incompleteReqMatchers = apr_array_make(pool, 5,
-                                               sizeof(ReqMatcherRespPair_t *));
     /* Default settings */
     ctx->mode = ModeServer;
     ctx->clientCert = mhCCVerifyNone;
     ctx->protocols = mhProtoUnspecified;
     ctx->threading = mhThreadMain;
+    ctx->reqMatchers = apr_array_make(pool, 5, sizeof(ReqMatcherRespPair_t *));
+    ctx->incompleteReqMatchers = apr_array_make(pool, 5,
+                                                sizeof(ReqMatcherRespPair_t *));
 
     apr_pool_cleanup_register(pool, ctx,
                               cleanupServer,
@@ -847,12 +847,17 @@ static apr_status_t writeResponse(_mhClientCtx_t *cctx, mhResponse_t *resp)
 /**
  * Stores a request matcher RM on the list of matchers for server CTX.
  */
-void mhPushRequest(mhServCtx_t *ctx, mhRequestMatcher_t *rm)
+void mhPushRequest(MockHTTP *mh, mhServCtx_t *ctx, mhRequestMatcher_t *rm)
 {
+    apr_array_header_t *matchers;
     ReqMatcherRespPair_t *pair;
     int i;
 
-    pair = apr_palloc(ctx->pool, sizeof(ReqMatcherRespPair_t));
+    if (ctx) {
+        pair = apr_palloc(ctx->pool, sizeof(ReqMatcherRespPair_t));
+    } else {
+        pair = apr_palloc(mh->pool, sizeof(ReqMatcherRespPair_t));
+    }
     pair->rm = rm;
     pair->resp = NULL;
     pair->action = mhActionInitiateNone;
@@ -866,11 +871,13 @@ void mhPushRequest(mhServCtx_t *ctx, mhRequestMatcher_t *rm)
             break;
         }
     }
-    if (rm->incomplete)
-        *((ReqMatcherRespPair_t **)
-          apr_array_push(ctx->incompleteReqMatchers)) = pair;
-    else
-        *((ReqMatcherRespPair_t **)apr_array_push(ctx->reqMatchers)) = pair;
+
+    if (ctx) {
+        matchers = rm->incomplete ? ctx->incompleteReqMatchers : ctx->reqMatchers;
+    } else {
+        matchers = rm->incomplete ? mh->incompleteReqMatchers : mh->reqMatchers;
+    }
+    *((ReqMatcherRespPair_t **)apr_array_push(matchers)) = pair;
 }
 
 /**
@@ -879,8 +886,8 @@ void mhPushRequest(mhServCtx_t *ctx, mhRequestMatcher_t *rm)
  *         YES + *RESP + *ACTION if the request was matched successfully.
  */
 static bool
-matchRequest(const _mhClientCtx_t *cctx, mhRequest_t *req, mhResponse_t **resp,
-             mhAction_t *action, apr_array_header_t *matchers)
+matchRequest(mhRequest_t *req, mhResponse_t **resp,
+             mhAction_t *action, const apr_array_header_t *matchers)
 {
     int i;
 
@@ -895,7 +902,6 @@ matchRequest(const _mhClientCtx_t *cctx, mhRequest_t *req, mhResponse_t **resp,
             return YES;
         }
     }
-    _mhLog(MH_VERBOSE, cctx->skt, "Couldn't match request!\n");
 
     *resp = NULL;
     return NO;
@@ -903,7 +909,7 @@ matchRequest(const _mhClientCtx_t *cctx, mhRequest_t *req, mhResponse_t **resp,
 
 /**
  * Tries to match a complete request REQ with the list of complete request
- * matchers of server CTX.
+ * matchers.
  * Returns NO if the request wasn't matched.
  *         YES + *RESP + *ACTION if the request was matched successfully.
  */
@@ -911,12 +917,24 @@ static bool
 _mhMatchRequest(const mhServCtx_t *ctx, const _mhClientCtx_t *cctx,
                 mhRequest_t *req, mhResponse_t **resp, mhAction_t *action)
 {
-    return matchRequest(cctx, req, resp, action, ctx->reqMatchers);
+    bool found;
+    const MockHTTP *mh = ctx->mh;
+
+    /* Try to see if a request matcher for this server exists */
+    found = matchRequest(req, resp, action, ctx->reqMatchers);
+    if (found) return found;
+
+    /* Nope, then see of there's a request matcher for all servers */
+    found = matchRequest(req, resp, action, mh->reqMatchers);
+    if (found) return found;
+
+    _mhLog(MH_VERBOSE, cctx->skt, "Couldn't match request!\n");
+    return NO;
 }
 
 /**
  * Tries to match an incomplete (partial) request REQ with the list of 
- * incomplete request matchers of server CTX.
+ * incomplete request matchers.
  * Returns NO if the request wasn't matched.
  *         YES + *RESP + *ACTION if the request was matched successfully.
  */
@@ -925,7 +943,19 @@ _mhMatchIncompleteRequest(const mhServCtx_t *ctx, const _mhClientCtx_t *cctx,
                           mhRequest_t *req, mhResponse_t **resp,
                           mhAction_t *action)
 {
-    return matchRequest(cctx, req, resp, action, ctx->incompleteReqMatchers);
+    bool found;
+    const MockHTTP *mh = ctx->mh;
+
+    /* Try to see if a request matcher for this server exists */
+    found = matchRequest(req, resp, action, ctx->incompleteReqMatchers);
+    if (found) return found;
+
+    /* Nope, then see of there's a request matcher for all servers */
+    found = matchRequest(req, resp, action, mh->incompleteReqMatchers);
+    if (found) return found;
+
+    _mhLog(MH_VERBOSE, cctx->skt, "Couldn't match incomplete request!\n");
+    return NO;
 }
 
 /**
@@ -1116,7 +1146,8 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                 ctx->reqState = PartialReqReceived;
             }
 
-            if (ctx->incompleteReqMatchers->nelts > 0) {
+            if (ctx->incompleteReqMatchers->nelts > 0 ||
+                ctx->mh->incompleteReqMatchers->nelts > 0) {
                 mhResponse_t *resp = NULL;
                 /* (currently) incomplete request received? */
                 if (_mhMatchIncompleteRequest(ctx, cctx, cctx->req,
@@ -1314,16 +1345,6 @@ mhServCtx_t *mhFindServerByID(MockHTTP *mh, const char *serverID)
     return NULL;
 }
 
-mhServCtx_t *mhGetServerCtx(MockHTTP *mh)
-{
-    return mh->servCtx;
-}
-
-mhServCtx_t *mhGetProxyCtx(MockHTTP *mh)
-{
-    return mh->proxyCtx;
-}
-
 /**
  * Takes a list of builders of type mhServerSetupBldr_t *'s and executes them 
  * one by one (in the order they are passed as arguments) to configure the
@@ -1458,14 +1479,12 @@ mhSetServerMaxRequestsPerConn(mhServCtx_t *ctx, unsigned int maxRequests)
     return ssb;
 }
 
-unsigned int mhServerPortNr(const MockHTTP *mh)
+unsigned int mhServerPortNr(const mhServCtx_t *ctx)
 {
-    return mh->servCtx->port;
-}
+    if (ctx)
+        return ctx->port;
 
-unsigned int mhProxyPortNr(const MockHTTP *mh)
-{
-    return mh->proxyCtx->port;
+    return 0;
 }
 
 /**

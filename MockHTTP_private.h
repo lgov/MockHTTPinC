@@ -66,8 +66,10 @@ struct MockHTTP {
     mhStats_t *verifyStats;             /* Statistics gathered by the server */
     mhResponse_t *defResponse;          /* Default req matched response */
     mhResponse_t *defErrorResponse;     /* Default req not matched response */
-    apr_array_header_t *connMatchers;   /* array of mhConnMatcherBldr_t *'s */
     mhServCtx_t *proxyCtx;
+    apr_array_header_t *connMatchers;   /* array of mhConnMatcherBldr_t *'s */
+    apr_array_header_t *reqMatchers;    /* array of ReqMatcherRespPair_t *'s */
+    apr_array_header_t *incompleteReqMatchers;       /*       .... same type */
 };
 
 typedef struct ReqMatcherRespPair_t {
@@ -124,6 +126,7 @@ struct mhServCtx_t {
     int protocols;              /* SSL protocol versions */
 
     apr_array_header_t *reqsReceived;   /* array of mhRequest_t *'s */
+    apr_array_header_t *connMatchers;   /* array of mhConnMatcherBldr_t *'s */
     apr_array_header_t *reqMatchers;    /* array of ReqMatcherRespPair_t *'s */
     apr_array_header_t *incompleteReqMatchers;       /*       .... same type */
 };
