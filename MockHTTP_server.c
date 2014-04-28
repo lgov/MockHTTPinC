@@ -77,6 +77,7 @@ struct _mhClientCtx_t {
     bool closeConn;
     sslCtx_t *ssl_ctx;
     int protocols;                  /* SSL protocol versions */
+    servMode_t mode;      /* default = server, but can switch to proxy/tunnel */
 
     send_func_t send;
     receive_func_t read;
@@ -237,6 +238,7 @@ static apr_status_t connectToServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx)
         pfd.desc_type = APR_POLL_SOCKET;
         pfd.desc.s = cctx->proxyskt;
         pfd.reqevents = APR_POLLIN | APR_POLLOUT;
+        pfd.client_data = cctx;
         STATUSERR(apr_pollset_add(ctx->pollset, &pfd));
         cctx->proxyreqevents = pfd.reqevents;
     }
@@ -260,7 +262,6 @@ initServCtx(const MockHTTP *mh, const char *hostname, apr_port_t port)
     ctx->clients = apr_array_make(pool, 5, sizeof(_mhClientCtx_t *));
     ctx->reqsReceived = apr_array_make(pool, 5, sizeof(mhRequest_t *));
     /* Default settings */
-    ctx->mode = ModeServer;
     ctx->clientCert = mhCCVerifyNone;
     ctx->protocols = mhProtoUnspecified;
     ctx->threading = mhThreadMain;
@@ -1012,13 +1013,6 @@ static apr_status_t processProxy(_mhClientCtx_t *cctx, const apr_pollfd_t *desc)
         cctx->obufrem -= len;
     }
 
-    if (status == APR_EOF && cctx->obuflen == 0) {
-        apr_socket_close(cctx->proxyskt);
-        cctx->proxyskt = NULL;
-        apr_socket_close(cctx->skt);
-        cctx->skt = NULL;
-    }
-
     return status;
 }
 
@@ -1077,7 +1071,7 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
     if (desc->rtnevents & APR_POLLIN || cctx->buflen) {
         mhAction_t action;
 
-        switch (ctx->mode) {
+        switch (cctx->mode) {
           case ModeServer:
           case ModeProxy:
             /* Read partial or full requests */
@@ -1111,7 +1105,7 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                     switch (action) {
                       case mhActionInitiateSSLTunnel:
                         _mhLog(MH_VERBOSE, cctx->skt, "Initiating SSL tunnel.\n");
-                        ctx->mode = ModeTunnel;
+                        cctx->mode = ModeTunnel;
                         cctx->proxyhost = apr_pstrdup(cctx->pool,
                                                       cctx->req->url);
                         connectToServer(ctx, cctx);
@@ -1198,6 +1192,7 @@ static _mhClientCtx_t *initClientCtx(apr_pool_t *pool, mhServCtx_t *serv_ctx,
     cctx->closeConn = NO;
     cctx->respQueue = apr_array_make(pool, 5, sizeof(mhResponse_t *));
     cctx->currResp = NULL;
+    cctx->mode = ModeServer;
     if (type == mhHTTPServer || type == mhHTTPProxy) {
         cctx->read = socketRead;
         cctx->send = socketWrite;
