@@ -1373,17 +1373,19 @@ void _mhLog(int verbose_flag, apr_socket_t *skt, const char *fmt, ...)
     va_list argp;
 
     if (verbose_flag) {
-        apr_sockaddr_t *sa;
-        apr_port_t lp = 0, rp = 0;
-
         log_time();
 
-        /* Log client (remote) and server (local) port */
-        if (apr_socket_addr_get(&sa, APR_LOCAL, skt) == APR_SUCCESS)
-            lp = sa->port;
-        if (apr_socket_addr_get(&sa, APR_REMOTE, skt) == APR_SUCCESS)
-            rp = sa->port;
-        fprintf(stderr, "[cp:%u sp:%u] ", rp, lp);
+        if (skt) {
+            apr_sockaddr_t *sa;
+            apr_port_t lp = 0, rp = 0;
+
+            /* Log client (remote) and server (local) port */
+            if (apr_socket_addr_get(&sa, APR_LOCAL, skt) == APR_SUCCESS)
+                lp = sa->port;
+            if (apr_socket_addr_get(&sa, APR_REMOTE, skt) == APR_SUCCESS)
+                rp = sa->port;
+            fprintf(stderr, "[cp:%u sp:%u] ", rp, lp);
+        }
 
         va_start(argp, fmt);
         vfprintf(stderr, fmt, argp);
