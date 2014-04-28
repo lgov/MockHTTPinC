@@ -343,6 +343,9 @@ typedef struct mhResponseBldr_t mhResponseBldr_t;
 #define     WithRawData(data)\
                 mhRespSetRawData(__resp, (data))
 
+#define     WithBodyRepeatedPattern(pattern, repeat)\
+                mhRespSetBodyPattern(__resp, (pattern), (repeat))
+
 #define EndGiven\
                 /* Assign local variables to NULL to avoid 'variable unused' 
                    warnings. */\
@@ -581,6 +584,8 @@ mhResponseBldr_t *mhRespAddHeader(mhResponse_t *resp, const char *header,
 mhResponseBldr_t *mhRespSetConnCloseHdr(mhResponse_t *resp);
 mhResponseBldr_t *mhRespSetUseRequestBody(mhResponse_t *resp);
 mhResponseBldr_t *mhRespSetRawData(mhResponse_t *resp, const char *raw_data);
+mhResponseBldr_t *mhRespSetBodyPattern(mhResponse_t *resp, const char *pattern,
+                                       unsigned int n);
 
 const void *mhSetOnConditionThat(int condition, void *builder);
 

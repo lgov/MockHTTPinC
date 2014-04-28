@@ -1450,6 +1450,44 @@ static void test_raw_response(CuTest *tc)
     EndVerify
 }
 
+#define PATTERN "01234567890abdefghijklmnopqrstuvwxyz"
+#define EXPECTED_BODY PATTERN PATTERN PATTERN PATTERN PATTERN\
+                      PATTERN PATTERN PATTERN PATTERN PATTERN
+
+static void test_pattern_repeat_response(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+
+    Given(mh)
+      GETRequest(URLEqualTo("/index.html"))
+        Respond(WithBodyRepeatedPattern(PATTERN, 10))
+    EndGiven
+
+    /* system under test */
+    {
+        unsigned int port = mhServerByIDPortNr(mh, "server");
+        clientCtx_t *ctx = initClient(port);
+        apr_hash_t *hdrs = apr_hash_make(mh->pool);
+        char *buf;
+        apr_size_t len;
+        apr_status_t status;
+
+        sendRequest(ctx, "GET", "/index.html", hdrs, "1");
+        mhRunServerLoop(mh);
+        do {
+            const char *exp_body = EXPECTED_BODY;
+            int curpos = 0;
+            status = receiveResponse(ctx, &buf, &len);
+            CuAssertStrnEquals(tc, exp_body + curpos, len, buf);
+            curpos += len;
+        } while (status == APR_EAGAIN);
+    }
+
+    Verify(mh)
+      CuAssertTrue(tc, VerifyAllRequestsReceivedInOrder);
+    EndVerify
+}
+
 static void test_incomplete_request_body(CuTest *tc)
 {
     MockHTTP *mh = tc->testBaton;
@@ -1665,6 +1703,7 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_ignore_content_length_when_chunked);
     SUITE_ADD_TEST(suite, test_use_request_body);
     SUITE_ADD_TEST(suite, test_raw_response);
+    SUITE_ADD_TEST(suite, test_pattern_repeat_response);
     SUITE_ADD_TEST(suite, test_incomplete_request_body);
     SUITE_ADD_TEST(suite, test_incomplete_chunked_request_body);
     SUITE_ADD_TEST(suite, test_incomplete_large_chunked_request_body);

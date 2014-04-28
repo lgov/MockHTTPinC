@@ -725,7 +725,9 @@ mhConnMatcherBldr_t *mhMatchClientCertValid(const MockHTTP *mh)
 /******************************************************************************/
 static mhResponse_t *initResponse(MockHTTP *mh)
 {
-    apr_pool_t *pool = mh->pool;
+    apr_pool_t *pool;
+
+    apr_pool_create(&pool, mh->pool);
 
     mhResponse_t *resp = apr_pcalloc(pool, sizeof(mhResponse_t));
     resp->pool = pool;
@@ -984,6 +986,41 @@ mhResponseBldr_t *mhRespSetRawData(mhResponse_t *resp, const char *raw_data)
     mhResponseBldr_t *rb = createResponseBldr(pool);
     rb->respbuilder = resp_set_raw_data;
     rb->baton = apr_pstrdup(pool, raw_data);
+    return rb;
+}
+
+static bool
+resp_set_repeat_pattern(const mhResponseBldr_t *rb, mhResponse_t *resp)
+{
+    unsigned int i, n = rb->ibaton;
+    const char *pattern = rb->baton;
+    apr_size_t len = strlen(pattern);
+    apr_pool_t *tmppool;
+    struct iovec *vecs;
+
+    /* TODO: the whole reponse body should be converted to buckets so that
+       we can generate the body on the fly. */
+    apr_pool_create(&tmppool, resp->pool);
+    vecs = apr_pcalloc(tmppool, sizeof(struct iovec) * n);
+
+    for (i = 0; i < n; i++) {
+        printf("%d\n", i);
+        vecs[i].iov_base = (void *)pattern;
+        vecs[i].iov_len = len;
+    }
+    resp->raw_data = apr_pstrcatv(resp->pool, vecs, n, NULL);
+
+    return YES;
+}
+
+mhResponseBldr_t *mhRespSetBodyPattern(mhResponse_t *resp, const char *pattern,
+                                       unsigned int n)
+{
+    apr_pool_t *pool = resp->pool;
+    mhResponseBldr_t *rb = createResponseBldr(pool);
+    rb->respbuilder = resp_set_repeat_pattern;
+    rb->baton = apr_pstrdup(pool, pattern);
+    rb->ibaton = n;
     return rb;
 }
 
