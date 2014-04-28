@@ -1383,7 +1383,7 @@ mhServCtx_t *mhNewProxy(MockHTTP *mh)
 /**
  * Returns the server context associated with id SERVERID.
  */
-mhServCtx_t *mhFindServerByID(MockHTTP *mh, const char *serverID)
+mhServCtx_t *mhFindServerByID(const MockHTTP *mh, const char *serverID)
 {
     if (mh->servCtx && mh->servCtx->serverID &&
         strcmp(mh->servCtx->serverID, serverID) == 0) {
@@ -1531,12 +1531,22 @@ mhSetServerMaxRequestsPerConn(mhServCtx_t *ctx, unsigned int maxRequests)
     return ssb;
 }
 
-unsigned int mhServerPortNr(const mhServCtx_t *ctx)
+unsigned int mhServerByIDPortNr(const MockHTTP *mh, const char *serverID)
 {
+    mhServCtx_t *ctx = mhFindServerByID(mh, serverID);
     if (ctx)
         return ctx->port;
-
     return 0;
+}
+
+unsigned int mhServerPortNr(const MockHTTP *mh)
+{
+    return mhServerByIDPortNr(mh, DEFAULT_SERVER_ID);
+}
+
+unsigned int mhProxyPortNr(const MockHTTP *mh)
+{
+    return mhServerByIDPortNr(mh, DEFAULT_PROXY_ID);
 }
 
 /**

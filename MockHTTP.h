@@ -484,7 +484,17 @@ mhError_t mhRunServerLoop(MockHTTP *mh);
 /**
  * Get the actual port number on which the server is listening.
  */
-unsigned int mhServerPortNr(const mhServCtx_t *ctx);
+unsigned int mhServerPortNr(const MockHTTP *mh);
+
+/**
+ * Get the actual port number on which the proxy is listening.
+ */
+unsigned int mhProxyPortNr(const MockHTTP *mh);
+
+/**
+ * Get the actual port number on which server with id serverID is listening.
+ */
+unsigned int mhServerByIDPortNr(const MockHTTP *mh, const char *serverID);
 
 
 /******************************************************************************
@@ -501,7 +511,7 @@ unsigned int mhServerPortNr(const mhServCtx_t *ctx);
  **/
 mhServCtx_t *mhNewServer(MockHTTP *mh);
 mhServCtx_t *mhNewProxy(MockHTTP *mh);
-mhServCtx_t *mhFindServerByID(MockHTTP *mh, const char *serverID);
+mhServCtx_t *mhFindServerByID(const MockHTTP *mh, const char *serverID);
 void mhConfigServer(mhServCtx_t *ctx, ...);
 void mhStartServer(mhServCtx_t *ctx);
 void mhStopServer(mhServCtx_t *ctx);
