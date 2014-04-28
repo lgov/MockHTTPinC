@@ -2310,7 +2310,8 @@ bool _mhClientcertcn_matcher(const mhConnMatcherBldr_t *mp,
 }
 
 /**
- * Performs the SSL handshake, can be called multiple times.
+ * Performs the SSL handshake on the connection client/proxy <-> server, can be
+ * called multiple times until successful.
  * Returns APR_EAGAIN when handshake in progress.
  *         APR_SUCCESS when handshake finished
  *         error in case of error during handshake.
