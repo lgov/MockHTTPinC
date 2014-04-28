@@ -1095,11 +1095,11 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                     if (resp) {
                         _mhLog(MH_VERBOSE, cctx->skt,
                                "Request matched, queueing response.\n");
-                        resp = cloneResponse(ctx->pool, resp);
+                        resp = cloneResponse(cctx->pool, resp);
                     } else {
                         _mhLog(MH_VERBOSE, cctx->skt,
                                "Request matched, queueing default response.\n");
-                        resp = cloneResponse(ctx->pool, ctx->mh->defResponse);
+                        resp = cloneResponse(cctx->pool, ctx->mh->defResponse);
                     }
 
                     switch (action) {
@@ -1126,7 +1126,7 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                     ctx->mh->verifyStats->requestsNotMatched++;
                     _mhLog(MH_VERBOSE, cctx->skt,
                            "Request found no match, queueing error response.\n");
-                    resp = cloneResponse(ctx->pool, ctx->mh->defErrorResponse);
+                    resp = cloneResponse(cctx->pool, ctx->mh->defErrorResponse);
                 }
                 if (ctx->maxRequests && cctx->reqsReceived >= ctx->maxRequests) {
                     setHeader(resp->hdrs, "Connection", "close");
@@ -1154,7 +1154,7 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                            "Incomplete request matched, queueing response.\n");
                     ctx->mh->verifyStats->requestsMatched++;
                     if (!resp)
-                        resp = cloneResponse(ctx->pool, ctx->mh->defResponse);
+                        resp = cloneResponse(cctx->pool, ctx->mh->defResponse);
                     resp->req = cctx->req;
                     *((mhResponse_t **)apr_array_push(cctx->respQueue)) = resp;
                     cctx->req = NULL;
@@ -1182,8 +1182,11 @@ static _mhClientCtx_t *initClientCtx(apr_pool_t *pool, mhServCtx_t *serv_ctx,
                                      apr_socket_t *cskt, mhServerType_t type)
 {
     _mhClientCtx_t *cctx;
-    cctx = apr_pcalloc(pool, sizeof(_mhClientCtx_t));
-    cctx->pool = pool;
+    apr_pool_t *ccpool;
+    apr_pool_create(&ccpool, pool);
+
+    cctx = apr_pcalloc(ccpool, sizeof(_mhClientCtx_t));
+    cctx->pool = ccpool;
     cctx->skt = cskt;
     cctx->buflen = 0;
     cctx->bufrem = BUFSIZE;
