@@ -99,8 +99,6 @@ struct mhServCtx_t {
     apr_port_t port;
     apr_pollset_t *pollset;
     apr_socket_t *skt;         /* Server listening socket */
-    apr_socket_t *proxyskt;    /* Socket for conn proxy <-> server */
-    const char *proxyhost;     /* Proxy host:port */
     mhServerType_t type;
     mhThreading_t threading;
 #if APR_HAS_THREADS
@@ -112,8 +110,7 @@ struct mhServCtx_t {
                                   no req received yet or read completely. */
     unsigned int maxRequests;  /* Max. nr of reqs per connection. */
 
-    /* TODO: allow more connections */
-    _mhClientCtx_t *cctx;
+    apr_array_header_t *clients;        /* array of _mhClientCtx_t *'s */
 
     servMode_t mode;      /* default = server, but can switch to proxy/tunnel */
 
@@ -259,7 +256,6 @@ bool _mhClientcertcn_matcher(const mhConnMatcherBldr_t *mp,
                              const _mhClientCtx_t *cctx);
 bool _mhClientcert_valid_matcher(const mhConnMatcherBldr_t *mp,
                                  const _mhClientCtx_t *cctx);
-_mhClientCtx_t *_mhGetClientCtx(mhServCtx_t *serv_ctx);
 
 /* Build a response */
 void _mhBuildResponse(mhResponse_t *resp);

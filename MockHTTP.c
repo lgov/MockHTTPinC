@@ -1313,21 +1313,30 @@ int mhVerifyAllExpectationsOk(const MockHTTP *mh)
 int mhVerifyConnectionSetupOk(const MockHTTP *mh)
 {
     int i;
+    bool result = NO;
     apr_pool_t *match_pool;
-    _mhClientCtx_t *cctx = _mhGetClientCtx(mh->servCtx); /* TODO: one conn? */
+    apr_array_header_t *clients = mh->servCtx->clients;
 
     apr_pool_create(&match_pool, mh->pool);
+    for (i = 0; i < clients->nelts; i++) {
+        _mhClientCtx_t *cctx = APR_ARRAY_IDX(clients, i, _mhClientCtx_t *);
 
-    for (i = 0 ; i < mh->connMatchers->nelts; i++) {
-        const mhConnMatcherBldr_t *cmb;
+        for (i = 0 ; i < mh->connMatchers->nelts; i++) {
+            const mhConnMatcherBldr_t *cmb;
 
-        cmb = APR_ARRAY_IDX(mh->connMatchers, i, mhConnMatcherBldr_t *);
-        if (cmb->connmatcher(cmb, cctx) == NO)
-            return NO;
+            cmb = APR_ARRAY_IDX(mh->connMatchers, i, mhConnMatcherBldr_t *);
+            if (cmb->connmatcher(cmb, cctx) == NO) {
+                result = NO;
+                goto cleanup;
+            }
+        }
     }
+    result = YES;
+
+cleanup:
     apr_pool_destroy(match_pool);
 
-    return YES;
+    return result;
 }
 
 static const char *buildertype_to_string(builderType_t type)

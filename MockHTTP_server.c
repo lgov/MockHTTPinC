@@ -57,7 +57,11 @@ static const int DefaultProxyPort = 38080;
 
 struct _mhClientCtx_t {
     apr_pool_t *pool;
-    apr_socket_t *skt;
+    apr_socket_t *skt;         /* Socket for conn client <-> proxy/server */
+    apr_int16_t reqevents;
+    apr_socket_t *proxyskt;    /* Socket for conn proxy <-> server */
+    apr_int16_t proxyreqevents;
+    const char *proxyhost;     /* Proxy host:port */
     char buf[BUFSIZE];  /* buffer for data received from the client @ server */
     apr_size_t buflen;
     apr_size_t bufrem;
@@ -70,7 +74,6 @@ struct _mhClientCtx_t {
     mhResponse_t *currResp;         /* response in progress */
     unsigned int reqsReceived;      /* # of reqs received on this connection */
     mhRequest_t *req;
-    apr_int16_t reqevents;
     bool closeConn;
     sslCtx_t *ssl_ctx;
     int protocols;                  /* SSL protocol versions */
@@ -207,34 +210,35 @@ static apr_status_t setupTCPServer(mhServCtx_t *ctx)
  * Opens a non-blocking connection to a remote server at URL (in form 
  * localhost:30080).
  */
-static apr_status_t connectToServer(mhServCtx_t *ctx, const char *url)
+static apr_status_t connectToServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx)
 {
     apr_sockaddr_t *address;
     char *host, *scopeid;
     apr_port_t port;
     apr_status_t status;
 
-    STATUSERR(apr_parse_addr_port(&host, &scopeid, &port, url, ctx->pool));
+    STATUSERR(apr_parse_addr_port(&host, &scopeid, &port, cctx->proxyhost,
+                                  cctx->pool));
     STATUSERR(apr_sockaddr_info_get(&address, host, APR_UNSPEC,
-                                    port, 0, ctx->pool));
+                                    port, 0, cctx->pool));
 
     /* Create server socket */
     /* Note: this call requires APR v1.0.0 or higher */
-    STATUSERR(apr_socket_create(&ctx->proxyskt, address->family,
-                                SOCK_STREAM, 0, ctx->pool));
-    STATUSERR(apr_socket_opt_set(ctx->proxyskt, APR_SO_NONBLOCK, 1));
-    STATUSERR(apr_socket_timeout_set(ctx->proxyskt, 0));
-    STATUSERR(apr_socket_opt_set(ctx->proxyskt, APR_SO_REUSEADDR, 1));
+    STATUSERR(apr_socket_create(&cctx->proxyskt, address->family,
+                                SOCK_STREAM, 0, cctx->pool));
+    STATUSERR(apr_socket_opt_set(cctx->proxyskt, APR_SO_NONBLOCK, 1));
+    STATUSERR(apr_socket_timeout_set(cctx->proxyskt, 0));
+    STATUSERR(apr_socket_opt_set(cctx->proxyskt, APR_SO_REUSEADDR, 1));
 
-    status = apr_socket_connect(ctx->proxyskt, address);
+    status = apr_socket_connect(cctx->proxyskt, address);
     if (status == APR_SUCCESS || APR_STATUS_IS_EINPROGRESS(status)) {
         apr_pollfd_t pfd = { 0 };
 
         pfd.desc_type = APR_POLL_SOCKET;
-        pfd.desc.s = ctx->proxyskt;
+        pfd.desc.s = cctx->proxyskt;
         pfd.reqevents = APR_POLLIN | APR_POLLOUT;
-
         STATUSERR(apr_pollset_add(ctx->pollset, &pfd));
+        cctx->proxyreqevents = pfd.reqevents;
     }
 
     return status;
@@ -253,6 +257,7 @@ initServCtx(const MockHTTP *mh, const char *hostname, apr_port_t port)
     ctx->mh = mh;
     ctx->hostname = apr_pstrdup(pool, hostname);
     ctx->port = port;
+    ctx->clients = apr_array_make(pool, 5, sizeof(_mhClientCtx_t *));
     ctx->reqsReceived = apr_array_make(pool, 5, sizeof(mhRequest_t *));
     /* Default settings */
     ctx->mode = ModeServer;
@@ -983,15 +988,14 @@ static mhResponse_t *cloneResponse(apr_pool_t *pool, mhResponse_t *resp)
  * writes all outgoing data.
  * This only supports SSL TUNNEL mode at this time.
  */
-static apr_status_t processProxy(mhServCtx_t *ctx, const apr_pollfd_t *desc)
+static apr_status_t processProxy(_mhClientCtx_t *cctx, const apr_pollfd_t *desc)
 {
     apr_status_t status = APR_SUCCESS;
-    _mhClientCtx_t *cctx = ctx->cctx;
 
     if ((desc->rtnevents & APR_POLLOUT) && (cctx->buflen > 0)) {
         apr_size_t len = cctx->buflen;
-        STATUSREADERR(apr_socket_send(ctx->proxyskt, cctx->buf, &len));
-        _mhLog(MH_VERBOSE, ctx->proxyskt,
+        STATUSREADERR(apr_socket_send(cctx->proxyskt, cctx->buf, &len));
+        _mhLog(MH_VERBOSE, cctx->proxyskt,
                "Proxy sent to server, status %d:\n%.*s\n---- %d ----\n",
                status, (unsigned int)len, cctx->buf, (unsigned int)len);
         cctx->bufrem += len;
@@ -1000,8 +1004,8 @@ static apr_status_t processProxy(mhServCtx_t *ctx, const apr_pollfd_t *desc)
     if (desc->rtnevents & APR_POLLIN) {
         char *buf = cctx->buf + cctx->obuflen;
         apr_size_t len = cctx->obufrem;
-        STATUSREADERR(apr_socket_recv(ctx->proxyskt, cctx->obuf, &len));
-        _mhLog(MH_VERBOSE, ctx->proxyskt,
+        STATUSREADERR(apr_socket_recv(cctx->proxyskt, cctx->obuf, &len));
+        _mhLog(MH_VERBOSE, cctx->proxyskt,
                "Proxy received from server, status %d:\n%.*s\n---- %d ----\n",
                status, (unsigned int)len, buf, (unsigned int)len);
         cctx->obuflen += len;
@@ -1009,11 +1013,10 @@ static apr_status_t processProxy(mhServCtx_t *ctx, const apr_pollfd_t *desc)
     }
 
     if (status == APR_EOF && cctx->obuflen == 0) {
-        apr_socket_close(ctx->proxyskt);
-        ctx->proxyskt = NULL;
+        apr_socket_close(cctx->proxyskt);
+        cctx->proxyskt = NULL;
         apr_socket_close(cctx->skt);
         cctx->skt = NULL;
-        ctx->mode = ModeServer;
     }
 
     return status;
@@ -1023,6 +1026,8 @@ static apr_status_t processProxy(mhServCtx_t *ctx, const apr_pollfd_t *desc)
  * Process events on connection client <-> proxy or client <-> server
  * Reads all incoming data, tries to match complete and/or incomplete requests,
  * and the writes responses back to the socket CCTX.
+ *
+ * Returns APR_EOF when the connection should be closed.
  **/
 static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                                   const apr_pollfd_t *desc)
@@ -1058,8 +1063,6 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                 if (resp->closeConn) {
                     _mhLog(MH_VERBOSE, cctx->skt,
                            "Actively closing connection.\n");
-                    apr_socket_close(cctx->skt);
-                    ctx->cctx = NULL;
                     return APR_EOF;
                 }
                 status = APR_SUCCESS;
@@ -1109,8 +1112,9 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                       case mhActionInitiateSSLTunnel:
                         _mhLog(MH_VERBOSE, cctx->skt, "Initiating SSL tunnel.\n");
                         ctx->mode = ModeTunnel;
-                        ctx->proxyhost = apr_pstrdup(ctx->pool, cctx->req->url);
-                        connectToServer(ctx, ctx->proxyhost);
+                        cctx->proxyhost = apr_pstrdup(cctx->pool,
+                                                      cctx->req->url);
+                        connectToServer(ctx, cctx);
                         break;
                       case mhActionSSLRenegotiate:
                         _mhLog(MH_VERBOSE, cctx->skt, "Renegotiating SSL "
@@ -1177,15 +1181,6 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
 }
 
 /**
- * Temporary function: get the client of this server.
- * TODO: a server should accept more than one client socket.
- */
-_mhClientCtx_t *_mhGetClientCtx(mhServCtx_t *serv_ctx)
-{
-    return serv_ctx->cctx;
-}
-
-/**
  * Initialize the client context. This stores all info related to one client
  * socket in the server.
  */
@@ -1223,6 +1218,44 @@ static _mhClientCtx_t *initClientCtx(apr_pool_t *pool, mhServCtx_t *serv_ctx,
     return cctx;
 }
 
+void closeAndRemoveClientCtx(mhServCtx_t *ctx, _mhClientCtx_t *cctx)
+{
+    int i;
+    apr_array_header_t *clients = ctx->clients;
+    apr_pollfd_t pfd = { 0 };
+
+    /* Close socket and clean up client context */
+    pfd.desc_type = APR_POLL_SOCKET;
+    pfd.desc.s = cctx->skt;
+    pfd.reqevents = cctx->reqevents;
+    apr_pollset_remove(ctx->pollset, &pfd);
+    apr_socket_close(cctx->skt);
+
+    if (cctx->proxyskt) {
+        pfd.desc_type = APR_POLL_SOCKET;
+        pfd.desc.s = cctx->proxyskt;
+        pfd.reqevents = cctx->proxyreqevents;
+        apr_pollset_remove(ctx->pollset, &pfd);
+        apr_socket_close(cctx->proxyskt);
+    }
+
+    /* TODO: a linked list would be more efficient. */
+    /* Swap the last element to the location of the element to be
+     deleted, then decrease the size of the array by 1 */
+    for (i = 0; i < clients->nelts; i++) {
+        _mhClientCtx_t *tmp = APR_ARRAY_IDX(clients, i, _mhClientCtx_t *);
+        if (cctx == tmp) {
+            if (i+1 < clients->nelts) {
+                _mhClientCtx_t *last;
+                last = APR_ARRAY_IDX(clients, clients->nelts - 1,
+                                     _mhClientCtx_t *);
+                *(_mhClientCtx_t **)&clients->elts[i] = last;
+            }
+            clients->nelts--;
+        }
+    }
+}
+
 /**
  * Process all events on all sockets related to this server CTX, i.e. the server
  * socket for incoming connections, the client socket(s) and the outgoing
@@ -1232,14 +1265,15 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
 {
     apr_int32_t num;
     const apr_pollfd_t *desc;
-    _mhClientCtx_t *cctx;
-    apr_pollfd_t pfd = { 0 };
     apr_status_t status;
 
-    cctx = ctx->cctx;
     if (ctx->reqState == FullReqReceived)
         ctx->reqState = NoReqsReceived;
 #if 0
+    /* TODO: add a dirty flag to every socket wrapping context, only listen
+       for writeable events with the socket is dirty */
+    apr_pollfd_t pfd = { 0 };
+    cctx = ctx->cctx;
     /* something to write */
     if (cctx && cctx->skt) {
         pfd.desc_type = APR_POLL_SOCKET;
@@ -1261,6 +1295,7 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
     /* The same socket can be returned multiple times by apr_pollset_poll() */
     while (num--) {
         if (desc->desc.s == ctx->skt) {
+            _mhClientCtx_t *cctx;
             apr_socket_t *cskt;
             apr_pollfd_t pfd = { 0 };
 
@@ -1271,32 +1306,49 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
             STATUSERR(apr_socket_opt_set(cskt, APR_SO_NONBLOCK, 1));
             STATUSERR(apr_socket_timeout_set(cskt, 0));
 
+            /* Push a client context on the ctx->clients stack */
             cctx = initClientCtx(ctx->pool, ctx, cskt, ctx->type);
             pfd.desc_type = APR_POLL_SOCKET;
             pfd.desc.s = cskt;
             pfd.reqevents = APR_POLLIN | APR_POLLOUT;
             pfd.client_data = cctx;
-
             STATUSERR(apr_pollset_add(ctx->pollset, &pfd));
             cctx->reqevents = pfd.reqevents;
-            ctx->cctx = cctx;
-        } else if (desc->desc.s == ctx->proxyskt) {
-            STATUSREADERR(processProxy(ctx, desc));
+            *((_mhClientCtx_t **)apr_array_push(ctx->clients)) = cctx;
+
         } else {
-            /* one of the client sockets */
             _mhClientCtx_t *cctx = desc->client_data;
 
-            /* socket already closed? */
-            if (!cctx->skt)
-                continue;
+            if (!cctx || !cctx->skt) {
+                _mhLog(MH_VERBOSE, NULL, "Getting event from unknown socket.\n");
+            } else if (desc->desc.s == cctx->proxyskt) {
+                /* Connection proxy <-> server */
+                STATUSREADERR(processProxy(cctx, desc));
+                if (status == APR_EOF) {
+                    apr_pollfd_t pfd = { 0 };
+                    pfd.desc_type = APR_POLL_SOCKET;
+                    pfd.desc.s = cctx->proxyskt;
+                    pfd.reqevents = cctx->proxyreqevents;
+                    apr_pollset_remove(ctx->pollset, &pfd);
+                    apr_socket_close(cctx->proxyskt);
 
-            if (cctx->handshake) {
-                status = cctx->handshake(cctx);
-                if (status)
-                    continue;
-                /* APR_SUCCESS -> handshake finished */
+                }
+            } else {
+                /* Connection client <-> proxy/server */
+                status = APR_SUCCESS;
+
+                if (cctx->handshake)
+                    status = cctx->handshake(cctx);
+
+                /* APR_SUCCESS -> handshake finished or not needed */
+                if (status == APR_SUCCESS) {
+                    STATUSREADERR(processServer(ctx, cctx, desc));
+                    if (status == APR_EOF) {
+                        /* Close the socket and an associated proxy skt */
+                        closeAndRemoveClientCtx(ctx, cctx);
+                    }
+                }
             }
-            STATUSREADERR(processServer(ctx, cctx, desc));
         }
         desc++;
     }
