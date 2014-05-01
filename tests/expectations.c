@@ -66,7 +66,7 @@ static void test_urlmatcher(CuTest *tc)
     mhReqMatcherBldr_t *mp;
     mhRequest_t *req;
 
-    rm = mhGivenRequest(mh, "GET", NULL);
+    rm = mhGivenRequest(mh, NULL);
     CuAssertPtrNotNull(tc, rm);
     mp = mhMatchURLEqualTo(mh, "/index.html");
     CuAssertPtrNotNull(tc, mp);
@@ -88,7 +88,7 @@ static void test_urlnotmatcher(CuTest *tc)
     mhReqMatcherBldr_t *mp;
     mhRequest_t *req;
 
-    rm = mhGivenRequest(mh, "GET", NULL);
+    rm = mhGivenRequest(mh, NULL);
     CuAssertPtrNotNull(tc, rm);
     mp = mhMatchURLNotEqualTo(mh, "/index2.html");
     CuAssertPtrNotNull(tc, mp);
@@ -111,7 +111,7 @@ static void test_methodmatcher(CuTest *tc)
     mhRequest_t *req;
 
     mp = mhMatchMethodEqualTo(mh, "get");
-    rm = mhGivenRequest(mh, "GET", mp, NULL);
+    rm = mhGivenRequest(mh, mp, NULL);
     CuAssertPtrNotNull(tc, rm);
 
     /* Create a fake request and check that the matcher works */
@@ -127,7 +127,8 @@ static void test_matchrequest(CuTest *tc)
     mhRequestMatcher_t *rm;
     mhRequest_t *req;
 
-    rm = mhGivenRequest(mh, "GET", mhMatchURLEqualTo(mh, "/index.html"), NULL);
+    rm = mhGivenRequest(mh, mhMatchMethodEqualTo(mh, "GET"),
+                        mhMatchURLEqualTo(mh, "/index.html"), NULL);
 
     /* Create a fake request and check that the matcher works */
     req = _mhInitRequest(mh->pool);

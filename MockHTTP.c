@@ -622,14 +622,12 @@ mhMatchMethodEqualTo(const MockHTTP *mh, const char *expected)
  * arrives in the server.
  */
 static mhRequestMatcher_t *
-constructRequestMatcher(const MockHTTP *mh, const char *method, va_list argp)
+constructRequestMatcher(const MockHTTP *mh, va_list argp)
 {
     apr_pool_t *pool = mh->pool;
 
     mhRequestMatcher_t *rm = apr_pcalloc(pool, sizeof(mhRequestMatcher_t));
     rm->pool = pool;
-    rm->method = apr_pstrdup(pool, method);
-    rm->methodCode = methodToCode(method);
     rm->matchers = apr_array_make(pool, 5, sizeof(mhReqMatcherBldr_t *));
 
     while (1) {
@@ -648,13 +646,13 @@ constructRequestMatcher(const MockHTTP *mh, const char *method, va_list argp)
     return rm;
 }
 
-mhRequestMatcher_t *mhGivenRequest(MockHTTP *mh, const char *method, ...)
+mhRequestMatcher_t *mhGivenRequest(MockHTTP *mh, ...)
 {
     va_list argp;
     mhRequestMatcher_t *rm;
 
-    va_start(argp, method);
-    rm = constructRequestMatcher(mh, method, argp);
+    va_start(argp, mh);
+    rm = constructRequestMatcher(mh, argp);
     va_end(argp);
 
     return rm;
@@ -664,15 +662,6 @@ bool
 _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, const mhRequest_t *req)
 {
     int i;
-
-    if (rm->methodCode != req->methodCode) {
-        return NO;
-    } else {
-        if (rm->methodCode == MethodOther &&
-            strcasecmp(rm->method, req->method) != 0)
-
-            return NO;
-    }
 
     for (i = 0 ; i < rm->matchers->nelts; i++) {
         const mhReqMatcherBldr_t *mp;
@@ -1031,7 +1020,6 @@ resp_set_repeat_pattern(const mhResponseBldr_t *rb, mhResponse_t *resp)
     vecs = apr_pcalloc(tmppool, sizeof(struct iovec) * n);
 
     for (i = 0; i < n; i++) {
-        printf("%d\n", i);
         vecs[i].iov_base = (void *)pattern;
         vecs[i].iov_len = len;
     }

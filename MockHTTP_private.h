@@ -230,8 +230,6 @@ typedef bool (*reqmatchfunc_t)(const mhReqMatcherBldr_t *mp,
 struct mhRequestMatcher_t {
     apr_pool_t *pool;
 
-    const char *method;
-    method_t methodCode;
     apr_array_header_t *matchers; /* array of mhReqMatcherBldr_t *'s. */
     bool incomplete;
 };

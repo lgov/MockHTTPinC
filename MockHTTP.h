@@ -210,23 +210,30 @@ typedef struct mhResponseBldr_t mhResponseBldr_t;
 
 /* Stub a GET request */
 #define   GETRequest(...)\
-                __rm = mhGivenRequest(__mh, "GET", __VA_ARGS__, NULL);\
+                __rm = mhGivenRequest(__mh, MethodEqualTo("GET"),\
+                       __VA_ARGS__, NULL);\
                 mhPushRequest(__mh, __servctx, __rm);
 
 /* Stub a POST request */
 #define   POSTRequest(...)\
-                __rm = mhGivenRequest(__mh, "POST", __VA_ARGS__, NULL);\
+                __rm = mhGivenRequest(__mh, MethodEqualTo("POST"),\
+                                      __VA_ARGS__, NULL);\
                 mhPushRequest(__mh, __servctx, __rm);
 
 /* Stub a HEAD request */
 #define   HEADRequest(...)\
-                __rm = mhGivenRequest(__mh, "HEAD", __VA_ARGS__, NULL);\
+                __rm = mhGivenRequest(__mh, MethodEqualTo("HEAD"),\
+                                            __VA_ARGS__, NULL);\
                 mhPushRequest(__mh, __servctx, __rm);
 
 /* Stub a HTTP request, first parameter is HTTP method (e.g. PROPFIND) */
-#define   HTTPRequest(method, ...)\
-                __rm = mhGivenRequest(__mh, method, __VA_ARGS__, NULL);\
+#define   HTTPRequest(...)\
+                __rm = mhGivenRequest(__mh, __VA_ARGS__, NULL);\
                 mhPushRequest(__mh, __servctx, __rm);
+
+/* Match the request's METHOD equal to EXP */
+#define     MethodEqualTo(exp)\
+                mhMatchMethodEqualTo(__mh, (exp))
 
 /* Match the request's URL equal to EXP */
 #define     URLEqualTo(exp)\
@@ -538,7 +545,7 @@ mhServerSetupBldr_t *mhSetServerRequestClientCert(mhServCtx_t *ctx,
 mhServerSetupBldr_t *mhAddSSLProtocol(mhServCtx_t *ctx, mhSSLProtocol_t proto);
 
 /* Define request stubs */
-mhRequestMatcher_t *mhGivenRequest(MockHTTP *mh, const char *method, ...);
+mhRequestMatcher_t *mhGivenRequest(MockHTTP *mh, ...);
 
 /* Request matching functions */
 mhReqMatcherBldr_t *mhMatchURLEqualTo(const MockHTTP *mh,
