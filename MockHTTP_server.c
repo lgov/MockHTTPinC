@@ -347,6 +347,7 @@ readReqLine(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
     while (*ptr && *ptr != ' ' && *ptr != '\r') ptr++;
     FAIL_ON_EOL(ptr);
     req->method = apr_pstrndup(cctx->pool, start, ptr-start);
+    req->methodCode = methodToCode(req->method);
 
     ptr++; start = ptr;
     while (*ptr && *ptr != ' ' && *ptr != '\r') ptr++;
@@ -446,7 +447,7 @@ static apr_status_t readBody(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
 
     req->chunked = NO;
 
-    clstr = getHeader(cctx->pool, req->hdrs, "Content-Length");
+    clstr = getHeader(req->hdrs, "Content-Length");
     /* TODO: error if no Content-Length header */
     cl = atol(clstr);
 
@@ -669,14 +670,13 @@ static apr_status_t readRequest(_mhClientCtx_t *cctx, mhRequest_t **preq)
             case ReadStateChunkedTrailer:
             {
                 const char *clstr, *chstr;
-                chstr = getHeader(cctx->pool, req->hdrs,
-                                  "Transfer-Encoding");
+                chstr = getHeader(req->hdrs, "Transfer-Encoding");
                 /* TODO: chunked can be one of more encodings */
                 /* Read Transfer-Encoding first, ignore C-L when T-E is set */
                 if (chstr && apr_strnatcasecmp(chstr, "chunked") == 0) {
                     STATUSREADERR(readChunked(cctx, req, &done));
                 } else {
-                    clstr = getHeader(cctx->pool, req->hdrs, "Content-Length");
+                    clstr = getHeader(req->hdrs, "Content-Length");
                     if (clstr) {
                         STATUSREADERR(readBody(cctx, req, &done));
                     } else {

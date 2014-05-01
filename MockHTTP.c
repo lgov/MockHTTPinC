@@ -29,39 +29,12 @@ static mhResponse_t *initResponse(MockHTTP *mh);
 
 
 /* private functions */
-static const char *toLower(apr_pool_t *pool, const char *str)
-{
-    char *lstr, *l;
-    const char *u;
 
-    lstr = apr_palloc(pool, strlen(str) + 1);
-    for (u = str, l = lstr; *u != 0; u++, l++)
-        *l = (char)apr_tolower(*u);
-    *l = '\0';
-
-    return lstr;
-}
-
-/* header should be stored with their original case to use them in responses.
+/* Header should be stored with their original case to use them in responses.
    Search on header name is case-insensitive per RFC2616. */
-const char *
-getHeader(apr_pool_t *pool, apr_table_t *hdrs, const char *hdr)
+const char *getHeader(apr_table_t *hdrs, const char *hdr)
 {
-    const char *lhdr = toLower(pool, hdr);
-    const apr_table_entry_t *elts;
-    const apr_array_header_t *arr;
-    int i;
-
-    arr = apr_table_elts(hdrs);
-    elts = (const apr_table_entry_t *)arr->elts;
-
-    for (i = 0; i < arr->nelts; ++i) {
-        const char *tmp = toLower(pool, elts[i].key);
-        if (strcmp(tmp, lhdr) == 0)
-            return elts[i].val;
-    }
-
-    return NULL;
+    return apr_table_get(hdrs, hdr);
 }
 
 void setHeader(apr_table_t *hdrs, const char *hdr, const char *val)
@@ -515,11 +488,9 @@ mhMatchChunkedBodyChunksEqualTo(const MockHTTP *mh, ...)
 static bool
 header_matcher(const mhReqMatcherBldr_t *mp, const mhRequest_t *req)
 {
-    apr_pool_t *tmppool;
     const char *actual;
 
-    apr_pool_create(&tmppool, req->pool);
-    actual = getHeader(tmppool, req->hdrs, mp->baton2);
+    actual = getHeader(req->hdrs, mp->baton2);
     return str_matcher(mp, actual);
 }
 
@@ -546,11 +517,7 @@ mhMatchHeaderEqualTo(const MockHTTP *mh, const char *hdr, const char *value)
 static bool
 header_not_matcher(const mhReqMatcherBldr_t *mp, const mhRequest_t *req)
 {
-    apr_pool_t *tmppool;
-    const char *actual;
-
-    apr_pool_create(&tmppool, req->pool);
-    actual = getHeader(tmppool, req->hdrs, mp->baton2);
+    const char *actual = getHeader(req->hdrs, mp->baton2);
     return !str_matcher(mp, actual);
 }
 
@@ -568,18 +535,71 @@ mhMatchHeaderNotEqualTo(const MockHTTP *mh, const char *hdr, const char *value)
     return mp;
 }
 
+method_t methodToCode(const char *code)
+{
+    char ch1, ch2;
+    ch1 = toupper(*code);
+
+    if (ch1 == 'G' && strcasecmp(code, "GET") == 0)
+        return MethodGET;
+    if (ch1 == 'H' && strcasecmp(code, "HEAD") == 0)
+        return MethodHEAD;
+
+    ch2 = toupper(*(code+1));
+    if (ch1 == 'P') {
+        if (ch2 == 'O' && strcasecmp(code, "POST") == 0)
+            return MethodPOST;
+        if (ch2 == 'A' && strcasecmp(code, "PATCH") == 0)
+            return MethodPATCH;
+        if (ch2 == 'A' && strcasecmp(code, "PUT") == 0)
+            return MethodPUT;
+        if (ch2 == 'R') {
+            if (strcasecmp(code, "PROPFIND") == 0)
+                return MethodPROPFIND;
+            if (strcasecmp(code, "PROPPATCH") == 0)
+                return MethodPROPPATCH;
+        }
+        return MethodOther;
+    }
+    if (ch1 == 'O') {
+        if (ch2 == 'P' && strcasecmp(code, "OPTIONS") == 0)
+            return MethodOPTIONS;
+        if (ch2 == 'R' && strcasecmp(code, "ORDERPATCH") == 0)
+            return MethodORDERPATCH;
+        return MethodOther;
+    }
+
+    if (ch1 == 'A' && strcasecmp(code, "ACL") == 0)
+        return MethodACL;
+    if (ch1 == 'B' && strcasecmp(code, "BASELINE-CONTROL") == 0)
+        return MethodBASELINE_CONTROL;
+    if (ch1 == 'L' && strcasecmp(code, "LABEL") == 0)
+        return MethodLABEL;
+    if (ch1 == 'D' && strcasecmp(code, "DELETE") == 0)
+        return MethodDELETE;
+    return MethodOther;
+}
+
 /**
  * Builder callback, checks if the request method matches the expected method.
  * (case insensitive).
+ * TODO: not used at this time!!
  */
 static bool method_matcher(const mhReqMatcherBldr_t *mp, const mhRequest_t *req)
 {
-    const char *expected = mp->baton;
+    const char *method = mp->baton;
+    method_t methodCode = mp->ibaton;
 
-    if (apr_strnatcasecmp(expected, req->method) == 0)
-        return YES;
-
-    return NO;
+    if (methodCode != req->methodCode) {
+        return NO;
+    } else {
+        if (methodCode != MethodOther)
+            return YES;
+        if (strcasecmp(method, req->method) == 0) {
+            return YES;
+        }
+        return NO;
+    }
 }
 
 mhReqMatcherBldr_t *
@@ -589,6 +609,7 @@ mhMatchMethodEqualTo(const MockHTTP *mh, const char *expected)
 
     mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
+    mp->ibaton = methodToCode(expected);
     mp->matcher = method_matcher;
     mp->describe_key = "Method equal to";
     mp->describe_value = expected;
@@ -608,6 +629,7 @@ constructRequestMatcher(const MockHTTP *mh, const char *method, va_list argp)
     mhRequestMatcher_t *rm = apr_pcalloc(pool, sizeof(mhRequestMatcher_t));
     rm->pool = pool;
     rm->method = apr_pstrdup(pool, method);
+    rm->methodCode = methodToCode(method);
     rm->matchers = apr_array_make(pool, 5, sizeof(mhReqMatcherBldr_t *));
 
     while (1) {
@@ -643,8 +665,13 @@ _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, const mhRequest_t *req)
 {
     int i;
 
-    if (apr_strnatcasecmp(rm->method, req->method) != 0) {
+    if (rm->methodCode != req->methodCode) {
         return NO;
+    } else {
+        if (rm->methodCode == MethodOther &&
+            strcasecmp(rm->method, req->method) != 0)
+
+            return NO;
     }
 
     for (i = 0 ; i < rm->matchers->nelts; i++) {

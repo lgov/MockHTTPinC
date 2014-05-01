@@ -138,9 +138,45 @@ typedef enum reqReadState_t {
     ReadStateDone
 } reqReadState_t;
 
+
+typedef enum method_t {
+    MethodOther = 0,
+    MethodACL,
+    MethodBASELINE_CONTROL,
+    MethodCHECKIN,
+    MethodCHECKOUT,
+    MethodCONNECT,
+    MethodCOPY,
+    MethodDELETE,
+    MethodGET,
+    MethodHEAD,
+    MethodLABEL,
+    MethodLOCK,
+    MethodMERGE,
+    MethodMKACTIVITY,
+    MethodMKCOL,
+    MethodMKWORKSPACE,
+    MethodMOVE,
+    MethodOPTIONS,
+    MethodORDERPATCH,
+    MethodPATCH,
+    MethodPOST,
+    MethodPROPFIND,
+    MethodPROPPATCH,
+    MethodPUT,
+    MethodREPORT,
+    MethodSEARCH,
+    MethodTRACE,
+    MethodUNCHECKOUT,
+    MethodUNLOCK,
+    MethodUPDATE,
+    MethodVERSION_CONTROL
+} method_t;
+
 struct mhRequest_t {
     apr_pool_t *pool;
     const char *method;
+    method_t methodCode;
     const char *url;
     apr_table_t *hdrs;
     int version;
@@ -188,7 +224,6 @@ typedef struct builder_t {
     builderType_t type;
 } builder_t;
 
-
 typedef bool (*reqmatchfunc_t)(const mhReqMatcherBldr_t *mp,
                                const mhRequest_t *req);
 
@@ -196,6 +231,7 @@ struct mhRequestMatcher_t {
     apr_pool_t *pool;
 
     const char *method;
+    method_t methodCode;
     apr_array_header_t *matchers; /* array of mhReqMatcherBldr_t *'s. */
     bool incomplete;
 };
@@ -203,6 +239,7 @@ struct mhRequestMatcher_t {
 struct mhReqMatcherBldr_t {
     builder_t builder;
     const void *baton; /* use this for an expected string */
+    unsigned int ibaton;
     const void *baton2;
     reqmatchfunc_t matcher;
     const char *describe_key;
@@ -242,7 +279,8 @@ struct mhResponseBldr_t {
     respbuilderfunc_t respbuilder;
 };
 
-const char *getHeader(apr_pool_t *pool, apr_table_t *hdrs, const char *hdr);
+method_t methodToCode(const char *code);
+const char *getHeader(apr_table_t *hdrs, const char *hdr);
 void setHeader(apr_table_t *hdrs, const char *hdr, const char *val);
 
 /* Initialize a mhRequest_t object. */
