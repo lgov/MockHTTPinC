@@ -117,6 +117,7 @@ static void test_methodmatcher(CuTest *tc)
     /* Create a fake request and check that the matcher works */
     req = _mhInitRequest(mh->pool);
     req->method = "get";
+    req->methodCode = methodToCode(req->method);
     CuAssertIntEquals(tc, mp->matcher(mp, req), YES);
 }
 
@@ -131,12 +132,14 @@ static void test_matchrequest(CuTest *tc)
     /* Create a fake request and check that the matcher works */
     req = _mhInitRequest(mh->pool);
     req->method = "get";
+    req->methodCode = methodToCode(req->method);
     req->url = "/index.html";
     CuAssertIntEquals(tc, _mhRequestMatcherMatch(rm, req), YES);
 
     /* Create a fake request and check that it doesn't match */
     req = _mhInitRequest(mh->pool);
     req->method = "get";
+    req->methodCode = methodToCode(req->method);
     req->url = "/notexisting.html";
     CuAssertIntEquals(tc, _mhRequestMatcherMatch(rm, req), NO);
 }
@@ -179,6 +182,7 @@ static void test_basic_reqmatch_response(CuTest *tc)
 
     req = _mhInitRequest(mh->pool);
     req->method = "get";
+    req->methodCode = methodToCode(req->method);
     req->url = "/index.html";
     CuAssertIntEquals(tc, YES, _mhMatchRequest(mh, req, &resp));
     CuAssertPtrNotNull(tc, resp);
@@ -202,6 +206,7 @@ static void test_basic_reqmatch_response_with_macros(CuTest *tc)
     /* verify that the request was received */
     req = _mhInitRequest(mh->pool);
     req->method = "get";
+    req->methodCode = methodToCode(req->method);
     req->url = "/index.html";
     CuAssertIntEquals(tc, YES, _mhMatchRequest(mh, req, &resp));
     CuAssertPtrNotNull(tc, resp);
