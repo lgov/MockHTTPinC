@@ -137,6 +137,7 @@ typedef struct mhResponseBldr_t mhResponseBldr_t;
 
 /* Runs the mock server and proxy in separate threads, use this when testing a
    blocking http client library */
+/* EXPERIMENTAL: this feature doesn't work in all cases, can cause crashes! */
 #define     InSeparateThread\
                 mhSetServerThreading(__servctx, mhThreadSeparate)
 

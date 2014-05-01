@@ -868,6 +868,7 @@ void mhPushRequest(MockHTTP *mh, mhServCtx_t *ctx, mhRequestMatcher_t *rm)
     pair->resp = NULL;
     pair->action = mhActionInitiateNone;
 
+    /* Check if any of this request's matchers work on an incomplete request. */
     for (i = 0 ; i < rm->matchers->nelts; i++) {
         const mhReqMatcherBldr_t *mp;
 
@@ -890,6 +891,22 @@ void mhPushRequest(MockHTTP *mh, mhServCtx_t *ctx, mhRequestMatcher_t *rm)
  * Tries to match the request REQ with any of the request matchers MATCHERS.
  * Returns NO if the request wasn't matched.
  *         YES + *RESP + *ACTION if the request was matched successfully.
+ */
+
+/* TOOD:
+   This function is the main bottleneck for performance. Possible fixes:
+   - if a test is setup to continuously add new request matchers while sending
+     requests, evaluation the matchers from last to first drastically
+     improves matching performance. Problem: user expects matches are run in
+     order of definition.
+   - when using a header with an unique value per request, we could create
+     an index on that header:value (hashtable or b-tree) to bypass this whole
+     loop. Probably requires a new API so the user can specify the index.
+   - create a universal string that contains the union of all criteria
+     of all matchers, e.g. "GET/header1:value1/header2:value2" and create an
+     index on that string. Problem is updating that index with new matchers when
+     they use new criteria (OTOH: as long as the criteria are sorted this
+     shouldn't be a problem, a criteria not defined = 0 bytes in the string).
  */
 static bool
 matchRequest(mhRequest_t *req, mhResponse_t **resp,

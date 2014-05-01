@@ -768,7 +768,8 @@ mhResponse_t *mhNewResponseForRequest(MockHTTP *mh, mhServCtx_t *ctx,
     else
         matchers = rm->incomplete ? mh->incompleteReqMatchers : mh->reqMatchers;
 
-    for (i = 0 ; i < matchers->nelts; i++) {
+    /* TODO: how can this not be the last element?? */
+    for (i = matchers->nelts - 1 ; i >= 0; i--) {
         ReqMatcherRespPair_t *pair;
 
         pair = APR_ARRAY_IDX(matchers, i, ReqMatcherRespPair_t *);
@@ -791,7 +792,7 @@ void mhNewActionForRequest(MockHTTP *mh, mhServCtx_t *ctx,
         matchers = rm->incomplete ? ctx->incompleteReqMatchers : ctx->reqMatchers;
     else
         matchers = rm->incomplete ? mh->incompleteReqMatchers : mh->reqMatchers;
-    for (i = 0 ; i < matchers->nelts; i++) {
+    for (i = matchers->nelts - 1 ; i >= 0; i--) {
         ReqMatcherRespPair_t *pair;
 
         pair = APR_ARRAY_IDX(matchers, i, ReqMatcherRespPair_t *);
