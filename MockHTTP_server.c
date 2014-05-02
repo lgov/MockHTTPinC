@@ -18,6 +18,7 @@
  */
 #include <apr_strings.h>
 #include <apr_uri.h>
+#include <apr_lib.h>
 
 #include <stdlib.h>
 
@@ -288,6 +289,7 @@ mhRequest_t *_mhInitRequest(apr_pool_t *pool)
     mhRequest_t *req = apr_pcalloc(pool, sizeof(mhRequest_t));
     req->pool = pool;
     req->hdrs = apr_table_make(pool, 5);
+    req->hdrHashes = apr_array_make(pool, 5, sizeof(unsigned long));
     req->body = apr_array_make(pool, 5, sizeof(struct iovec));
     req->chunks = apr_array_make(pool, 5, sizeof(struct iovec));
 
@@ -368,6 +370,34 @@ readReqLine(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
     return APR_SUCCESS;
 }
 
+/* simple hash implementation (djb2). */
+unsigned long calculateHeaderHash(const char *hdr, const char *val)
+{
+    unsigned long hash = 5381;
+    int c;
+
+    if (!val)
+        return 0;
+
+    while ((c = apr_tolower(*hdr++)))
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    hash = ((hash << 5) + hash) + ':';
+    while ((c = *val++))
+        hash = ((hash << 5) + hash) + c;
+
+    return hash;
+}
+
+static void setRequestHeader(mhRequest_t *req, const char *hdr, const char *val)
+{
+    apr_table_t *hdrs = req->hdrs;
+    unsigned long hash;
+
+    apr_table_add(hdrs, hdr, val);
+    hash = calculateHeaderHash(hdr, val);
+    APR_ARRAY_PUSH(req->hdrHashes, unsigned long) = hash;
+}
+
 /**
  * Reads a HTTP header from the buffer in CCTX, header will be added to REQ.
  *
@@ -410,7 +440,7 @@ readHeader(_mhClientCtx_t *cctx, mhRequest_t *req, bool *done)
         while (*ptr && ptr < end && *ptr != '\r') ptr++;
         val = apr_pstrndup(cctx->pool, start, ptr-start);
 
-        setHeader(req->hdrs, hdr, val);
+        setRequestHeader(req, hdr, val);
     }
     return APR_SUCCESS;
 }
@@ -1233,7 +1263,7 @@ static _mhClientCtx_t *initClientCtx(apr_pool_t *pool, mhServCtx_t *serv_ctx,
     return cctx;
 }
 
-void closeAndRemoveClientCtx(mhServCtx_t *ctx, _mhClientCtx_t *cctx)
+static void closeAndRemoveClientCtx(mhServCtx_t *ctx, _mhClientCtx_t *cctx)
 {
     int i;
     apr_array_header_t *clients = ctx->clients;

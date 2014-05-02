@@ -489,6 +489,21 @@ static bool
 header_matcher(const mhReqMatcherBldr_t *mp, const mhRequest_t *req)
 {
     const char *actual;
+    int i, found = 0;
+    unsigned long exphash = mp->ibaton;
+
+    /* exphash == 0 means testing that header is NOT set */
+    if (exphash) {
+        for (i = 0; i < req->hdrHashes->nelts; i++) {
+            unsigned long acthash = APR_ARRAY_IDX(req->hdrHashes, i, unsigned long);
+            if (exphash == acthash) {
+                found = 1;
+                break;
+            }
+        }
+        if (found == 0)
+            return NO;
+    }
 
     actual = getHeader(req->hdrs, mp->baton2);
     return str_matcher(mp, actual);
@@ -502,6 +517,7 @@ mhMatchHeaderEqualTo(const MockHTTP *mh, const char *hdr, const char *value)
     mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, value);
     mp->baton2 = apr_pstrdup(pool, hdr);
+    mp->ibaton = calculateHeaderHash(hdr, value);
     mp->matcher = header_matcher;
     mp->describe_key = "Header equal to";
     mp->describe_value = apr_psprintf(pool, "%s: %s", hdr, value);

@@ -179,6 +179,7 @@ struct mhRequest_t {
     method_t methodCode;
     const char *url;
     apr_table_t *hdrs;
+    apr_array_header_t *hdrHashes;
     int version;
     apr_array_header_t *body; /* array of iovec strings that form the raw body */
     apr_size_t bodyLen;
@@ -237,7 +238,7 @@ struct mhRequestMatcher_t {
 struct mhReqMatcherBldr_t {
     builder_t builder;
     const void *baton; /* use this for an expected string */
-    unsigned int ibaton;
+    unsigned long ibaton;
     const void *baton2;
     reqmatchfunc_t matcher;
     const char *describe_key;
@@ -278,6 +279,8 @@ struct mhResponseBldr_t {
 };
 
 method_t methodToCode(const char *code);
+unsigned long calculateHeaderHash(const char *hdr, const char *val);
+
 const char *getHeader(apr_table_t *hdrs, const char *hdr);
 void setHeader(apr_table_t *hdrs, const char *hdr, const char *val);
 
