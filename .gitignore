@@ -16,4 +16,10 @@ xcuserdata
 # osx noise
 profile
 
+# CMake stuff
+Makefile
+CMakeFiles/
+CMakeCache.txt
+*cmake_install.cmake
+
 tests/mockhttp_tests
