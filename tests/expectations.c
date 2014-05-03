@@ -1734,6 +1734,8 @@ CuSuite *testMockNoServer(void)
 
 int main(int argc, const char *argv[])
 {
+    int exit_code;
+
     CuString *output = CuStringNew();
     CuSuite* suite = CuSuiteNew();
 
@@ -1744,4 +1746,11 @@ int main(int argc, const char *argv[])
     CuSuiteSummary(suite, output);
     CuSuiteDetails(suite, output);
     printf("%s\n", output->buffer);
+
+    exit_code = suite->failCount > 0 ? 1 : 0;
+
+    CuSuiteDelete(suite);
+    CuStringDelete(output);
+
+    return exit_code;
 }
