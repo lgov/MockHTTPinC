@@ -66,46 +66,46 @@ SetupServer and SetupProxy accept any of the following named parameters:
 
 First, choose if the server and proxy should support HTTP or HTTPS:
 
-* WithHTTP: Makes the server accept HTTP requests and send HTTP responses.
+* `WithHTTP`: Makes the server accept HTTP requests and send HTTP responses.
 
-* WithHTTPS: Makes the server support HTTPS.
+* `WithHTTPS`: Makes the server support HTTPS.
 
 
-These are some generic options that can be used with both HTTP/HTTPS server and proxy:
+These are options that can be used with both HTTP/HTTPS server and proxy:
 
-* WithID(name): optional, give the server a name. Default server name is "server", default proxy name is "proxy". The server ID is not used at this time, but may be in the future when we'll support starting
+* `WithID(name)`: optional, give the server a name. Default server name is "server", default proxy name is "proxy". The server ID is not used at this time, but may be in the future when we'll support starting
     
-* WithPort(portnr): starts up the server on this port. If the port is not available, the server will increase the port number until it finds one that's available. Default port for a server is 30080, for a proxy it's 38080.
+* `WithPort(portnr)`: starts up the server on this port. If the port is not available, the server will increase the port number until it finds one that's available. Default port for a server is 30080, for a proxy it's 38080.
    
-* WithMaxKeepAliveRequests(max): Defines the maxinum number of requests the server will receive on one TCP connection before it closes the connection. The mock server will set the Connection: close header on the last response. Default is 0: unlimited.
+* `WithMaxKeepAliveRequests(max)`: Defines the maxinum number of requests the server will receive on one TCP connection before it closes the connection. The mock server will set the Connection: close header on the last response. Default is 0: unlimited.
 
-* InMainThread: Starts up a server or proxy in the main thread. This requires that you call mhRunServerLoop or mhRunServerLoopCompleteRequests regularly for the server to process events (accept inconing connections, receive and send data etc.). This is the default.
+* `InMainThread`: Starts up a server or proxy in the main thread. This requires that you call mhRunServerLoop or mhRunServerLoopCompleteRequests regularly for the server to process events (accept inconing connections, receive and send data etc.). This is the default.
 
-* InSeparateThread: Starts up the server or proxy in a new thread. The new thread will have its own event loop which processes events continously.
+* `InSeparateThread`: Starts up the server or proxy in a new thread. The new thread will have its own event loop which processes events continously.
 
 
 Options specific to HTTPS servers
 
-* WithCertificateFilesPrefix(path_prefix):
+* `WithCertificateFilesPrefix(path_prefix)`:
    
-* WithCertificateKeyFile(path):
+* `WithCertificateKeyFile(path)`:
         Path of the PEM-encoded private key file for the server certificate.
    
-* WithCertificateFiles(...):
+* `WithCertificateFiles(...)`:
    
-* WithCertificateFileArray(files):
+* `WithCertificateFileArray(files)`:
    
-* WithOptionalClientCertificate:
+* `WithOptionalClientCertificate`:
    
-* WithRequiredClientCertificate:
+* `WithRequiredClientCertificate`:
    
-* WithSSLv2: Enable SSLv2, availability and default setting depends on OpenSSL version
-* WithSSLv3: Enable SSLv3, availability and default setting depends on OpenSSL version
-* WithTLSv1: Enable TLSv1, availability and default setting depends on OpenSSL version
-* WithTLSv11: Enable TLSv1.1, availability and default setting depends on OpenSSL version
-* WithTLSv12: Enable TLSv1.2, availability and default setting depends on OpenSSL version
+* `WithSSLv2`: Enable SSLv2, availability and default setting depends on OpenSSL version
+* `WithSSLv3`: Enable SSLv3, availability and default setting depends on OpenSSL version
+* `WithTLSv1`: Enable TLSv1, availability and default setting depends on OpenSSL version
+* `WithTLSv11`: Enable TLSv1.1, availability and default setting depends on OpenSSL version
+* `WithTLSv12`: Enable TLSv1.2, availability and default setting depends on OpenSSL version
  
-* WithSSLCipherSuite (_not yet implemented_)
+* `WithSSLCipherSuite` (_not yet implemented_)
 
 
 2. Configure the client to use the mock server
