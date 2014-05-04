@@ -61,7 +61,7 @@ Both server and proxy can be started in the main thread, or each in a separate t
 Running them in the main thread  only works with a non-blocking client, as it require that the event handling loop is started from time to time. Blocking clients can only be tested by starting server and proxy in a separate thread.
 
 
-SetupServer and SetupProxy accept any of the following named parameters:
+`SetupServer` and `SetupProxy` accept any of the following named parameters:
 
 
 First, choose if the server and proxy should support HTTP or HTTPS:
@@ -73,9 +73,9 @@ First, choose if the server and proxy should support HTTP or HTTPS:
 
 These are options that can be used with both HTTP/HTTPS server and proxy:
 
-* `WithID(name)`: optional, give the server a name. Default server name is "server", default proxy name is "proxy". The server ID is not used at this time, but may be in the future when we'll support starting
+* `WithID(name)`: optional, give the server a name. Default server name is "server", default proxy name is "proxy". The server ID is not used at this time, but may be in the future when we'll support starting multiple servers per session.
     
-* `WithPort(portnr)`: starts up the server on this port. If the port is not available, the server will increase the port number until it finds one that's available. Default port for a server is 30080, for a proxy it's 38080.
+* `WithPort(portnr)`: starts up the server on this port. If the port is not available, the server will increase the port number until it finds one that's available. Default port for a server is 30080, for a proxy its 38080.
    
 * `WithMaxKeepAliveRequests(max)`: Defines the maxinum number of requests the server will receive on one TCP connection before it closes the connection. The mock server will set the Connection: close header on the last response. Default is 0: unlimited.
 
@@ -86,15 +86,13 @@ These are options that can be used with both HTTP/HTTPS server and proxy:
 
 Options specific to HTTPS servers
 
-* `WithCertificateFilesPrefix(path_prefix)`:
+* `WithCertificateKeyFile(path)`: Path of the PEM-encoded private key file for the server certificate.
    
-* `WithCertificateKeyFile(path)`:
-        Path of the PEM-encoded private key file for the server certificate.
-   
-* `WithCertificateFiles(...)`:
-   
-* `WithCertificateFileArray(files)`:
-   
+* `WithCertificateFiles(...)`: List of paths to the certificate file(s).
+* `WithCertificateFileArray(paths)`: Array of paths to the certifcate file(s), terminated by a NULL path. The certificate files provided by either of these two named parameters will be sent by the server to the client during the SSL handshake. For a successful SSL handshake, you'll need to pass the server certificate, and any intermediate CA certificate not trusted by the client.
+
+* `WithCertificateFilesPrefix(path_prefix)`: This prefix will be prepended to any path provided to `WithCertificateFiles` or `WithCertificateFileArray`, enables you to use relative paths in these two parameters.
+
 * `WithOptionalClientCertificate`:
    
 * `WithRequiredClientCertificate`:
