@@ -27,11 +27,11 @@ In the next sections we'll explain how to use the MockHTTPinC API in each of thi
 Initializing the client is out of scope for this document. Initialize MockHTTPinC by calling mhInit(). This function will return a baton representing a MockHTTP session. You'll have to pass to any MockHTTPinC API call you make later.
 A MockHTTP session typically lives for the duration of one test scenario, and is not intended to be reused.
 
-    ```c
-    #include "MockHTTP.h"
-    
-    MockHTTP *mh = mhInit();
-    ```
+```c
+#include "MockHTTP.h"
+
+MockHTTP *mh = mhInit();
+```
 
 If your client needs to know the hostname and port of the mock server during initialization, then proceed to the next step first.
 
