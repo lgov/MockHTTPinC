@@ -783,14 +783,15 @@ static void test_verify_req_header_not_set_fails_if_set(CuTest *tc)
     EndVerify
 }
 
+
 static void test_verify_req_header_fails(CuTest *tc)
 {
     MockHTTP *mh = tc->testBaton;
 
     Given(mh)
-      GETRequest(
-        URLEqualTo("/index1.html"),
-        HeaderEqualTo("Authorization", "TW9ja0hUVFA6TW9ja0hUVFBwd2Q="))
+    GETRequest(
+               URLEqualTo("/index1.html"),
+               HeaderEqualTo("Authorization", "TW9ja0hUVFA6TW9ja0hUVFBwd2Q="))
     EndGiven
 
     /* system under test */
@@ -809,7 +810,76 @@ static void test_verify_req_header_fails(CuTest *tc)
     }
 
     Verify(mh)
-      CuAssertTrue(tc, !VerifyAllRequestsReceivedInOrder);
+    CuAssertTrue(tc, !VerifyAllRequestsReceivedInOrder);
+    EndVerify
+}
+
+static void test_use_request_header(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+    unsigned int port = mhServerByIDPortNr(mh, "server");
+    clientCtx_t *ctx = initClient(port);
+    apr_hash_t *hdrs = apr_hash_make(mh->pool);
+    char *buf;
+    apr_size_t len;
+    apr_status_t status;
+    const char *exp_body = "HTTP/1.1 200 OK\r\nContent-Length: 6\r\n"
+                           "MyRequestHeader: MyRequestValue\r\n\r\nblabla";
+
+    Given(mh)
+      GETRequest(URLEqualTo("/index1.html"), HeaderNotSet("Authorization"))
+        Respond(WithBody("blabla"), WithRequestHeader("MyRequestHeader"))
+    Expect
+      AllRequestsReceivedOnce
+    EndGiven
+
+    apr_hash_set(hdrs, "MyRequestHeader", APR_HASH_KEY_STRING,
+                 "MyRequestValue");
+    sendChunkedRequest(ctx, "GET", "/index1.html", hdrs, "1", NULL);
+    mhRunServerLoopCompleteRequests(mh);
+
+    do {
+        int curpos = 0;
+        status = receiveResponse(ctx, &buf, &len);
+        CuAssertStrnEquals(tc, exp_body + curpos, len, buf);
+        curpos += len;
+    } while (status == APR_EAGAIN);
+
+    Verify(mh)
+      CuAssert(tc, ErrorMessage, VerifyAllExpectationsOk);
+    EndVerify
+}
+
+static void test_use_request_header_notset(CuTest *tc)
+{
+    MockHTTP *mh = tc->testBaton;
+    unsigned int port = mhServerByIDPortNr(mh, "server");
+    clientCtx_t *ctx = initClient(port);
+    apr_hash_t *hdrs = apr_hash_make(mh->pool);
+    char *buf;
+    apr_size_t len;
+    apr_status_t status;
+    const char *exp_body = "HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nblabla";
+
+    Given(mh)
+      GETRequest(URLEqualTo("/index1.html"), HeaderNotSet("Authorization"))
+        Respond(WithBody("blabla"), WithRequestHeader("MyRequestHeader"))
+    Expect
+      AllRequestsReceivedOnce
+    EndGiven
+
+    sendChunkedRequest(ctx, "GET", "/index1.html", hdrs, "1", NULL);
+    mhRunServerLoopCompleteRequests(mh);
+
+    do {
+        int curpos = 0;
+        status = receiveResponse(ctx, &buf, &len);
+        CuAssertStrnEquals(tc, exp_body + curpos, len, buf);
+        curpos += len;
+    } while (status == APR_EAGAIN);
+
+    Verify(mh)
+      CuAssert(tc, ErrorMessage, VerifyAllExpectationsOk);
     EndVerify
 }
 
@@ -1697,6 +1767,8 @@ CuSuite *testMockWithHTTPserver(void)
     SUITE_ADD_TEST(suite, test_verify_req_header_set_fails_if_not_set);
     SUITE_ADD_TEST(suite, test_verify_req_header_not_set);
     SUITE_ADD_TEST(suite, test_verify_req_header_not_set_fails_if_set);
+    SUITE_ADD_TEST(suite, test_use_request_header);
+    SUITE_ADD_TEST(suite, test_use_request_header_notset);
     SUITE_ADD_TEST(suite, test_verify_error_message);
     SUITE_ADD_TEST(suite, test_one_request_response);
     SUITE_ADD_TEST(suite, test_default_response);

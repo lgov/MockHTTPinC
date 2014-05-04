@@ -341,6 +341,10 @@ typedef struct mhResponseBldr_t mhResponseBldr_t;
 #define     WithRequestBody\
                 mhRespSetUseRequestBody(__resp)
 
+/* If HEADER is set on the request, set it with its value on the response */
+#define     WithRequestHeader(header)\
+                mhRespSetUseRequestHeader(__resp, header)
+
 /* Adds a "Connection: close" header to the response, makes the mock server
    close the connection after sending the response. */
 #define     WithConnectionCloseHeader\
@@ -585,11 +589,13 @@ void mhNewActionForRequest(MockHTTP *mh, mhServCtx_t *ctx,
                            mhRequestMatcher_t *rm, mhAction_t action);
 
 mhResponseBldr_t *mhRespSetCode(mhResponse_t *resp, unsigned int status);
-mhResponseBldr_t *mhRespSetBody(mhResponse_t *resp, const char *body);
-mhResponseBldr_t *mhRespSetChunkedBody(mhResponse_t *resp, ...);
 mhResponseBldr_t *mhRespAddHeader(mhResponse_t *resp, const char *header,
                                   const char *value);
 mhResponseBldr_t *mhRespSetConnCloseHdr(mhResponse_t *resp);
+mhResponseBldr_t *mhRespSetUseRequestHeader(mhResponse_t *resp,
+                                            const char *header);
+mhResponseBldr_t *mhRespSetBody(mhResponse_t *resp, const char *body);
+mhResponseBldr_t *mhRespSetChunkedBody(mhResponse_t *resp, ...);
 mhResponseBldr_t *mhRespSetUseRequestBody(mhResponse_t *resp);
 mhResponseBldr_t *mhRespSetRawData(mhResponse_t *resp, const char *raw_data);
 mhResponseBldr_t *mhRespSetBodyPattern(mhResponse_t *resp, const char *pattern,

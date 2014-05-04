@@ -981,6 +981,27 @@ mhResponseBldr_t *mhRespSetConnCloseHdr(mhResponse_t *resp)
     return rb;
 }
 
+
+static bool
+resp_use_request_header(const mhResponseBldr_t *rb, mhResponse_t *resp)
+{
+    mhRequest_t *req = resp->req;
+    const char *value = getHeader(req->hdrs, rb->baton);
+    if (value)
+        setHeader(resp->hdrs, rb->baton, value);
+    return YES;
+}
+
+mhResponseBldr_t *
+mhRespSetUseRequestHeader(mhResponse_t *resp, const char *header)
+{
+    apr_pool_t *pool = resp->pool;
+    mhResponseBldr_t *rb = createResponseBldr(pool);
+    rb->respbuilder = resp_use_request_header;
+    rb->baton = header;
+    return rb;
+}
+
 static bool
 resp_use_request_body(const mhResponseBldr_t *rb, mhResponse_t *resp)
 {
