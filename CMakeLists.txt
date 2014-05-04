@@ -28,9 +28,8 @@ set(MH_VERSION_PATCH 0)
 set(MH_VERSION_STRING ${MH_VERSION_MAJOR}.${MH_VERSION_MINOR}.${MH_VERSION_PATCH})
 
 set(SOURCES MockHTTP.c MockHTTP_server.c)
-add_library (objects OBJECT ${SOURCES})
-add_library (mockhttp_static STATIC $<TARGET_OBJECTS:objects>)
-add_library (mockhttp_shared SHARED $<TARGET_OBJECTS:objects>)
+add_library (mockhttp_static STATIC ${SOURCES})
+add_library (mockhttp_shared SHARED ${SOURCES})
 
 set_target_properties(mockhttp_shared PROPERTIES VERSION ${MH_VERSION_STRING}
                                                  SOVERSION ${MH_VERSION_MAJOR}
