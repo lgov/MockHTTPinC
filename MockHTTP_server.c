@@ -1471,6 +1471,13 @@ void mhConfigServer(mhServCtx_t *serv_ctx, ...)
     if (serv_ctx->protocols == mhProtoUnspecified) {
         serv_ctx->protocols = mhProtoAllSecure;
     }
+    if (!serv_ctx->serverID) {
+        if (serv_ctx->type == mhGenericProxy) {
+            serv_ctx->serverID = DEFAULT_PROXY_ID;
+        } else {
+            serv_ctx->serverID = DEFAULT_SERVER_ID;
+        }
+    }
 }
 
 /**
