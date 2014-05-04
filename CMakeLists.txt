@@ -20,7 +20,14 @@ include_directories(${APRUTIL_INCLUDE_DIR})
 include_directories(.)
 
 # create a shared library
+set(MH_VERSION_MAJOR 0)
+set(MH_VERSION_MINOR 1)
+set(MH_VERSION_PATCH 0)
+set(MH_VERSION_STRING ${MH_VERSION_MAJOR}.${MH_VERSION_MINOR}.${MH_VERSION_PATCH})
+
 add_library(mockhttp SHARED MockHTTP.c MockHTTP_server.c)
+set_target_properties(mockhttp PROPERTIES VERSION ${MH_VERSION_STRING}
+                                          SOVERSION ${MH_VERSION_MAJOR})
 target_link_libraries(mockhttp ${LIBS})
 
 # create target 'check', build the test suite executable and run it.
