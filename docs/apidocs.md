@@ -45,20 +45,19 @@ The macro language provides two benefits over a normal C API:
 1. Named parameters
 2. Optional parameters and defaults
 
-For these macro's to work you'll have to wrap them in a block using one of the block opening statements InitMockServers(mh) ... EndInit, Given(mh) ... EndGiven, Verify(mh) ... EndVerify , where mh is the pointer holding the MockHTTP baton.
+For these macro's to work you'll have to wrap them in a block using one of the block opening statements `InitMockServers(mh)` ... `EndInit`, `Given(mh)` ... `EndGiven`, `Verify(mh)` ... `EndVerify` , where `mh` is the pointer holding the MockHTTP baton.
 
 Example of setting up a mock server and a mock proxy:
 
-    InitMockServers(mh)
-      SetupServer(WithHTTP, WithPort(12345), InMainThread)
-      SetupProxy(WithHTTP, WithPort(54321))
-    EndInit
-
+```c
+InitMockServers(mh)
+  SetupServer(WithHTTP, WithPort(12345), InMainThread)
+  SetupProxy(WithHTTP, WithPort(54321))
+EndInit
+```
 
 Each MockHTTP session can manage one server and one proxy at this time. Both server and proxy are event driven and can handle many TCP connections at the same time (tested with 1000+ connections) but are limited to one thread. 
 
-Both server and proxy can be started in the main thread, or each in a separate thread. 
-Running them in the main thread  only works with a non-blocking client, as it require that the event handling loop is started from time to time. Blocking clients can only be tested by starting server and proxy in a separate thread.
 
 
 `SetupServer` and `SetupProxy` accept any of the following named parameters:
@@ -71,6 +70,7 @@ First, choose if the server and proxy should support HTTP or HTTPS:
 * `WithHTTPS`: Makes the server support HTTPS.
 
 
+
 These are options that can be used with both HTTP/HTTPS server and proxy:
 
 * `WithID(name)`: optional, give the server a name. Default server name is "server", default proxy name is "proxy". The server ID is not used at this time, but may be in the future when we'll support starting multiple servers per session.
@@ -79,9 +79,10 @@ These are options that can be used with both HTTP/HTTPS server and proxy:
    
 * `WithMaxKeepAliveRequests(max)`: Defines the maxinum number of requests the server will receive on one TCP connection before it closes the connection. The mock server will set the Connection: close header on the last response. Default is 0: unlimited.
 
-* `InMainThread`: Starts up a server or proxy in the main thread. This requires that you call mhRunServerLoop or mhRunServerLoopCompleteRequests regularly for the server to process events (accept inconing connections, receive and send data etc.). This is the default.
+* `InMainThread`: Starts up a server or proxy in the main thread. This requires that you call mhRunServerLoop or mhRunServerLoopCompleteRequests regularly for the server to process events (accept inconing connections, receive and send data etc.), so it'll only work when testing a non-blocking client. This is the default.
 
-* `InSeparateThread`: Starts up the server or proxy in a new thread. The new thread will have its own event loop which processes events continously.
+* `InSeparateThread`: Starts up the server or proxy in a new thread. The new thread will have its own event loop which processes events continously, so this is the path to choose when testing a blocking client.
+
 
 
 Options specific to HTTPS servers
@@ -89,21 +90,23 @@ Options specific to HTTPS servers
 * `WithCertificateKeyFile(path)`: Path of the PEM-encoded private key file for the server certificate.
    
 * `WithCertificateFiles(...)`: List of paths to the certificate file(s).
-* `WithCertificateFileArray(paths)`: Array of paths to the certifcate file(s), terminated by a NULL path. The certificate files provided by either of these two named parameters will be sent by the server to the client during the SSL handshake. For a successful SSL handshake, you'll need to pass the server certificate, and any intermediate CA certificate not trusted by the client.
+* `WithCertificateFileArray(paths)`: Array of paths to the certifcate file(s), terminated by a NULL path. The certificate files provided by either of these two named parameters will be sent by the server to the client during the SSL handshake. For a successful SSL handshake, you'll need to pass the server certificate and any intermediate and root CA certificate not trusted by the client.
 
 * `WithCertificateFilesPrefix(path_prefix)`: This prefix will be prepended to any path provided to `WithCertificateFiles` or `WithCertificateFileArray`, enables you to use relative paths in these two parameters.
 
-* `WithOptionalClientCertificate`:
+* `WithOptionalClientCertificate`: Setting this option will make the server ask for a client certificate during the SSL handshake, but the handshake will not fail if the client does not provide a certificate.
    
-* `WithRequiredClientCertificate`:
-   
-* `WithSSLv2`: Enable SSLv2, availability and default setting depends on OpenSSL version
-* `WithSSLv3`: Enable SSLv3, availability and default setting depends on OpenSSL version
-* `WithTLSv1`: Enable TLSv1, availability and default setting depends on OpenSSL version
-* `WithTLSv11`: Enable TLSv1.1, availability and default setting depends on OpenSSL version
-* `WithTLSv12`: Enable TLSv1.2, availability and default setting depends on OpenSSL version
- 
-* `WithSSLCipherSuite` (_not yet implemented_)
+* `WithRequiredClientCertificate`:With this option the server will require that the client provides a client certificate for a successful handhake to happen.
+
+
+With the next option the server can be configured to only advertize specific versions of SSL and/or TLS. If no parameters are expliclity provided, the server advertises SSLv3, TLSv1, TLSv1.1 and TLSv1.2 if supported by the OpenSSL library.
+
+* `WithSSLv2`: Enable SSLv2.
+* `WithSSLv3`: Enable SSLv3.
+* `WithTLSv1`: Enable TLSv1.
+* `WithTLSv11`: Enable TLSv1.1.
+* `WithTLSv12`: Enable TLSv1.2.
+
 
 
 2. Configure the client to use the mock server
