@@ -1095,7 +1095,7 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
             resp = cctx->currResp ? cctx->currResp :
                             *(mhResponse_t **)apr_array_pop(cctx->respQueue);
             if (resp) {
-                _mhLog(1, cctx->skt, "Sending response to client.\n");
+                _mhLog(MH_VERBOSE, cctx->skt, "Sending response to client.\n");
 
                 status = writeResponse(cctx, resp);
                 if (status == APR_EOF) {
@@ -1110,6 +1110,7 @@ static apr_status_t processServer(mhServCtx_t *ctx, _mhClientCtx_t *cctx,
                 } else {
                     cctx->currResp = resp;
                     status = APR_EAGAIN;
+                    break;
                 }
             } else {
                 return APR_EGENERAL;
