@@ -802,6 +802,7 @@ static char *respToString(apr_pool_t *pool, mhResponse_t *resp)
     str = apr_psprintf(pool, "HTTP/1.1 %d %s\r\n", resp->code,
                        codeToString(resp->code));
 
+    /* headers */
     arr = apr_table_elts(resp->hdrs);
     elts = (const apr_table_entry_t *)arr->elts;
 
@@ -1066,7 +1067,7 @@ static apr_status_t processProxy(_mhClientCtx_t *cctx, const apr_pollfd_t *desc)
 /**
  * Process events on connection client <-> proxy or client <-> server
  * Reads all incoming data, tries to match complete and/or incomplete requests,
- * and the writes responses back to the socket CCTX.
+ * and then writes responses back to the socket CCTX.
  *
  * Returns APR_EOF when the connection should be closed.
  **/
@@ -1245,12 +1246,13 @@ static _mhClientCtx_t *initClientCtx(apr_pool_t *pool, mhServCtx_t *serv_ctx,
     cctx->respQueue = apr_array_make(pool, 5, sizeof(mhResponse_t *));
     cctx->currResp = NULL;
     cctx->mode = ModeServer;
-    if (type == mhHTTPServer || type == mhHTTPProxy) {
+    if (type == mhHTTPv1Server || type == mhHTTPv11Server ||
+        type == mhHTTPv1Proxy || type == mhHTTPv11Proxy) {
         cctx->read = socketRead;
         cctx->send = socketWrite;
     }
 #ifdef MOCKHTTP_OPENSSL
-    if (type == mhHTTPSServer) {
+    if (type == mhHTTPSv1Server || type == mhHTTPSv11Server) {
         cctx->handshake = sslHandshake;
         cctx->read = sslSocketRead;
         cctx->send = sslSocketWrite;
@@ -1633,16 +1635,24 @@ static bool set_server_type(const mhServerSetupBldr_t *ssb, mhServCtx_t *ctx)
 
     switch (ctx->type) {
         case mhGenericServer:
-            if (type == mhHTTP)
-                ctx->type = mhHTTPServer;
+            if (type == mhHTTPv1)
+                ctx->type = mhHTTPv1Server;
+            else if (type == mhHTTPv11)
+                ctx->type = mhHTTPv11Server;
+            else if (type == mhHTTPSv1)
+                ctx->type = mhHTTPSv1Server;
             else
-                ctx->type = mhHTTPSServer;
+                ctx->type = mhHTTPSv11Server;
             break;
         case mhGenericProxy:
-            if (type == mhHTTP)
-                ctx->type = mhHTTPProxy;
+            if (type == mhHTTPv1)
+                ctx->type = mhHTTPv1Proxy;
+            else if (type == mhHTTPv11)
+                ctx->type = mhHTTPv11Proxy;
+            else if (type == mhHTTPSv1)
+                ctx->type = mhHTTPSv1Proxy;
             else
-                ctx->type = mhHTTPSProxy;
+                ctx->type = mhHTTPSv11Proxy;
             break;
         default:
             /* TODO: error in test configuration. */

@@ -33,12 +33,18 @@ extern "C" {
 typedef enum mhServerType_t {
     mhGenericServer,  /* Abstract type */
     mhGenericProxy,   /* Abstract type */
-    mhHTTP,           /* Abstract type */
-    mhHTTPS,          /* Abstract type */
-    mhHTTPServer,
-    mhHTTPSServer,
-    mhHTTPProxy,
-    mhHTTPSProxy,     /* Sets up SSL tunnel on CONNECT request. */
+    mhHTTPv1,         /* Abstract type */
+    mhHTTPSv1,        /* Abstract type */
+    mhHTTPv11,        /* Abstract type */
+    mhHTTPSv11,       /* Abstract type */
+    mhHTTPv1Server,
+    mhHTTPv11Server,
+    mhHTTPSv1Server,
+    mhHTTPSv11Server,
+    mhHTTPv1Proxy,
+    mhHTTPv11Proxy,
+    mhHTTPSv1Proxy,     /* Sets up SSL tunnel on CONNECT request. */
+    mhHTTPSv11Proxy,    /* Sets up SSL tunnel on CONNECT request. */
 } mhServerType_t;
 
 typedef enum mhAction_t {
@@ -115,12 +121,26 @@ typedef struct mhResponseBldr_t mhResponseBldr_t;
                 mhStartServer(__servctx);
 
 /* Setup a HTTP server */
+
+/* WithHTTP defaults to HTTP v1.1 */
 #define     WithHTTP\
-                mhSetServerType(__servctx, mhHTTP)
+                mhSetServerType(__servctx, mhHTTPv11)
+
+#define     WithHTTPv1\
+                mhSetServerType(__servctx, mhHTTPv1)
+
+#define     WithHTTPv11\
+                mhSetServerType(__servctx, mhHTTPv11)
 
 /* Setup a HTTPS server */
+
+/* WithHTTPS defaults to HTTPS v1.1 */
 #define     WithHTTPS\
-                mhSetServerType(__servctx, mhHTTPS)
+                mhSetServerType(__servctx, mhHTTPSv11)
+#define     WithHTTPSv1\
+                mhSetServerType(__servctx, mhHTTPSv1)
+#define     WithHTTPSv11\
+                mhSetServerType(__servctx, mhHTTPSv11)
 
 /* Give the server a name, so it can be found (optional, only needed when
    using multiple servers and requiring post-init configuration) */
