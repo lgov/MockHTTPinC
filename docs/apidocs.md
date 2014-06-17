@@ -99,7 +99,7 @@ Options specific to HTTPS servers
 * `WithRequiredClientCertificate`:With this option the server will require that the client provides a client certificate for a successful handhake to happen.
 
 
-With the next option the server can be configured to only advertize specific versions of SSL and/or TLS. If no parameters are expliclity provided, the server advertises SSLv3, TLSv1, TLSv1.1 and TLSv1.2 if supported by the OpenSSL library.
+With the next options the server can be configured to only advertize specific versions of SSL and/or TLS. If no parameters are expliclity provided, the server advertises SSLv3, TLSv1, TLSv1.1 and TLSv1.2 if supported by the OpenSSL library.
 
 * `WithSSLv2`: Enable SSLv2.
 * `WithSSLv3`: Enable SSLv3.
@@ -114,28 +114,38 @@ With the next option the server can be configured to only advertize specific ver
 
 The actual port number on which the server and proxy are listening can be retrieved by calling respectively:
 
+```c
     server_port = mhServerPortNr(mh);
-    
+````
+and
+```c
     proxy_port = mhProxyPortNr(mh);
-    
-This will return the port number of the default server and proxy. If you have given the server a non-default ID, use:
+````
 
+This will return the port numbers of the default server and proxy. If you have given the server a non-default ID, use:
+
+```c
     server_port = mhServerByIDPortNr(mh, "my_server_name");
+```
+
 
 
 3. Define how the mock server should respond to HTTP requests it receives.
 --------------------------------------------------------------------------
- 
+
+When the server receives a request from the system under test, it will try to match this request with templates defined in the test definition. When a match is found, the server will take the response associated with the template and return it to the client. In the absence of a specific defined response, the server will return a default response.
+
+```c
     Given(mh)
       GETRequest(URLEqualTo("/"), ChunkedBodyEqualTo("1"),
-                 HeaderEqualTo("Host", tb->serv_host))
+                 HeaderEqualTo("Host", "localhost"))
         Respond(WithCode(200), WithChunkedBody(""))
     EndGiven
-
+```
 
 Match requests
 
-      GETRequest, POSTRequest, HEADRequest, HTTPRequest(method,...)
+      GETRequest, POSTRequest, HEADRequest, HTTPRequest(,...)
 
       URLEqualTo
 
