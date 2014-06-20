@@ -22,7 +22,6 @@
 
 #include <stdlib.h>
 
-#include "MockHTTP.h"
 #include "MockHTTP_private.h"
 
 /* Copied from serf.  */

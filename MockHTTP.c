@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "MockHTTP.h"
 #include "MockHTTP_private.h"
 
 #include <stdlib.h>

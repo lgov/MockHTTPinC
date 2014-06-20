@@ -23,6 +23,8 @@
 #include <apr_time.h>
 #include <apr_thread_proc.h>
 
+#include "MockHTTP.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
