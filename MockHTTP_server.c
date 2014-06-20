@@ -378,7 +378,6 @@ buffSktReadLine(bucket_t *bkt, const char **data, apr_size_t *len)
         ctx->offset = 0;
     }
 
-    /* TODO: store status */
     status = readFromSocket(bkt);
 
     /* return one line of data */
@@ -396,7 +395,6 @@ buffSktReadLine(bucket_t *bkt, const char **data, apr_size_t *len)
         ptr++;
     }
 
-    /* TODO: return status of socket */
     if (ctx->remaining > 0)
         return APR_SUCCESS;
 
