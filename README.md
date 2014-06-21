@@ -25,11 +25,23 @@ As a consequence, the current feature set of MockHTTPinC is focussed on low-leve
 Getting started
 ---------------
 
-Include these 4 source files in your project:
-- MockHTTP.c
+There are two ways to include MockHTTPinC in your project.
+
+The first is by building a static or dynamic library. You'll need CMake 2.8.8 or later. From the directory that contains the root of the MockHTTPinC project run:
+
+    $ cmake .
+
+    $ make
+
+    $ make check
+
+
+MockHTTPinC also provides an amalgamation file, which contains all the C code in one big file. You'll only need to include these 2 source files in your project:
+- MockHTTP_amalgamation.c
 - MockHTTP.h
-- MockHTTP_private.h
-- MockHTTP_server.c
+
+The MockHHTTP_amalgamation.c is included in the release tarball. If you're using the source tree, you can create the file by running the script create_amalgamation.py.
+
 
 MockHTTPinC depends on these libraries:
 - Apache's apr and apr-util libraries. (http://apr.apache.org)
