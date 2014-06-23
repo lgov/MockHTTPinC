@@ -145,7 +145,7 @@ The following code will instruct the server to respond with a 200 OK response wi
     EndGiven
 ```
 
-All request templates and responses must be defined in a Given..EndGiven block. You can have multiple of such blocks in your code, and they can be defined even after the test has started and the server has responded to requests.
+All request templates and responses must be defined in a `Given(mh)` ... `EndGiven` block. You can have multiple of such blocks in your code, and they can be defined even after the test has started and the server has responded to requests.
 
 
 Request matching
@@ -183,6 +183,8 @@ Request matching
 
       IncompleteBodyEqualTo
 
+**HTTPS specific matching**
+
       ClientCertificateIsValid
 
       ClientCertificateCNEqualTo
@@ -219,6 +221,7 @@ Specifying actions
       SSLRenegotiate
 
       CloseConnection
+
 
 6. Verify that the client has done its work correctly
 -----------------------------------------------------
