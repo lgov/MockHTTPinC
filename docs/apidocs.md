@@ -22,7 +22,7 @@ In the next sections we'll explain how to use the MockHTTPinC API in each of thi
 
 
 1. Initialize the client and the MockHTTPinC library
-====================================================
+----------------------------------------------------
 
 Initializing the client is out of scope for this document. Initialize MockHTTPinC by calling mhInit(). This function will return a baton representing a MockHTTP session. You'll have to pass to any MockHTTPinC API call you make later.
 A MockHTTP session typically lives for the duration of one test scenario, and is not intended to be reused.
@@ -37,7 +37,7 @@ If your client needs to know the hostname and port of the mock server during ini
 
 
 2. Setup and run the mock server
-================================
+--------------------------------
 
 Next up is starting up the mock server and optional proxy. Here you'll see for the first time the fluent-style language we introduced in MockHTTPinC, using standard C macro's.
 
@@ -110,7 +110,7 @@ With the next options the server can be configured to only advertize specific ve
 
 
 3. Configure the client to use the mock server
-==============================================
+----------------------------------------------
 
 The actual port number on which the server and proxy are listening can be retrieved by calling respectively:
 
@@ -131,7 +131,7 @@ This will return the port numbers of the default server and proxy. If you have g
 
 
 4. Define how the mock server should respond to HTTP requests it receives
-=========================================================================
+-------------------------------------------------------------------------
 
 When the server receives a request from the system under test, it will try to match this request with templates defined in the test definition. When a match is found, the server will take the response associated with the template and return it to the client. In the absence of a specific defined response, the server will return a default response.
 
@@ -220,8 +220,8 @@ Specifying actions
 
       CloseConnection
 
-6. Verify that the client has done its work correctly:
-======================================================
+6. Verify that the client has done its work correctly
+-----------------------------------------------------
 
     Verify(mh)
       assertTrue(VerifyAllExpectationsOk);
@@ -241,7 +241,7 @@ Specifying actions
 
 
 7. Cleanup the client and MockHTTPinC resources
-===============================================
+-----------------------------------------------
 
 Cleanup the MockHTTPinC session by calling mhCleanup, pass it the baton returned by mhInit during initializatin. This will stop the mock server and free all memory it used, including all request template definitions, test statistics etc.
 
