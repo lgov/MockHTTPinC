@@ -22,7 +22,7 @@ In the next sections we'll explain how to use the MockHTTPinC API in each of thi
 
 
 1. Initialize the client and the MockHTTPinC library
-----------------------------------------------------
+====================================================
 
 Initializing the client is out of scope for this document. Initialize MockHTTPinC by calling mhInit(). This function will return a baton representing a MockHTTP session. You'll have to pass to any MockHTTPinC API call you make later.
 A MockHTTP session typically lives for the duration of one test scenario, and is not intended to be reused.
@@ -37,7 +37,7 @@ If your client needs to know the hostname and port of the mock server during ini
 
 
 2. Setup and run the mock server
---------------------------------
+================================
 
 Next up is starting up the mock server and optional proxy. Here you'll see for the first time the fluent-style language we introduced in MockHTTPinC, using standard C macro's.
 
@@ -109,8 +109,8 @@ With the next options the server can be configured to only advertize specific ve
 
 
 
-2. Configure the client to use the mock server
-----------------------------------------------
+3. Configure the client to use the mock server
+==============================================
 
 The actual port number on which the server and proxy are listening can be retrieved by calling respectively:
 
@@ -130,28 +130,35 @@ This will return the port numbers of the default server and proxy. If you have g
 
 
 
-3. Define how the mock server should respond to HTTP requests it receives.
---------------------------------------------------------------------------
+4. Define how the mock server should respond to HTTP requests it receives
+=========================================================================
 
 When the server receives a request from the system under test, it will try to match this request with templates defined in the test definition. When a match is found, the server will take the response associated with the template and return it to the client. In the absence of a specific defined response, the server will return a default response.
 
+The following code will instruct the server to respond with a 200 OK response with empty chunked response body, when a GET request arrives for resource /index.html with chunked response "1" containing a "Host" header with value "localhost".
+
 ```c
     Given(mh)
-      GETRequest(URLEqualTo("/"), ChunkedBodyEqualTo("1"),
+      GETRequest(URLEqualTo("/index.html"), ChunkedBodyEqualTo("1"),
                  HeaderEqualTo("Host", "localhost"))
         Respond(WithCode(200), WithChunkedBody(""))
     EndGiven
 ```
 
-Match requests
+All request templates and responses must be defined in a Given..EndGiven block. You can have multiple of such blocks in your code, and they can be defined even after the test has started and the server has responded to requests.
+
+
+Request matching
+----------------
+
+**Request line matching**
 
       GETRequest, POSTRequest, HEADRequest, HTTPRequest(,...)
 
       URLEqualTo
 
-      BodyEqualTo
 
-      RawBodyEqualTo
+**Header matching**
 
       HeaderEqualTo
 
@@ -160,6 +167,13 @@ Match requests
       HeaderSet
 
       HeaderNotSet
+
+
+**Request body matching**
+
+      BodyEqualTo
+
+      RawBodyEqualTo
 
       NotChunkedBodyEqualTo
 
@@ -175,7 +189,9 @@ Match requests
 
       ConnectionSetup
 
-Specifying response
+
+Building a response
+-------------------
 
       DefaultResponse
 
@@ -205,7 +221,7 @@ Specifying actions
       CloseConnection
 
 6. Verify that the client has done its work correctly:
-------------------------------------------------------
+======================================================
 
     Verify(mh)
       assertTrue(VerifyAllExpectationsOk);
@@ -223,3 +239,14 @@ Specifying actions
 
     ErrorMessage
 
+
+7. Cleanup the client and MockHTTPinC resources
+===============================================
+
+Cleanup the MockHTTPinC session by calling mhCleanup, pass it the baton returned by mhInit during initializatin. This will stop the mock server and free all memory it used, including all request template definitions, test statistics etc.
+
+```c
+mhCleanup(mh);
+```
+
+MockHTTPinC is not very conservative in its use of memory, it is assumed that the session is cleaned up after each test and a new empty session is created for the next test.
