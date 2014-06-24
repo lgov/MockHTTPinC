@@ -136,11 +136,11 @@ When the server receives a request from the system under test, it will try to ma
 The following code will instruct the server to respond with a 200 OK response with empty chunked response body, when a GET request arrives for resource /index.html with chunked response "1" containing a "Host" header with value "localhost".
 
 ```c
-    Given(mh)
-      GETRequest(URLEqualTo("/index.html"), ChunkedBodyEqualTo("1"),
-                 HeaderEqualTo("Host", "localhost"))
-        Respond(WithCode(200), WithChunkedBody(""))
-    EndGiven
+Given(mh)
+  GETRequest(URLEqualTo("/index.html"), ChunkedBodyEqualTo("1"),
+             HeaderEqualTo("Host", "localhost"))
+    Respond(WithCode(200), WithChunkedBody(""))
+EndGiven
 ```
 
 All request templates and responses must be defined in a `Given(mh)` ... `EndGiven` block. You can have multiple of such blocks in your code, and they can be defined even after the test has started and the server has responded to requests.
@@ -186,19 +186,9 @@ Defining a template starts with a call to `HTTPRequest`, or one of its variants.
 
 * `IncompleteBodyEqualTo(exp)`: Matches if the first part of the request's body equals EXP. This will make the server try to match partially received request bodies, where normally it waits until the full body is received.
 
-TODO: remove these before release.
-* `ChunkedBodyEqualTo(exp)`:
-* `NotChunkedBodyEqualTo(exp)`:
+* `ChunkedBodyEqualTo(exp)`: Matches if the request's body is chunk encoded and it equals EXP, after decoding.
 
-
-
-**HTTPS specific matching rules**
-
-* `ClientCertificateIsValid`:
-
-* `ClientCertificateCNEqualTo`:
-
-* `ConnectionSetup`:
+* `NotChunkedBodyEqualTo(exp)`: Matches if the request's body is NOT chunk encodeded and it equals EXP.
 
 
 Building a response
@@ -232,6 +222,26 @@ Specifying non-response actions
 
 * `CloseConnection`:
 
+
+Connection setup matching
+-------------------------
+
+Some specific checks not to happen on connection level, not per request. This can be achieved with the `ConnectionSetup` macro. Its use is similar to the `HTTPRequest` macro.
+
+Example:
+```c
+Given(mh)
+  ConnectionSetup(ClientCertificateIsValid,
+                  ClientCertificateCNEqualTo("Serf Client"))
+EndGiven
+```
+It's clear from the example that the ConnectionSetup template does not accept a response, its only purpose is to validate certain connection-level conditions. Note that the connection is not aborted when this validation fails. It's only after the test is run, in a call to  `VerifyConnectionSetupOk` that the given conditions are validated.
+
+**HTTPS specific matching rules**
+
+* `ClientCertificateIsValid`: Matches if the client certificate provided during SSL handshake by the client is valid: the issuer is in the provided list of trusted certificates (see `WithCertificateFiles`).
+
+* `ClientCertificateCNEqualTo(exp)`: Matches if the Common Name of the client certificate matches EXP (case sensitive).
 
 
 6. Verify that the client has done its work correctly
