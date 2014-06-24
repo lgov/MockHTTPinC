@@ -372,8 +372,8 @@ typedef struct mhResponseBldr_t mhResponseBldr_t;
 
 /* Use the provided string as raw response data. The response need not be
    valid HTTP.*/
-#define     WithRawData(data)\
-                mhRespSetRawData(__resp, (data))
+#define     WithRawData(data, len)\
+                mhRespSetRawData(__resp, (data), (len))
 
 #define     WithBodyRepeatedPattern(pattern, repeat)\
                 mhRespSetBodyPattern(__resp, (pattern), (repeat))
@@ -617,7 +617,8 @@ mhResponseBldr_t *mhRespSetUseRequestHeader(mhResponse_t *resp,
 mhResponseBldr_t *mhRespSetBody(mhResponse_t *resp, const char *body);
 mhResponseBldr_t *mhRespSetChunkedBody(mhResponse_t *resp, ...);
 mhResponseBldr_t *mhRespSetUseRequestBody(mhResponse_t *resp);
-mhResponseBldr_t *mhRespSetRawData(mhResponse_t *resp, const char *raw_data);
+mhResponseBldr_t *mhRespSetRawData(mhResponse_t *resp, const char *raw_data,
+                                   size_t length);
 mhResponseBldr_t *mhRespSetBodyPattern(mhResponse_t *resp, const char *pattern,
                                        unsigned int n);
 

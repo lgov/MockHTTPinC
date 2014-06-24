@@ -986,10 +986,11 @@ static apr_status_t writeResponse(_mhClientCtx_t *cctx, mhResponse_t *resp)
         _mhBuildResponse(resp);
         if (resp->raw_data) {
             cctx->respBody = resp->raw_data;
+            cctx->respRem = resp->raw_data_length;
         } else {
             cctx->respBody = respToString(pool, resp);
+            cctx->respRem = strlen(cctx->respBody);
         }
-        cctx->respRem = strlen(cctx->respBody);
     }
 
     len = cctx->respRem;
