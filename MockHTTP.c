@@ -451,7 +451,7 @@ static bool chunked_body_chunks_matcher(const mhReqMatcherBldr_t *mp,
 }
 
 mhReqMatcherBldr_t *
-mhMatchChunkedBodyChunksEqualTo(const MockHTTP *mh, ...)
+mhMatchBodyChunksEqualTo(const MockHTTP *mh, ...)
 {
     apr_pool_t *pool = mh->pool;
     apr_array_header_t *chunks;

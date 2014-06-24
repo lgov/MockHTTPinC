@@ -472,7 +472,7 @@ static void test_verify_req_chunked_body(CuTest *tc)
         ChunkedBodyEqualTo("1"))
       GETRequest(
         URLEqualTo("/index2.html"),
-        ChunkedBodyChunksEqualTo("chunk1", "chunk2"))
+        BodyChunksEqualTo("chunk1", "chunk2"))
     EndGiven
 
     /* system under test */
@@ -577,7 +577,7 @@ static void test_verify_req_chunked_body_fails(CuTest *tc)
     Given(mh)
       GETRequest(
         URLEqualTo("/index.html"),
-          ChunkedBodyChunksEqualTo("chunk1", "chunk2"))
+          BodyChunksEqualTo("chunk1", "chunk2"))
     EndGiven
 
     /* system under test */
@@ -598,7 +598,7 @@ static void test_verify_req_chunked_body_fails(CuTest *tc)
     Given(mh)
       GETRequest(
         URLEqualTo("/index2.html"),
-          ChunkedBodyChunksEqualTo("chunk1", "chunk2"))
+          BodyChunksEqualTo("chunk1", "chunk2"))
     EndGiven
 
     /* system under test */
@@ -626,7 +626,7 @@ static void test_string_exact_match(CuTest *tc)
     Given(mh)
       GETRequest(URLEqualTo("/index1.html"), ChunkedBodyEqualTo("chunk1"))
       GETRequest(URLEqualTo("/index2.html"), ChunkedBodyEqualTo("chunk20"))
-      GETRequest(URLEqualTo("/index3.html"), ChunkedBodyChunksEqualTo("chunk30",
+      GETRequest(URLEqualTo("/index3.html"), BodyChunksEqualTo("chunk30",
                                                                       "chunk4"))
       GETRequest(URLEqualTo("/index4.html"), BodyEqualTo("body5"))
       GETRequest(URLEqualTo("/index5.html"), BodyEqualTo("body60"))

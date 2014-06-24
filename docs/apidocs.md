@@ -182,7 +182,7 @@ Defining a template starts with a call to `HTTPRequest`, or one of its variants.
 
 * `RawBodyEqualTo(exp)`: Matches if the request's body, in its raw form, equals EXP. This is before decoding, e.g. with chunked headers included.
 
-* `ChunkedBodyChunksEqualTo(chunk1, chunk2, ...)`: Matches if the request's body is chunk encoded and the chunks exactly match parameters chunk1, chunk2 ... .
+* `BodyChunksEqualTo(chunk1, chunk2, ...)`: Matches if the request's body is chunk encoded and the chunks exactly match parameters chunk1, chunk2 ... .
 
 * `IncompleteBodyEqualTo(exp)`: Matches if the first part of the request's body equals EXP. This will make the server try to match partially received request bodies, where normally it waits until the full body is received.
 
