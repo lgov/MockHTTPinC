@@ -24,8 +24,8 @@ In the next sections we'll explain how to use the MockHTTPinC API in each of thi
 1. Initialize the client and the MockHTTPinC library
 ----------------------------------------------------
 
-Initializing the client is out of scope for this document. Initialize MockHTTPinC by calling mhInit(). This function will return a baton representing a MockHTTP session. You'll have to pass to any MockHTTPinC API call you make later.
-A MockHTTP session typically lives for the duration of one test scenario, and is not intended to be reused.
+Initializing the client is out of scope for this document. Initialize MockHTTPinC by calling `mhInit()`. This function will return a baton representing a MockHTTP session. You'll have to pass to any MockHTTPinC API call you make later.
+A MockHTTP session typically lives for the duration of one test scenario, and should not be reused.
 
 ```c
 #include "MockHTTP.h"
@@ -48,7 +48,6 @@ The macro language provides two benefits over a normal C API:
 For these macro's to work you'll have to wrap them in a block using one of the block opening statements `InitMockServers(mh)` ... `EndInit`, `Given(mh)` ... `EndGiven`, `Verify(mh)` ... `EndVerify` , where `mh` is the pointer holding the MockHTTP baton.
 
 Example of setting up a mock server and a mock proxy:
-
 ```c
 InitMockServers(mh)
   SetupServer(WithHTTP, WithPort(12345), InMainThread)
@@ -56,11 +55,11 @@ InitMockServers(mh)
 EndInit
 ```
 
-Each MockHTTP session can manage one server and one proxy at this time. Both server and proxy are event driven and can handle many TCP connections at the same time (tested with 1000+ connections) but are limited to one thread. 
+Each MockHTTP session can manage one server and one proxy. Both server and proxy are event driven and can handle many TCP connections at the same time (tested with 1000+ connections) but are limited to one thread.
 
 
 
-`SetupServer` and `SetupProxy` accept any of the following named parameters:
+`SetupServer` and `SetupProxy` accept any of the following named parameters.
 
 
 First, choose if the server and proxy should support HTTP or HTTPS:
@@ -85,7 +84,7 @@ These are options that can be used with both HTTP/HTTPS server and proxy:
 
 
 
-Options specific to HTTPS servers
+Options specific to HTTPS servers:
 
 * `WithCertificateKeyFile(path)`: Path of the PEM-encoded private key file for the server certificate.
    
@@ -113,19 +112,18 @@ With the next options the server can be configured to only advertize specific ve
 ----------------------------------------------
 
 The actual port number on which the server and proxy are listening can be retrieved by calling respectively:
-
 ```c
-    server_port = mhServerPortNr(mh);
-````
+server_port = mhServerPortNr(mh);
+```
 and
 ```c
-    proxy_port = mhProxyPortNr(mh);
-````
+proxy_port = mhProxyPortNr(mh);
+```
+These will return the port numbers of the default server and proxy. 
 
-This will return the port numbers of the default server and proxy. If you have given the server a non-default ID, use:
-
+If you have given the server a non-default ID, use:
 ```c
-    server_port = mhServerByIDPortNr(mh, "my_server_name");
+server_port = mhServerByIDPortNr(mh, "my_server_name");
 ```
 
 
@@ -151,76 +149,89 @@ All request templates and responses must be defined in a `Given(mh)` ... `EndGiv
 Request matching
 ----------------
 
+Defining a template starts with a call to `HTTPRequest`, or one of its variants. This macro take a non-empty set of rules. A request will match a template if all its rules match.
+
+* `HTTPRequest(...)`: Matches any HTTP 1.0 and HTTP 1.1 request.
+
+* `GETRequest(...)`, `POSTRequest(...)`, `HEADRequest(...)`: Matches any HTTP 1.0 and HTTP 1.1 request with a method equal to resp. GET, POST or HEAD. This is short for `HTTPRequest(MethodEqualTo("GET"), ...)`.
+
+
 **Request line matching**
 
-      GETRequest, POSTRequest, HEADRequest, HTTPRequest(,...)
+* `MethodEqualTo(exp)`: Matches if the request's method equals EXP.
 
-      URLEqualTo
+* `URLEqualTo(exp)`: Matches if the request's url equals EXP (case sensitive).
+
+* `URLNotEqualTo`: Matches if the request's url does not equal EXP (case sensitive).
 
 
 **Header matching**
 
-      HeaderEqualTo
+* `HeaderEqualTo(header, exp)`: Matches if header HEADER is set on the request and its value equals EXP (case sensitive).
 
-      HeaderNotEqualTo
+* `HeaderNotEqualTo(header, exp)`: Matches if header HEADER is not set on the request or if its value DOES NOT equal EXP (case sensitive).
 
-      HeaderSet
+* `HeaderSet(header)`: Matches if header HEADER is set on the request.
 
-      HeaderNotSet
+* `HeaderNotSet(header)`: Matches if header HEADER is NOT set on the request.
 
 
 **Request body matching**
 
-      BodyEqualTo
+* `BodyEqualTo(exp)`: Matches if the request's body equals EXP. This is after any decoding, e.g. if chunked encoding is used all chunks are combined to one body before matching.
 
-      RawBodyEqualTo
+* `RawBodyEqualTo(exp)`: Matches if the request's body, in its raw form, equals EXP. This is before decoding, e.g. with chunked headers included.
 
-      NotChunkedBodyEqualTo
+* `ChunkedBodyChunksEqualTo(chunk1, chunk2, ...)`: Matches if the request's body is chunk encoded and the chunks exactly match parameters chunk1, chunk2 ... .
 
-      ChunkedBodyEqualTo
+* `IncompleteBodyEqualTo(exp)`: Matches if the first part of the request's body equals EXP. This will make the server try to match partially received request bodies, where normally it waits until the full body is received.
 
-      ChunkedBodyChunksEqualTo
+TODO: remove these before release.
+* `ChunkedBodyEqualTo(exp)`:
+* `NotChunkedBodyEqualTo(exp)`:
 
-      IncompleteBodyEqualTo
+
 
 **HTTPS specific matching**
 
-      ClientCertificateIsValid
+* `ClientCertificateIsValid`:
 
-      ClientCertificateCNEqualTo
+* `ClientCertificateCNEqualTo`:
 
-      ConnectionSetup
+* `ConnectionSetup`:
 
 
 Building a response
 -------------------
 
-      DefaultResponse
+* `DefaultResponse`:
 
-      Respond
+* `Respond`:
 
-      WithCode
+* `WithCode`:
 
-      WithHeader
+* `WithHeader`:
 
-      WithBody
+* `WithBody`:
 
-      WithChunkedBody
+* `WithChunkedBody`:
 
-      WithRequestBody
+* `WithRequestBody`:
 
-      WithConnectionCloseHeader
+* `WithConnectionCloseHeader`:
 
-      WithRawData
+* `WithRawData`:
 
 
-Specifying actions
+Specifying non-response actions
+-------------------------------
 
-      SetupSSLTunnel
+* `SetupSSLTunnel`:
 
-      SSLRenegotiate
+* `SSLRenegotiate`:
 
-      CloseConnection
+* `CloseConnection`:
+
 
 
 6. Verify that the client has done its work correctly
