@@ -301,9 +301,9 @@ typedef struct mhResponseBldr_t mhResponseBldr_t;
 
 /* Match a request's body which should be chunked encoded with a list of
    chunks.
-   e.g. ChunkedBodyChunksEqualTo("chunk1", "chunk2") */
-#define     ChunkedBodyChunksEqualTo(...)\
-                mhMatchChunkedBodyChunksEqualTo(__mh, __VA_ARGS__, NULL)
+   e.g. BodyChunksEqualTo("chunk1", "chunk2") */
+#define     BodyChunksEqualTo(...)\
+                mhMatchBodyChunksEqualTo(__mh, __VA_ARGS__, NULL)
 
 #define     IncompleteBodyEqualTo(x)\
                 mhMatchIncompleteBodyEqualTo(__mh, (x))
@@ -590,7 +590,7 @@ mhReqMatcherBldr_t *mhMatchBodyNotChunkedEqualTo(const MockHTTP *mh,
                                                   const char *expected);
 mhReqMatcherBldr_t *mhMatchChunkedBodyEqualTo(const MockHTTP *mh,
                                                const char *expected);
-mhReqMatcherBldr_t *mhMatchChunkedBodyChunksEqualTo(const MockHTTP *mh, ...);
+mhReqMatcherBldr_t *mhMatchBodyChunksEqualTo(const MockHTTP *mh, ...);
 mhReqMatcherBldr_t *mhMatchHeaderEqualTo(const MockHTTP *mh,
                                           const char *hdr, const char *value);
 mhReqMatcherBldr_t *mhMatchHeaderNotEqualTo(const MockHTTP *mh,
