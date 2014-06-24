@@ -149,14 +149,14 @@ All request templates and responses must be defined in a `Given(mh)` ... `EndGiv
 Request matching
 ----------------
 
-Defining a template starts with a call to `HTTPRequest`, or one of its variants. This macro take a non-empty set of rules. A request will match a template if all its rules match.
+Defining a template starts with a call to `HTTPRequest`, or one of its variants. This macro take a non-empty set of rules as parameters. A request will match a template if all its rules match.
 
 * `HTTPRequest(...)`: Matches any HTTP 1.0 and HTTP 1.1 request.
 
 * `GETRequest(...)`, `POSTRequest(...)`, `HEADRequest(...)`: Matches any HTTP 1.0 and HTTP 1.1 request with a method equal to resp. GET, POST or HEAD. This is short for `HTTPRequest(MethodEqualTo("GET"), ...)`.
 
 
-**Request line matching**
+**Request line matching rules**
 
 * `MethodEqualTo(exp)`: Matches if the request's method equals EXP.
 
@@ -165,7 +165,7 @@ Defining a template starts with a call to `HTTPRequest`, or one of its variants.
 * `URLNotEqualTo`: Matches if the request's url does not equal EXP (case sensitive).
 
 
-**Header matching**
+**Header matching rules**
 
 * `HeaderEqualTo(header, exp)`: Matches if header HEADER is set on the request and its value equals EXP (case sensitive).
 
@@ -176,7 +176,7 @@ Defining a template starts with a call to `HTTPRequest`, or one of its variants.
 * `HeaderNotSet(header)`: Matches if header HEADER is NOT set on the request.
 
 
-**Request body matching**
+**Request body matching rules**
 
 * `BodyEqualTo(exp)`: Matches if the request's body equals EXP. This is after any decoding, e.g. if chunked encoding is used all chunks are combined to one body before matching.
 
@@ -192,7 +192,7 @@ TODO: remove these before release.
 
 
 
-**HTTPS specific matching**
+**HTTPS specific matching rules**
 
 * `ClientCertificateIsValid`:
 
