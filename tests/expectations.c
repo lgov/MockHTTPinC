@@ -1498,7 +1498,7 @@ static void test_raw_response(CuTest *tc)
 
     Given(mh)
       GETRequest(URLEqualTo("/index.html"))
-        Respond(WithRawData(RESPONSE_408))
+        Respond(WithRawData(RESPONSE_408, strlen(RESPONSE_408)))
     EndGiven
 
     /* system under test */
