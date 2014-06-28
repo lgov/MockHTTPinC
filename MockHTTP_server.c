@@ -807,10 +807,14 @@ static apr_status_t readRequest(_mhClientCtx_t *cctx, mhRequest_t **preq)
     bucket_t *bkt;
     apr_status_t status = APR_SUCCESS;
 
+    bkt = cctx->stream;
     if (req == NULL) {
+        apr_size_t len;
+        STATUSREADERR(bkt->type->peek(bkt, &len));
+        if (!len)
+            return status;
         req = *preq = _mhInitRequest(cctx->pool);
     }
-    bkt = cctx->stream;
 
     while (!status) { /* read all available data */
         bool done = NO;

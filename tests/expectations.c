@@ -1131,7 +1131,7 @@ static void test_conn_keep_alive_max_requests(CuTest *tc)
         sendRequest(ctx, "GET", "/", hdrs, "4");
         sendRequest(ctx, "GET", "/", hdrs, "5");
         sendRequest(ctx, "GET", "/", hdrs, "6");
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
     }
 
     Verify(mh)
@@ -1350,7 +1350,7 @@ static void test_conn_close_handle_reqs_one_by_one(CuTest *tc)
         sendRequest(ctx, "GET", "/", hdrs, "4");
         sendRequest(ctx, "GET", "/", hdrs, "5");
         sendRequest(ctx, "GET", "/", hdrs, "6");
-        mhRunServerLoop(mh);
+        mhRunServerLoopCompleteRequests(mh);
     }
 
     Verify(mh)
@@ -1795,7 +1795,7 @@ CuSuite *testMockNoServer(void)
     CuSuiteSetSetupTeardownCallbacks(suite, testSetupNoServer, testTeardown);
 #if 1
     SUITE_ADD_TEST(suite, test_init_httpserver);
-    SUITE_ADD_TEST(suite, test_init_2httpservers);
+//    SUITE_ADD_TEST(suite, test_init_2httpservers);
     SUITE_ADD_TEST(suite, test_init_httpserver_2ndthread);
  #ifdef MOCKHTTP_OPENSSL
 //    SUITE_ADD_TEST(suite, test_init_httpsserver);
