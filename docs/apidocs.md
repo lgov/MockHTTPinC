@@ -74,11 +74,11 @@ These are options that can be used with both HTTP/HTTPS server and proxy:
     
 * `WithPort(portnr)`: starts up the server on this port. If the port is not available, the server will increase the port number until it finds one that's available. Default port for a server is 30080, for a proxy its 38080.
    
-* `WithMaxKeepAliveRequests(max)`: Defines the maxinum number of requests the server will receive on one TCP connection before it closes the connection. The mock server will set the Connection: close header on the last response. Default is 0: unlimited.
+* `WithMaxKeepAliveRequests(max)`: Defines the maximum number of requests the server will receive on one TCP connection before it closes the connection. The mock server will set the Connection: close header on the last response. Default is 0: unlimited.
 
-* `InMainThread`: Starts up a server or proxy in the main thread. This requires that you call mhRunServerLoop or mhRunServerLoopCompleteRequests regularly for the server to process events (accept inconing connections, receive and send data etc.), so it'll only work when testing a non-blocking client. This is the default.
+* `InMainThread`: Starts up a server or proxy in the main thread. This requires that you call `mhRunServerLoop` or `mhRunServerLoopCompleteRequests` regularly for the server to process events (accept incoming connections, receive and send data etc.), so it'll only work when testing a non-blocking client. This is the default.
 
-* `InSeparateThread`: Starts up the server or proxy in a new thread. The new thread will have its own event loop which processes events continously, so this is the path to choose when testing a blocking client.
+* `InSeparateThread`: Starts up the server or proxy in a new thread. The new thread will have its own event loop which processes events continuously, so this is the path to choose when testing a blocking client.
 
 
 
@@ -86,17 +86,19 @@ Options specific to HTTPS servers:
 
 * `WithCertificateKeyFile(path)`: Path of the PEM-encoded private key file for the server certificate.
    
+* `WithCertificateKeyPassPhrase(passphrase)`: Sets the passphrase for the private key set with `WithCertificateKeyFile`.
+
 * `WithCertificateFiles(...)`: List of paths to the certificate file(s).
-* `WithCertificateFileArray(paths)`: Array of paths to the certifcate file(s), terminated by a NULL path. The certificate files provided by either of these two named parameters will be sent by the server to the client during the SSL handshake. For a successful SSL handshake, you'll need to pass the server certificate and any intermediate and root CA certificate not trusted by the client.
+* `WithCertificateFileArray(paths)`: Array of paths to the certificate file(s), terminated by a NULL path. The certificate files provided by either of these two named parameters will be sent by the server to the client during the SSL handshake. For a successful SSL handshake, you'll need to pass the server certificate and any intermediate and root CA certificate not trusted by the client.
 
 * `WithCertificateFilesPrefix(path_prefix)`: This prefix will be prepended to any path provided to `WithCertificateFiles` or `WithCertificateFileArray`, enables you to use relative paths in these two parameters.
 
 * `WithOptionalClientCertificate`: Setting this option will make the server ask for a client certificate during the SSL handshake, but the handshake will not fail if the client does not provide a certificate.
    
-* `WithRequiredClientCertificate`:With this option the server will require that the client provides a client certificate for a successful handhake to happen.
+* `WithRequiredClientCertificate`:With this option the server will require that the client provides a client certificate for a successful handshake to happen.
 
 
-With the next options the server can be configured to only advertize specific versions of SSL and/or TLS. If no parameters are expliclity provided, the server advertises SSLv3, TLSv1, TLSv1.1 and TLSv1.2 if supported by the OpenSSL library.
+With the next options the server can be configured to only advertise specific versions of SSL and/or TLS. If no parameters are explicitly provided, the server advertises SSLv3, TLSv1, TLSv1.1 and TLSv1.2 if supported by the OpenSSL library.
 
 * `WithSSLv2`: Enable SSLv2.
 * `WithSSLv3`: Enable SSLv3.
@@ -187,7 +189,7 @@ Defining a template starts with a call to `HTTPRequest`, or one of its variants.
 
 * `ChunkedBodyEqualTo(exp)`: Matches if the request's body is chunk encoded and it equals EXP, after decoding.
 
-* `NotChunkedBodyEqualTo(exp)`: Matches if the request's body is NOT chunk encodeded and it equals EXP.
+* `NotChunkedBodyEqualTo(exp)`: Matches if the request's body is NOT chunk encoded and it equals EXP.
 
 
 Connection setup matching
@@ -228,13 +230,20 @@ Defining a response starts with a call to `Respond`, or `DefaultResponse`. This 
 
 * `WithHeader(header, value)`: Sets the header HEADER with value VALUE on the response.
 
-* `WithRequestHeader(header)`: If set, copy header HEADER and its value to the response.
+* `WithRequestHeader(header)`: If header HEADER is set on the request, copy the header and its value to the response.
 
 * `WithConnectionCloseHeader`: Adds a "Connection: close" header to the response and makes the mock server close the connection after sending the response.
 
 * `WithBody(body)`: Sets the response body to string BODY. This will automatically add a Content-Length header with BODY length as value.
 
 * `WithChunkedBody(...)`: Sets the response body as a list of chunks e.g. WithChunkedBody("chunk1", "chunk2"). This will automatically add a "Transfer-Encoding: chunked" header to the response.
+Example:
+```c
+Given(mh)
+  GETRequest(URLEqualTo("/index.html"), HeaderEqualTo("Host", "localhost"))
+    Respond(WithCode(200), WithChunkedBody("chunk1", "chunk2", "chunk3"))
+EndGiven
+```
 
 * `WithRequestBody`: Constructs the response body by copying the body of the request.
 
@@ -255,7 +264,7 @@ Each request template can have one optional response and one optional extra acti
 Other methods
 -------------
 
-* `OnConditionThat(cond,builder)`: This method can be used to wrap a request matching rule or a response builder method, and only apply to rule or method when COND evaluates to  true`.
+* `OnConditionThat(cond,builder)`: This method can be used to wrap a request matching rule, a response builder method or a server configuration option and only apply the rule, method or option when COND evaluates to `true`.
 
 Example:
 ```c
@@ -301,27 +310,61 @@ You'll notice the new statement `RequestsReceivedByProxy`. This statement specif
 6. Verify that the client has done its work correctly
 -----------------------------------------------------
 
-    Verify(mh)
-      assertTrue(VerifyAllExpectationsOk);
-    EndVerify
+MockHTTPinC declares the `YES` and `NO` macro's, which are respectively a non-0 number and 0.
+```c
+Verify(mh)
+  assertTrue(VerifyAllRequestsReceivedInOrder);
+EndVerify
+```
 
-    VerifyAllRequestsReceived
+* `VerifyAllRequestsReceived`: Returns YES if all request templates where at least matched once and in any order, NO otherwise.
 
-    VerifyAllRequestsReceivedInOrder
+* `VerifyAllRequestsReceivedInOrder`: Returns YES if all request templates where  matched once and in the order they were defined, NO otherwise.
 
-    VerifyAllExpectationsOk
+* `VerifyConnectionSetupOk`: Returns YES if there were no errors reported by the connection level rules (see `WithOptionalClientCertificate` and `WithRequiredClientCertificate`), NO otherwise.
 
-    VerifyConnectionSetupOk
+* `VerifyStats`: The mock server keeps track of certain request statistics during a test run. These can be retrieved using `VerifyStats`, which returns a struct of type `mhStats_t`. This structure is defined as follows:
+```c
+typedef struct mhStats_t {
+    /* Number of requests received and read by the server. This does not include
+       pipelined requests that were received after the server closed the socket. */
+    unsigned int requestsReceived;
 
-    VerifyStats
+    /* Number of requests the server responded to. This includes default 
+       responses or 500 Internal Server Error responses */
+    unsigned int requestsResponded;
 
-    ErrorMessage
+    /* Number of requests for which no match was found. */
+    unsigned int requestsNotMatched;
+
+    /* Number of requests for which a match was found. */
+    unsigned int requestsMatched;
+} mhStats_t;
+```
+
+This example shows how to verify the number of responses the server sent:
+```c
+Verify(mh)
+  assertIntEquals(5, VerifyStats->requestsReceived);
+  assertIntEquals(5, VerifyStats->requestsResponded);
+  assertIntEquals(0, VerifyStats->requestsMatched);
+  assertIntEquals(5, VerifyStats->requestsNotMatched);
+EndVerify
+```
+
+* `ErrorMessage`: Returns the last error message, if any. It should be used in combination with one of the `Verify...` methods. 
+Note that ErrorMessage returns a pointer to a static memory location so that the method can be called before the call to a `Verify...` method, like in this example, where the order in which the two methods are called isn't guaranteed:
+```c
+Verify(mh)
+  assertPrintMsgOnError(ErrorMessage, VerifyAllRequestsReceived);
+EndVerify
+```
 
 
 7. Cleanup the client and MockHTTPinC resources
 -----------------------------------------------
 
-Cleanup the MockHTTPinC session by calling mhCleanup, pass it the baton returned by mhInit during initializatin. This will stop the mock server and free all memory it used, including all request template definitions, test statistics etc.
+Cleanup the MockHTTPinC session by calling `mhCleanup`, pass it the baton returned by mhInit during initialization. This will stop the mock server and free all memory it used, including all request template definitions, test statistics etc.
 
 ```c
 mhCleanup(mh);
