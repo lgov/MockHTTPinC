@@ -473,13 +473,16 @@ typedef struct mhStats_t {
        pipelined requests that were received after the server closed the socket.
      */
     unsigned int requestsReceived;
+
     /* Number of requests the server responded to. This includes default 
        responses or 500 Internal Server Error responses */
     unsigned int requestsResponded;
+
     /* Number of requests for which a match was found. */
-    unsigned int requestsNotMatched;
-    /* Number of requests for which no match was found. */
     unsigned int requestsMatched;
+
+    /* Number of requests for which no match was found. */
+    unsigned int requestsNotMatched;
 } mhStats_t;
 
 typedef unsigned long mhError_t;
