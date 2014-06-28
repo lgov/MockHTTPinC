@@ -34,6 +34,8 @@ The first is by building a static or dynamic library. You'll need CMake 2.8.8 or
     $ make
 
     $ make check
+    
+    $ make install
 
 
 MockHTTPinC also provides an amalgamation file, which contains all the C code in one big file. You'll only need to include these 2 source files in your project:
