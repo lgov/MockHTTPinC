@@ -1,0 +1,9 @@
+MockHTTPinC 0.1.0 [2014-06-08, initial release.]
+  Features:
+  - Mock HTTP and HTTPS server
+  - SSL Tunnel support
+  - HTTPS server supports server certificate, client certificate and renegotiation.
+  - Event driven server in the main thread
+  - Match requests by method, url, headers, body
+  - Support action to close the connection after a response is sent
+  - Server gathers requests statistics
