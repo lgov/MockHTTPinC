@@ -664,7 +664,7 @@ const char *mhGetLastErrorString(const MockHTTP *mh);
 
 mhError_t mhInitHTTPSserver(MockHTTP *mh, ...);
 
-#define MOCKHTTP_VERSION 0.1.0
+#define MOCKHTTP_VERSION 0.2.0
 
 #ifdef __cplusplus
 }
