@@ -57,8 +57,6 @@ EndInit
 
 Each MockHTTP session can manage one server and one proxy. Both server and proxy are event driven and can handle many TCP connections at the same time (tested with 1000+ connections) but are limited to one thread.
 
-
-
 `SetupServer` and `SetupProxy` accept any of the following named parameters.
 
 
@@ -260,7 +258,7 @@ Other methods
 
 Example:
 ```c
-InitMockServers(tb->mh)
+InitMockServers(mh)
   SetupServer(WithHTTPS, WithID("server"), WithPort(30080),
               WithCertificateFilesPrefix("test/certs")),
               WithCertificateKeyFile(keyfile),
@@ -276,10 +274,21 @@ The example sets up the mock server with either option `WithRequiredClientCertif
 Setting up a proxy
 ------------------
 
+While proxying HTTP requests is not supported at this time, the MockHTTPinC library has built-in SSL tunnel support. The support is not automatic, but can be configured using a response action:
+
 * `SetupSSLTunnel`: Instructs the HTTP mock proxy server to set up an SSL tunnel to the server.
+
 Example:
 ```c
-Given(tb->mh)
+Example of setting up a mock server and a mock proxy:
+```c
+// Setup the proxy
+InitMockServers(mh)
+  SetupProxy(WithHTTP, WithPort(54321))
+EndInit
+
+Given(mh)
+  // Setup an SSL tunnel in response to a CONNECT request received at the proxy.
   RequestsReceivedByProxy
     HTTPRequest(MethodEqualTo("CONNECT"))
       Respond(WithCode(200), WithChunkedBody(""))
@@ -287,9 +296,7 @@ Given(tb->mh)
 EndGiven
 ```
 
-* `RequestsReceivedByProxy`:
-
-* `RequestsReceivedByServer`:
+You'll notice the new statement `RequestsReceivedByProxy`. This statement specifies that all following request templates are matched to requests arriving at the proxy, not at the server. By default request templates are matched at the server end only, this can be made explicit using the `RequestsReceivedByServer` statement.
 
 
 6. Verify that the client has done its work correctly
