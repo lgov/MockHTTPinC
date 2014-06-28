@@ -191,42 +191,10 @@ Defining a template starts with a call to `HTTPRequest`, or one of its variants.
 * `NotChunkedBodyEqualTo(exp)`: Matches if the request's body is NOT chunk encodeded and it equals EXP.
 
 
-Building a response
--------------------
-
-* `DefaultResponse`:
-
-* `Respond`:
-
-* `WithCode`:
-
-* `WithHeader`:
-
-* `WithBody`:
-
-* `WithChunkedBody`:
-
-* `WithRequestBody`:
-
-* `WithConnectionCloseHeader`:
-
-* `WithRawData`:
-
-
-Specifying non-response actions
--------------------------------
-
-* `SetupSSLTunnel`:
-
-* `SSLRenegotiate`:
-
-* `CloseConnection`:
-
-
 Connection setup matching
 -------------------------
 
-Some specific checks not to happen on connection level, not per request. This can be achieved with the `ConnectionSetup` macro. Its use is similar to the `HTTPRequest` macro.
+Some specific checks need to happen on connection level, not per request. This can be achieved with the `ConnectionSetup` macro. Its use is similar to the `HTTPRequest` macro.
 
 Example:
 ```c
@@ -242,6 +210,86 @@ It's clear from the example that the ConnectionSetup template does not accept a 
 * `ClientCertificateIsValid`: Matches if the client certificate provided during SSL handshake by the client is valid: the issuer is in the provided list of trusted certificates (see `WithCertificateFiles`).
 
 * `ClientCertificateCNEqualTo(exp)`: Matches if the Common Name of the client certificate matches EXP (case sensitive).
+
+
+Building a response
+-------------------
+
+When the mock server matches an incoming request with one of the templates, it will return the response message defined for the request template. The mock server will return a default "200 OK" response if a request template matched but no response was defined. When the mock server receives a request that it can't match, it will return a "500 Internal Server Error" message.
+
+Defining a response starts with a call to `Respond`, or `DefaultResponse`. This macro take a non-empty set of parameters. Each parameter is a builder method, which configures one aspect of the response. The builder functions are evaluated late, during response construction.
+
+* `DefaultResponse(...)`: Build a response and set it as the default for matched requests.
+
+* `Respond(...)`: Build a response, attach it to the most recently defined request template (see `HTTPRequest`)
+
+**Response parameters**
+
+* `WithCode(code)`: Sets the HTTP response code. The default code of a response to a matched request is 200 OK.
+
+* `WithHeader(header, value)`: Sets the header HEADER with value VALUE on the response.
+
+* `WithRequestHeader(header)`: If set, copy header HEADER and its value to the response.
+
+* `WithConnectionCloseHeader`: Adds a "Connection: close" header to the response and makes the mock server close the connection after sending the response.
+
+* `WithBody(body)`: Sets the response body to string BODY. This will automatically add a Content-Length header with BODY length as value.
+
+* `WithChunkedBody(...)`: Sets the response body as a list of chunks e.g. WithChunkedBody("chunk1", "chunk2"). This will automatically add a "Transfer-Encoding: chunked" header to the response.
+
+* `WithRequestBody`: Constructs the response body by copying the body of the request.
+
+* `WithBodyRepeatedPattern(pattern, repeat)`: Constructs the response body by repeating the string PATTERN REPEAT times. This is an easy way to create very large response bodies.
+
+* `WithRawData(data, len)`: Constructs the response from raw data of length LEN. DATA  should be a complete well formed HTTP/1.x response, including status line, headers and/or body.
+
+
+Specifying non-response actions
+-------------------------------
+Each request template can have one optional response and one optional extra action. The latter instructs the mock server to execute a certain action after sending the response to the client.
+
+* `SSLRenegotiate`: Instructs the HTTPS mock server to initiate a SSL renegotiation. The MockHTTP session will go to an error state when the renegotiation fails.
+
+* `CloseConnection`: Instructs the mock server to close the connection.
+
+
+Other methods
+-------------
+
+* `OnConditionThat(cond,builder)`: This method can be used to wrap a request matching rule or a response builder method, and only apply to rule or method when COND evaluates to  true`.
+
+Example:
+```c
+InitMockServers(tb->mh)
+  SetupServer(WithHTTPS, WithID("server"), WithPort(30080),
+              WithCertificateFilesPrefix("test/certs")),
+              WithCertificateKeyFile(keyfile),
+              WithCertificateKeyPassPhrase("test"),
+              WithCertificateFileArray(certfiles),
+              OnConditionThat(check_cert == test_clientcert_mandatory, WithRequiredClientCertificate),
+              OnConditionThat(check_cert == test_clientcert_optional, WithOptionalClientCertificate))
+EndInit
+```
+The example sets up the mock server with either option `WithRequiredClientCertificate` or `WithOptionalClientCertificate` depending on the value of variable `check_cert`.
+
+
+Setting up a proxy
+------------------
+
+* `SetupSSLTunnel`: Instructs the HTTP mock proxy server to set up an SSL tunnel to the server.
+Example:
+```c
+Given(tb->mh)
+  RequestsReceivedByProxy
+    HTTPRequest(MethodEqualTo("CONNECT"))
+      Respond(WithCode(200), WithChunkedBody(""))
+      SetupSSLTunnel
+EndGiven
+```
+
+* `RequestsReceivedByProxy`:
+
+* `RequestsReceivedByServer`:
 
 
 6. Verify that the client has done its work correctly
