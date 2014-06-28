@@ -47,3 +47,8 @@ add_executable(tests/mockhttp_tests EXCLUDE_FROM_ALL tests/expectations.c
                tests/httpClient.c tests/CuTest/CuTest.c MockHTTP.c 
                MockHTTP_server.c)
 target_link_libraries(tests/mockhttp_tests ${LIBS})
+
+# create target 'install'.
+install (TARGETS mockhttp_static DESTINATION lib)
+install (TARGETS mockhttp_shared DESTINATION lib)
+install (FILES MockHTTP.h DESTINATION include/MockHTTPinC)
