@@ -151,7 +151,8 @@ Defining a template starts with a call to `HTTPRequest`, or one of its variants.
 
 * `HTTPRequest(...)`: Matches any HTTP 1.0 and HTTP 1.1 request.
 
-* `GETRequest(...)`, `POSTRequest(...)`, `HEADRequest(...)`: Matches any HTTP 1.0 and HTTP 1.1 request with a method equal to resp. GET, POST or HEAD. This is short for `HTTPRequest(MethodEqualTo("GET"), ...)`.
+* `GETRequest(...)`, `POSTRequest(...)`, `HEADRequest(...)`, 
+  `PUTRequest(...)`, `DELETERequest(...)`, `OPTIONSRequest(...)`: Matches any HTTP 1.0 and HTTP 1.1 request with a method equal to resp. GET, POST, HEAD, PUT, DELETE or OPTIONS. This is short for `HTTPRequest(MethodEqualTo("GET"), ...)`.
 
 
 **Request line matching rules**
@@ -278,8 +279,6 @@ While proxying HTTP requests is not supported at this time, the MockHTTPinC libr
 
 * `SetupSSLTunnel`: Instructs the HTTP mock proxy server to set up an SSL tunnel to the server.
 
-Example:
-```c
 Example of setting up a mock server and a mock proxy:
 ```c
 // Setup the proxy

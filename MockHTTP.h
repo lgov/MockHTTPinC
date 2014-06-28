@@ -241,9 +241,27 @@ typedef struct mhResponseBldr_t mhResponseBldr_t;
                                       __VA_ARGS__, NULL);\
                 mhPushRequest(__mh, __servctx, __rm);
 
+/* Stub a PUT request */
+#define   PUTRequest(...)\
+                __rm = mhGivenRequest(__mh, MethodEqualTo("PUT"),\
+                                      __VA_ARGS__, NULL);\
+                mhPushRequest(__mh, __servctx, __rm);
+
+/* Stub a DELETE request */
+#define   DELETERequest(...)\
+                __rm = mhGivenRequest(__mh, MethodEqualTo("DELETE"),\
+                                      __VA_ARGS__, NULL);\
+                mhPushRequest(__mh, __servctx, __rm);
+
 /* Stub a HEAD request */
 #define   HEADRequest(...)\
                 __rm = mhGivenRequest(__mh, MethodEqualTo("HEAD"),\
+                                            __VA_ARGS__, NULL);\
+                mhPushRequest(__mh, __servctx, __rm);
+
+/* Stub an OPTIONS request */
+#define   OPTIONSRequest(...)\
+                __rm = mhGivenRequest(__mh, MethodEqualTo("OPTIONS"),\
                                             __VA_ARGS__, NULL);\
                 mhPushRequest(__mh, __servctx, __rm);
 
