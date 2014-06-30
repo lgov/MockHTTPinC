@@ -6,7 +6,7 @@ MockHTTPinC is a C library that helps testing HTTP client code.
 The library provides:
 - a HTTP server that can be instructed to handle requests in certain ways: returning a prebaked response, abort the connection etc.
 - support for both HTTP/1.0 and HTTP/1.1 including pipelining and chunked encoding
-- macro's to make writing expectations and verifying the results straigthforward
+- macro's to make writing expectations and verifying the results straightforward
 - strong HTTPS support: full SSL/TLS handshake, client certificates and session renegotiation
 - SSL tunnel support
 
@@ -57,7 +57,7 @@ Write a first test
 In these examples we will use the CuTest framework (https://github.com/asimjalis/cutest) as unit testing library, you'll recognize its functions by the *Cu* prefix.
 
 
-**Step 1**: Include MockHTTPinC's main header file, create a test function and setup the mock HTTP server on the default port 30080.
+**Step 1**: Include MockHTTPinC's main header file, create a test function and set up the mock HTTP server on the default port 30080.
 
     #include "MockHTTP.h"
 
