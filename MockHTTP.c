@@ -57,7 +57,9 @@ static void appendErrMessage(const MockHTTP *mh, const char *fmt, ...)
     va_list argp;
 
     apr_pool_create(&scratchpool, mh->pool);
+    va_start(argp, fmt);
     msg = apr_pvsprintf(scratchpool, fmt, argp);
+    va_end(argp);
 
     len = strlen(msg) + 1; /* include trailing \0 */
     len = startpos + len > ERRMSG_MAXSIZE ? ERRMSG_MAXSIZE - startpos - 1: len;
@@ -273,9 +275,9 @@ mhMatchURLEqualTo(const MockHTTP *mh, const char *expected)
 
     mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
-    mp->matcher = url_matcher;
-    mp->describe_key = "URL equal to";
-    mp->describe_value = expected;
+    mp->match = url_matcher;
+    mp->matcher.describe_key = "URL equal to";
+    mp->matcher.describe_value = expected;
     return mp;
 }
 
@@ -295,9 +297,9 @@ mhMatchURLNotEqualTo(const MockHTTP *mh, const char *expected)
 
     mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
-    mp->matcher = url_not_matcher;
-    mp->describe_key = "URL not equal to";
-    mp->describe_value = expected;
+    mp->match = url_not_matcher;
+    mp->matcher.describe_key = "URL not equal to";
+    mp->matcher.describe_value = expected;
     return mp;
 }
 
@@ -323,9 +325,9 @@ mhMatchBodyEqualTo(const MockHTTP *mh, const char *expected)
 
     mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
-    mp->matcher = body_matcher;
-    mp->describe_key = "Body equal to";
-    mp->describe_value = expected;
+    mp->match = body_matcher;
+    mp->matcher.describe_key = "Body equal to";
+    mp->matcher.describe_value = expected;
     return mp;
 }
 
@@ -346,9 +348,9 @@ mhMatchRawBodyEqualTo(const MockHTTP *mh, const char *expected)
 
     mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
-    mp->matcher = raw_body_matcher;
-    mp->describe_key = "Raw body equal to";
-    mp->describe_value = expected;
+    mp->match = raw_body_matcher;
+    mp->matcher.describe_key = "Raw body equal to";
+    mp->matcher.describe_value = expected;
     return mp;
 }
 
@@ -359,10 +361,10 @@ mhMatchIncompleteBodyEqualTo(const MockHTTP *mh, const char *expected)
 
     mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
-    mp->matcher = body_matcher;
+    mp->match = body_matcher;
     mp->match_incomplete = TRUE;
-    mp->describe_key = "Incomplete body equal to";
-    mp->describe_value = expected;
+    mp->matcher.describe_key = "Incomplete body equal to";
+    mp->matcher.describe_value = expected;
     return mp;
 }
 
@@ -386,9 +388,9 @@ mhMatchBodyNotChunkedEqualTo(const MockHTTP *mh, const char *expected)
 
     mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
-    mp->matcher = body_notchunked_matcher;
-    mp->describe_key = "Body not chunked equal to";
-    mp->describe_value = expected;
+    mp->match = body_notchunked_matcher;
+    mp->matcher.describe_key = "Body not chunked equal to";
+    mp->matcher.describe_value = expected;
     return mp;
 }
 
@@ -413,9 +415,9 @@ mhMatchChunkedBodyEqualTo(const MockHTTP *mh, const char *expected)
 
     mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
-    mp->matcher = chunked_body_matcher;
-    mp->describe_key = "Chunked body equal to";
-    mp->describe_value = expected;
+    mp->match = chunked_body_matcher;
+    mp->matcher.describe_key = "Chunked body equal to";
+    mp->matcher.describe_value = expected;
     return mp;
 }
 
@@ -474,9 +476,9 @@ mhMatchBodyChunksEqualTo(const MockHTTP *mh, ...)
 
     mp = createReqMatcherBldr(pool);
     mp->baton = chunks;
-    mp->matcher = chunked_body_chunks_matcher;
-    mp->describe_key = "Chunked body with chunks";
-    mp->describe_value = serializeArrayOfIovecs(pool, chunks);
+    mp->match = chunked_body_chunks_matcher;
+    mp->matcher.describe_key = "Chunked body with chunks";
+    mp->matcher.describe_value = serializeArrayOfIovecs(pool, chunks);
     return mp;
 }
 
@@ -519,9 +521,9 @@ mhMatchHeaderEqualTo(const MockHTTP *mh, const char *hdr, const char *value)
     mp->baton = apr_pstrdup(pool, value);
     mp->baton2 = apr_pstrdup(pool, hdr);
     mp->ibaton = calculateHeaderHash(hdr, value);
-    mp->matcher = header_matcher;
-    mp->describe_key = "Header equal to";
-    mp->describe_value = apr_psprintf(pool, "%s: %s", hdr, value);
+    mp->match = header_matcher;
+    mp->matcher.describe_key = "Header equal to";
+    mp->matcher.describe_value = apr_psprintf(pool, "%s: %s", hdr, value);
     return mp;
 }
 
@@ -546,9 +548,9 @@ mhMatchHeaderNotEqualTo(const MockHTTP *mh, const char *hdr, const char *value)
     mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, value);
     mp->baton2 = apr_pstrdup(pool, hdr);
-    mp->matcher = header_not_matcher;
-    mp->describe_key = "Header not equal to";
-    mp->describe_value = apr_psprintf(pool, "%s: %s", hdr, value);
+    mp->match = header_not_matcher;
+    mp->matcher.describe_key = "Header not equal to";
+    mp->matcher.describe_value = apr_psprintf(pool, "%s: %s", hdr, value);
     return mp;
 }
 
@@ -627,25 +629,21 @@ mhMatchMethodEqualTo(const MockHTTP *mh, const char *expected)
     mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
     mp->ibaton = methodToCode(expected);
-    mp->matcher = method_matcher;
-    mp->describe_key = "Method equal to";
-    mp->describe_value = expected;
+    mp->match = method_matcher;
+    mp->matcher.describe_key = "Method equal to";
+    mp->matcher.describe_value = expected;
     return mp;
 }
 
-static bool any_matcher(const mhReqMatcherBldr_t *mp, const mhRequest_t *req)
-{
-    return YES;
-}
-
-mhConnMatcherBldr_t *mhMatchAny(const MockHTTP *mh)
+void *mhMatchAny(const MockHTTP *mh)
 {
     apr_pool_t *pool = mh->pool;
 
-    mhReqMatcherBldr_t *mp = createReqMatcherBldr(pool);
-    mp->matcher = any_matcher;
-    mp->describe_key = "Matches all";
-    mp->describe_value = "";
+    mhAnyMatcherBldr_t *mp = apr_pcalloc(pool, sizeof(mhAnyMatcherBldr_t));
+    mp->builder.magic = MagicKey;
+    mp->builder.type = BuilderTypeMatchAny;
+    mp->matcher.describe_key = "Matches all";
+    mp->matcher.describe_value = "";
     return mp;
 }
 
@@ -671,7 +669,9 @@ constructRequestMatcher(const MockHTTP *mh, requestType_t type, va_list argp)
             break;
         if (rmb->builder.type == BuilderTypeNone)
             continue;
-        if (rmb->builder.type != BuilderTypeReqMatcher) {
+        if (rmb->builder.type != BuilderTypeReqMatcher &&
+            rmb->builder.type != BuilderTypeMatchAny)
+        {
             _mhErrorUnexpectedBuilder(mh, rmb, BuilderTypeReqMatcher);
             break;
         }
@@ -714,9 +714,13 @@ _mhRequestMatcherMatch(const mhRequestMatcher_t *rm, const mhRequest_t *req)
 
     for (i = 0 ; i < rm->matchers->nelts; i++) {
         const mhReqMatcherBldr_t *mp;
-
         mp = APR_ARRAY_IDX(rm->matchers, i, mhReqMatcherBldr_t *);
-        if (mp->matcher(mp, req) == NO)
+
+        /* Ignore the MatchAny builder */
+        if (mp->builder.type == BuilderTypeMatchAny)
+            continue;
+
+        if (mp->match(mp, req) == NO)
             return NO;
     }
 
@@ -752,7 +756,9 @@ void mhGivenConnSetup(MockHTTP *mh, ...)
             break;
         if (cmb->builder.type == BuilderTypeNone)
             continue;
-        if (cmb->builder.type != BuilderTypeConnMatcher) {
+        if (cmb->builder.type != BuilderTypeConnMatcher &&
+            cmb->builder.type != BuilderTypeMatchAny)
+        {
             _mhErrorUnexpectedBuilder(mh, cmb, BuilderTypeConnMatcher);
             break;
         }
@@ -768,9 +774,9 @@ mhMatchClientCertCNEqualTo(const MockHTTP *mh, const char *expected)
 
     mhConnMatcherBldr_t *mp = createConnMatcherBldr(pool);
     mp->baton = apr_pstrdup(pool, expected);
-    mp->connmatcher = _mhClientcertcn_matcher;
-    mp->describe_key = "Client Certificate CN equal to";
-    mp->describe_value = expected;
+    mp->match = _mhClientcertcn_matcher;
+    mp->matcher.describe_key = "Client Certificate CN equal to";
+    mp->matcher.describe_value = expected;
     return mp;
 }
 
@@ -779,9 +785,9 @@ mhConnMatcherBldr_t *mhMatchClientCertValid(const MockHTTP *mh)
     apr_pool_t *pool = mh->pool;
 
     mhConnMatcherBldr_t *mp = createConnMatcherBldr(pool);
-    mp->connmatcher = _mhClientcert_valid_matcher;
-    mp->describe_key = "Client Certificate";
-    mp->describe_value = "valid";
+    mp->match = _mhClientcert_valid_matcher;
+    mp->matcher.describe_key = "Client Certificate";
+    mp->matcher.describe_value = "valid";
     return mp;
 }
 
@@ -791,10 +797,11 @@ mhConnMatcherBldr_t *mhMatchClientCertValid(const MockHTTP *mh)
 static mhResponse_t *initResponse(MockHTTP *mh)
 {
     apr_pool_t *pool;
+    mhResponse_t *resp;
 
     apr_pool_create(&pool, mh->pool);
 
-    mhResponse_t *resp = apr_pcalloc(pool, sizeof(mhResponse_t));
+    resp = apr_pcalloc(pool, sizeof(mhResponse_t));
     resp->pool = pool;
     resp->mh = mh;
     resp->code = 200;
@@ -824,6 +831,9 @@ mhResponse_t *mhNewResponseForRequest(MockHTTP *mh, mhServCtx_t *ctx,
         case RequestTypeOCSP:
             matchers = mh->ocspReqMatchers;
             break;
+        default:
+            /* Unsupported request type */
+            return NULL;
     }
 
     /* TODO: how can this not be the last element?? */
@@ -1260,18 +1270,20 @@ serializeRequestMatcher(apr_pool_t *pool, const mhRequestMatcher_t *rm,
         bool matches;
 
         mp = APR_ARRAY_IDX(rm->matchers, i, mhReqMatcherBldr_t *);
-        matches = mp->matcher(mp, req);
 
-        if (strstr(mp->describe_key, "body") != NULL) {
+        matches = (mp->builder.type == BuilderTypeMatchAny) ? YES :
+                                                              mp->match(mp, req);
+
+        if (strstr(mp->matcher.describe_key, "body") != NULL) {
             /* format the expected request body */
             str = apr_psprintf(pool, "%s%25s:|%s%s\n", str,
-                               mp->describe_key,
-                               formatBody(pool, 27, mp->describe_value),
+                               mp->matcher.describe_key,
+                               formatBody(pool, 27, mp->matcher.describe_value),
                                matches ? "" : "   <--- rule failed!");
 
         } else {
             str = apr_psprintf(pool, "%s%25s: %s%s\n", str,
-                               mp->describe_key, mp->describe_value,
+                               mp->matcher.describe_key, mp->matcher.describe_value,
                                matches ? "" : "   <--- rule failed!");
         }
     }
@@ -1477,9 +1489,13 @@ int mhVerifyConnectionSetupOk(const MockHTTP *mh)
 
         for (i = 0 ; i < mh->connMatchers->nelts; i++) {
             const mhConnMatcherBldr_t *cmb;
-
             cmb = APR_ARRAY_IDX(mh->connMatchers, i, mhConnMatcherBldr_t *);
-            if (cmb->connmatcher(cmb, cctx) == NO) {
+
+            /* Ignore the MatchAny builder */
+            if (cmb->builder.type == BuilderTypeMatchAny)
+                continue;
+
+            if (cmb->match(cmb, cctx) == NO) {
                 result = NO;
                 goto cleanup;
             }
@@ -1504,6 +1520,10 @@ static const char *buildertype_to_string(builderType_t type)
             return "Response Builder";
         case BuilderTypeServerSetup:
             return "Server Setup";
+        case BuilderTypeNone:
+            return "Noop";
+        case BuilderTypeMatchAny:
+            return "Match any";
         default:
             break;
     }
@@ -1514,7 +1534,7 @@ void _mhErrorUnexpectedBuilder(const MockHTTP *mh, void *actual,
                                builderType_t expected)
 {
     builder_t *builder = actual;
-    appendErrMessage(mh, "A builder of type %s was provided, where a builder of "
+    appendErrMessage(mh, "A builder of type %s was provided, where a builder of"
                          " type %s was expected!",
                      buildertype_to_string(builder->type),
                      buildertype_to_string(expected));
