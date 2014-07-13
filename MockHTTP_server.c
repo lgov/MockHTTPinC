@@ -2489,6 +2489,8 @@ static apr_status_t initSSLCtx(_mhClientCtx_t *cctx)
         }
 
         /* Set server certificate, add ca certificates if provided. */
+        if (!cctx->certFiles || cctx->certFiles->nelts == 0)
+            return APR_EGENERAL;
         certfile = APR_ARRAY_IDX(cctx->certFiles, 0, const char *);
         if (SSL_CTX_use_certificate_file(ssl_ctx->ctx, certfile,
                                          SSL_FILETYPE_PEM) != 1) {
