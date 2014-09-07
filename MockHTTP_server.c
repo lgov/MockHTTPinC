@@ -214,7 +214,7 @@ static apr_status_t setupTCPServer(mhServCtx_t *ctx)
 
         pfd.desc_type = APR_POLL_SOCKET;
         pfd.desc.s = ctx->skt;
-        pfd.reqevents = APR_POLLIN;
+        pfd.reqevents = APR_POLLIN | APR_POLLHUP | APR_POLLERR;
 
         STATUSERR(apr_pollset_add(ctx->pollset, &pfd));
     }
@@ -1552,7 +1552,7 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
             cctx = initClientCtx(ctx->pool, ctx, cskt, ctx->type);
             pfd.desc_type = APR_POLL_SOCKET;
             pfd.desc.s = cskt;
-            pfd.reqevents = APR_POLLIN | APR_POLLOUT;
+            pfd.reqevents = APR_POLLIN | APR_POLLOUT | APR_POLLHUP | APR_POLLERR;
             pfd.client_data = cctx;
             STATUSERR(apr_pollset_add(ctx->pollset, &pfd));
             cctx->reqevents = pfd.reqevents;
@@ -1588,6 +1588,7 @@ apr_status_t _mhRunServerLoop(mhServCtx_t *ctx)
                     if (status == APR_EOF) {
                         /* Close the socket and an associated proxy skt */
                         closeAndRemoveClientCtx(ctx, cctx);
+                        break;
                     }
                 }
             }
@@ -2434,6 +2435,8 @@ static apr_status_t initSSLCtx(_mhClientCtx_t *cctx)
     cctx->ssl_ctx = ssl_ctx;
     ssl_ctx->bio_read_status = APR_SUCCESS;
 
+    _mhLog(MH_VERBOSE, cctx->skt, "Initializing SSL context.\n");
+
     /* Init OpenSSL globally */
     if (!init_done)
     {
@@ -2489,8 +2492,6 @@ static apr_status_t initSSLCtx(_mhClientCtx_t *cctx)
         }
 
         /* Set server certificate, add ca certificates if provided. */
-        if (!cctx->certFiles || cctx->certFiles->nelts == 0)
-            return APR_EGENERAL;
         certfile = APR_ARRAY_IDX(cctx->certFiles, 0, const char *);
         if (SSL_CTX_use_certificate_file(ssl_ctx->ctx, certfile,
                                          SSL_FILETYPE_PEM) != 1) {
@@ -2604,7 +2605,9 @@ sslSocketRead(apr_socket_t *skt, void *baton, char *data, apr_size_t *len)
                 *len = 0;
                 _mhLog(MH_VERBOSE, skt,
                           "ssl_socket_read SSL Error %d: ", ssl_err);
+#if MH_VERBOSE
                 ERR_print_errors_fp(stderr);
+#endif
                 return APR_EGENERAL;
         }
     }
@@ -2617,8 +2620,9 @@ static void appendSSLErrMessage(const MockHTTP *mh, long result)
 {
     apr_size_t startpos = strlen(mh->errmsg);
     ERR_error_string(result, mh->errmsg + startpos);
-    /* TODO: debug */
+#if MH_VERBOSE
     ERR_print_errors_fp(stderr);
+#endif
 }
 
 /******************************************************************************/
@@ -2727,7 +2731,9 @@ static apr_status_t sslHandshake(_mhClientCtx_t *cctx)
                 return ssl_ctx->bio_read_status; /* Usually APR_EAGAIN */
             default:
                 _mhLog(MH_VERBOSE, cctx->skt, "SSL Error %d: ", ssl_err);
+#if MH_VERBOSE
                 ERR_print_errors_fp(stderr);
+#endif
                 return APR_EGENERAL;
         }
     }

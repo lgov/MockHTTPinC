@@ -84,7 +84,6 @@ typedef struct mhResponse_t mhResponse_t;
 typedef struct mhServCtx_t mhServCtx_t;
 typedef struct mhReqMatcherBldr_t mhReqMatcherBldr_t;
 typedef struct mhConnMatcherBldr_t mhConnMatcherBldr_t;
-typedef struct mhAnyMatcherBldr_t mhAnyMatcherBldr_t;
 typedef struct mhServerSetupBldr_t mhServerSetupBldr_t;
 typedef struct mhResponseBldr_t mhResponseBldr_t;
 
@@ -649,12 +648,13 @@ mhReqMatcherBldr_t *mhMatchHeaderEqualTo(const MockHTTP *mh,
                                           const char *hdr, const char *value);
 mhReqMatcherBldr_t *mhMatchHeaderNotEqualTo(const MockHTTP *mh,
                                              const char *hdr, const char *value);
+/* TODO: make this a generic matcher */
+mhReqMatcherBldr_t *mhMatchAny(const MockHTTP *mh);
 
 void mhGivenConnSetup(MockHTTP *mh, ...);
 mhConnMatcherBldr_t *mhMatchClientCertCNEqualTo(const MockHTTP *mh,
                                                 const char *expected);
 mhConnMatcherBldr_t *mhMatchClientCertValid(const MockHTTP *mh);
-void *mhMatchAny(const MockHTTP *mh);
 
 mhResponse_t *mhNewResponseForRequest(MockHTTP *mh, mhServCtx_t *ctx,
                                       mhRequestMatcher_t *rm);

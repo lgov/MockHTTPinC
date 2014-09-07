@@ -223,15 +223,6 @@ struct mhResponse_t {
     mhOCSPRespnseStatus_t ocsp_response_status;
 };
 
-typedef bool (*reqmatchfunc_t)(const mhReqMatcherBldr_t *mp,
-const mhRequest_t *req);
-
-struct mhRequestMatcher_t {
-    apr_pool_t *pool;
-    requestType_t type;
-    apr_array_header_t *matchers; /* array of mhReqMatcherBldr_t *'s. */
-    bool incomplete;
-};
 
 /* Builder structures for server setup, request matching and response creation */
 enum { MagicKey = 0x4D484244 }; /* MHBD */
@@ -241,8 +232,7 @@ typedef enum builderType_t {
     BuilderTypeConnMatcher,
     BuilderTypeServerSetup,
     BuilderTypeResponse,
-    BuilderTypeNone,           /* A 'noop' builder, does nothing */
-    BuilderTypeMatchAny,       /* A 'any' matcher, matches all requests/conns */
+    BuilderTypeNone,           /* A noop builder */
 } builderType_t;
 
 
@@ -251,23 +241,24 @@ typedef struct builder_t {
     builderType_t type;
 } builder_t;
 
-typedef struct matcherBldr_t {
-    const char *describe_key;
-    const char *describe_value;
-} matcherBldr_t;
+typedef bool (*reqmatchfunc_t)(const mhReqMatcherBldr_t *mp,
+                               const mhRequest_t *req);
 
-struct mhAnyMatcherBldr_t {
-    builder_t builder;
-    matcherBldr_t matcher;
+struct mhRequestMatcher_t {
+    apr_pool_t *pool;
+    requestType_t type;
+    apr_array_header_t *matchers; /* array of mhReqMatcherBldr_t *'s. */
+    bool incomplete;
 };
 
 struct mhReqMatcherBldr_t {
     builder_t builder;
-    matcherBldr_t matcher;
     const void *baton; /* use this for an expected string */
     unsigned long ibaton;
     const void *baton2;
-    reqmatchfunc_t match;
+    reqmatchfunc_t matcher;
+    const char *describe_key;
+    const char *describe_value;
     bool match_incomplete; /* Don't wait for full valid requests */
 };
 
@@ -276,9 +267,8 @@ typedef bool (*connmatchfunc_t)(const mhConnMatcherBldr_t *cmb,
 
 struct mhConnMatcherBldr_t {
     builder_t builder;
-    matcherBldr_t matcher;
     const void *baton;
-    connmatchfunc_t match;
+    connmatchfunc_t connmatcher;
     const char *describe_key;
     const char *describe_value;
 };
